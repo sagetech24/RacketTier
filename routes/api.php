@@ -1,18 +1,11 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-
-Route::get('/health', function () {
-    return response()->json([
-        'service' => config('app.name'),
-        'status' => 'ok',
-    ]);
-});
-
-Route::get('/me', function (Request $request) {
-    return response()->json([
-        'message' => 'API is active.',
-        'user' => $request->user(),
-    ]);
-});
+/*
+|--------------------------------------------------------------------------
+| API routes (JSON, typically /api/...)
+|--------------------------------------------------------------------------
+|
+| The Vite React app uses routes/web.php for Sanctum/session auth and the
+| app shell. Register JSON-only endpoints here when the SPA needs them.
+|
+*/

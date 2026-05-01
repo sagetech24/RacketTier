@@ -1,7 +1,36 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+/*
+|--------------------------------------------------------------------------
+| React SPA (resources/js) — web session + Sanctum-compatible same-origin
+|--------------------------------------------------------------------------
+|
+| `view('app')` is only the Blade shell; all UI is React. POST routes are
+| called via fetch/postForm from the SPA. Do not add server-rendered pages
+| here—use JSON endpoints in routes/api.php for non-auth API surface.
+|--------------------------------------------------------------------------
+*/
+
+Route::view('/', 'app')->name('home');
+
+Route::get('/auth/user', function () {
+    return response()->json(['user' => auth()->user()]);
+})->name('auth.user');
+
+Route::middleware('guest')->group(function () {
+    Route::view('/login', 'app')->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+
+    Route::view('/register', 'app')->name('register');
+    Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
 });
+
+Route::view('/dashboard', 'app')->middleware('auth')->name('dashboard');
+
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout');

@@ -1,6 +1,6 @@
 # RacketTier v2
 
-Session-based queue, matchmaking, results, and ELO rankings for racket sports—built on **Laravel 13**, **Livewire 4**, and **Tailwind CSS**.
+Session-based queue, matchmaking, results, and ELO rankings for racket sports—built on **Laravel 13**, **React** (Vite), and **Tailwind CSS**.
 
 ## Requirements
 
@@ -31,8 +31,8 @@ These `.mdc` files use Cursor’s `alwaysApply: true` front matter so they are i
 
 | File | Purpose |
 |------|---------|
-| `tech-stack.mdc` | Enforces Laravel 13, Livewire 4 **SFC** (single file under `resources/views/livewire/`), Tailwind, thin controllers, Actions/Services, MySQL migrations, native auth, no Vue/React/jQuery-heavy UI. |
-| `rackettier-flow.mdc` | End-to-end flow: Session → Queue → Match → Result → Ranking → repeat; required Livewire components; session fields; `session_players`; match lifecycle; post-match stats, ELO, `rating_histories`; session end and leaderboard. |
+| `tech-stack.mdc` | Enforces Laravel 13 JSON API + **React** (Vite, `resources/js/`), Tailwind, thin API controllers, Actions/Services, MySQL migrations, Sanctum when the SPA needs auth, no Livewire for product UI. |
+| `rackettier-flow.mdc` | End-to-end flow: Session → Queue → Match → Result → Ranking → repeat; required **React** feature areas; session fields; `session_players`; match lifecycle; post-match stats, ELO, `rating_histories`; session end and leaderboard. |
 | `queue-system.mdc` | Sequential `queue_position`, `is_waiting` / `is_playing`, FIFO v1, reorder on leave, players return to end of queue after matches. |
 | `matchmaking.mdc` | Singles (2) / doubles (4), top-of-queue selection, team layout, validation, `matches` / `match_players`, mark selected players `is_playing`. |
 | `ranking-system.mdc` | ELO for registered users only (initial 1000, K default 32), `rankings` + `rating_histories`; guests excluded. |
@@ -43,9 +43,9 @@ Markdown references for deeper, task-specific guidance (invoked when relevant to
 
 | File | Focus |
 |------|--------|
-| `livewire-sfc-pattern.md` | SFC layout, `@php` / `Component` block, anti-patterns (no `app/Livewire` classes or split Blade views). |
-| `livewire-ui.md` | Component-driven UI, `wire:*` usage, Tailwind, Livewire events. |
-| `component-map.md` | Planned components (session, queue, match creator, match board, scoreboard) and high-level data flow. |
+| `react-patterns.md` | React + Laravel JSON API: folder layout, thin client, API Resources, Sanctum/session notes, anti-patterns. |
+| `react-ui.md` | Component-driven UI, state and data fetching guidance, Tailwind, post-mutation refresh. |
+| `component-map.md` | Planned React areas (session, queue, match creator, match board, scoreboard) and high-level data flow. |
 | `session-management.md` | Create / start / end session; session prerequisite for queue and matches. |
 | `queue-handling.md` | Add player, positions, reorder; sequential positions, no gaps. |
 | `elo-ranking.md` | ELO steps and storage tables summary. |
@@ -56,8 +56,8 @@ Role descriptions for splitting backend vs matchmaking concerns in agent workflo
 
 | File | Role |
 |------|------|
-| `backend-agent.md` | Sessions, players, queue, matches, results; thin controllers; Eloquent; integration with Livewire SFC only. |
-| `matchmaking-agent.md` | FIFO selection from `session_players`, Service/Action implementation, trigger from `match-creator` SFC; v2 ideas noted separately. |
+| `backend-agent.md` | Sessions, players, queue, matches, results; thin API controllers; Eloquent; JSON contracts for the React app. |
+| `matchmaking-agent.md` | FIFO selection from `session_players`, Service/Action implementation, invoked from React via HTTP API; v2 ideas noted separately. |
 
 ### For contributors
 
