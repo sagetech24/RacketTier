@@ -1,5 +1,18 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v2')->middleware('api.version:v2')->group(base_path('routes/api_v2.php'));
+Route::get('/health', function () {
+    return response()->json([
+        'service' => config('app.name'),
+        'status' => 'ok',
+    ]);
+});
+
+Route::get('/me', function (Request $request) {
+    return response()->json([
+        'message' => 'API is active.',
+        'user' => $request->user(),
+    ]);
+});
