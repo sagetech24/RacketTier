@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name') }}</title>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/main.jsx'])
     @else
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -13,7 +14,7 @@
         @include('partials.tailwind-fallback-styles')
     @endif
 </head>
-<body class="min-h-screen bg-zinc-50 text-zinc-900 antialiased">
+<body class="min-h-screen bg-black text-white antialiased">
     <div id="root"></div>
     <script>
         window.__RT_APP_NAME__ = @json(config('app.name'));

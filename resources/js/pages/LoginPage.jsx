@@ -3,13 +3,16 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { postForm } from '../lib/http.js';
 
+const GOOGLE_ICON =
+    'https://lh3.googleusercontent.com/aida-public/AB6AXuAg6awCdOFM2mUf4iHGroiuA4v5FGVYEt8GEc92F4OoyT6bPN8TgPc9BXPwzIwu6l6DzC-ib67_TfDdsMJGski5FBONFL2OCZtkAXkPfW5fjp0Aa7CYj1xz8fPs3c94HvcxIBfE931i7mdW-d75OYOWJO6ZRrdOwdqPYcK6Pvw4rcFmItgXGZeVHiOOpAG3gm5ycAVVg-8KThXtrrHSXtZuG76rIEYQYEUAfkK7vvhPTG9lGDjsnVhTkjSYXSaozv_E4CchpD1d7xc';
+const APPLE_ICON = 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg';
+
 export function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const { setUser } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [remember, setRemember] = useState(false);
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState(/** @type {Record<string, string[]>} */ ({}));
     const [submitting, setSubmitting] = useState(false);
@@ -26,7 +29,7 @@ export function LoginPage() {
             const res = await postForm('/login', {
                 email,
                 password,
-                remember: remember ? '1' : '0',
+                remember: '0',
             });
 
             if (res.status === 422) {
@@ -56,80 +59,147 @@ export function LoginPage() {
     }
 
     return (
-        <div className="mx-auto w-full max-w-md">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Log in</h1>
-            <p className="mt-1 text-sm text-zinc-600">Use your email and password to continue.</p>
+        <div className="relative flex min-h-[max(850px,100dvh)] flex-col overflow-hidden bg-[#121216] text-[#e4e1e6]">
+            <main className="flex grow items-center justify-center px-6 py-8">
+                <div className="w-full max-w-md space-y-12">
+                    <div className="space-y-4 text-center">
+                        <div className="inline-flex items-center justify-center">
+                            <img src="/images/rt-logo.png" alt="RacketTier" className="h-11 w-11" />
+                        </div>
+                        <h1 className="text-4xl font-bold tracking-tight text-[#e4e1e6]">RacketTier</h1>
+                        <p className="font-medium tracking-tight text-[#c8c5d2]">
+                            Enter the kinetic world of racket sports <br />where every smash counts.
+                        </p>
+                    </div>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-                {error ? (
-                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                        {error}
+                    <div className="space-y-8 rounded-xl bg-[#1b1b1e] p-8">
+                        <form className="space-y-6" onSubmit={handleSubmit} aria-busy={submitting}>
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="v2-login-email"
+                                    className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
+                                >
+                                    Email Address
+                                </label>
+                                <input
+                                    id="v2-login-email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    autoComplete="email"
+                                    disabled={submitting}
+                                    placeholder="name@example.com"
+                                    className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
+                                />
+                                {fieldErrors.email?.[0] ? (
+                                    <p className="text-sm text-[#ffdad6]">{fieldErrors.email[0]}</p>
+                                ) : null}
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="ml-1 flex items-end justify-between">
+                                    <label
+                                        htmlFor="v2-login-password"
+                                        className="text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
+                                    >
+                                        Password
+                                    </label>
+                                    <a
+                                        className="text-[10px] uppercase tracking-widest text-[#c2c1ff] transition-opacity hover:opacity-80"
+                                        href="#"
+                                    >
+                                        Forgot?
+                                    </a>
+                                </div>
+                                <input
+                                    id="v2-login-password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    autoComplete="current-password"
+                                    disabled={submitting}
+                                    placeholder="••••••••"
+                                    className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
+                                />
+                                {fieldErrors.password?.[0] ? (
+                                    <p className="text-sm text-[#ffdad6]">{fieldErrors.password[0]}</p>
+                                ) : null}
+                            </div>
+
+                            {error ? (
+                                <div className="rounded-lg bg-[#93000a]/35 px-3 py-2 text-sm text-[#ffdad6]" role="alert">
+                                    {error}
+                                </div>
+                            ) : null}
+
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="w-full rounded-xl bg-[#7877C6] py-4 font-bold text-[#211e6a] shadow-[0_20px_40px_-10px_rgba(194,193,255,0.2)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+                            >
+                                {submitting ? 'Signing in...' : 'Sign In'}
+                            </button>
+                        </form>
+
+                        <div className="relative flex items-center justify-center py-2">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-[#474651]/15" />
+                            </div>
+                            <span className="relative bg-[#1b1b1e] px-4 text-[10px] uppercase tracking-[0.2em] text-[#918f9c]">
+                                Or continue with
+                            </span>
+                        </div>
+
+                        <div>
+                            <div className="mb-2 flex items-center justify-center text-xs text-[#918f9c]/70">coming soon...</div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    type="button"
+                                    disabled
+                                    className="flex cursor-not-allowed items-center justify-center gap-3 rounded-xl bg-[#5f5e60] py-3.5 opacity-50 transition-colors duration-200 hover:bg-[#39393c] active:scale-95"
+                                >
+                                    <img alt="Google" className="h-5 w-5" src={GOOGLE_ICON} />
+                                    <span className="text-xs font-semibold uppercase tracking-wider">Google</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled
+                                    className="flex cursor-not-allowed items-center justify-center gap-3 rounded-xl bg-[#5f5e60] py-3.5 opacity-50 transition-colors duration-200 hover:bg-[#39393c] active:scale-95"
+                                >
+                                    <img src={APPLE_ICON} alt="Apple" className="h-5 w-5" />
+                                    <span className="text-xs font-semibold uppercase tracking-wider">Apple</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p className="text-center text-sm text-[#c8c5d2]">
+                        Don&apos;t have an account?{' '}
+                        <Link to="/register" className="ml-1 font-bold text-[#4ce081] underline-offset-4 hover:underline">
+                            Create Account
+                        </Link>
                     </p>
-                ) : null}
-
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-zinc-700">
-                        Email
-                    </label>
-                    <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        autoComplete="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-zinc-400 transition focus:border-zinc-500 focus:ring-2"
-                    />
-                    {fieldErrors.email?.[0] ? (
-                        <p className="mt-1 text-sm text-red-600">{fieldErrors.email[0]}</p>
-                    ) : null}
                 </div>
+            </main>
 
-                <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-zinc-700">
-                        Password
-                    </label>
-                    <input
-                        id="password"
-                        name="password"
-                        type="password"
-                        autoComplete="current-password"
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-zinc-400 transition focus:border-zinc-500 focus:ring-2"
-                    />
-                    {fieldErrors.password?.[0] ? (
-                        <p className="mt-1 text-sm text-red-600">{fieldErrors.password[0]}</p>
-                    ) : null}
+            <div className="pointer-events-none fixed -left-20 top-[10%] h-64 w-64 rounded-full bg-[#c2c1ff]/5 blur-[100px]" />
+            <div className="pointer-events-none fixed -right-20 bottom-[10%] h-80 w-80 rounded-full bg-[#4ce081]/5 blur-[120px]" />
+
+            <footer className="p-8 text-center">
+                <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs uppercase tracking-[0.2em] text-[#918f9c]">
+                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
+                        Privacy Policy
+                    </a>
+                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
+                        Terms of Service
+                    </a>
+                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
+                        Help Center
+                    </a>
                 </div>
-
-                <label className="flex items-center gap-2 text-sm text-zinc-600">
-                    <input
-                        type="checkbox"
-                        checked={remember}
-                        onChange={(e) => setRemember(e.target.checked)}
-                        className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
-                    />
-                    Remember me
-                </label>
-
-                <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                    {submitting ? 'Signing in…' : 'Log in'}
-                </button>
-            </form>
-
-            <p className="mt-8 text-center text-sm text-zinc-600">
-                Don&apos;t have an account?{' '}
-                <Link to="/register" className="font-medium text-zinc-900 underline underline-offset-2">
-                    Register
-                </Link>
-            </p>
+            </footer>
         </div>
     );
 }
