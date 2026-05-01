@@ -6,11 +6,12 @@ export function RootLayout() {
     const { user } = useAuth();
     const location = useLocation();
     const isLoginPage = location.pathname === '/login';
+    const isRegisterPage = location.pathname === '/register';
 
     return (
         <div className="flex min-h-screen flex-col">
             
-            {!isLoginPage ? (
+            {!isLoginPage && !isRegisterPage ? (
                 <header className="border-b border-zinc-200 bg-gray-700 text-white px-6 py-4 shadow-sm">
                     <div className="mx-auto flex max-w-5xl items-center justify-between">
                         <Link to="/" className="text-lg font-semibold tracking-tight text-zinc-900">
@@ -49,7 +50,7 @@ export function RootLayout() {
                     </div>
                 </header>
             ) : null}
-            <main className={`${isLoginPage ? '' : 'mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-10'}`}>
+            <main className={`${isLoginPage || isRegisterPage ? '' : 'mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-10'}`}>
                 <Outlet />
             </main>
         </div>
