@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\DashboardSummaryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,6 +22,10 @@ Route::get('/auth/user', function () {
     return response()->json(['user' => auth()->user()]);
 })->name('auth.user');
 
+Route::get('/auth/dashboard-summary', [DashboardSummaryController::class, 'show'])
+    ->middleware('auth')
+    ->name('auth.dashboard-summary');
+
 Route::middleware('guest')->group(function () {
     Route::view('/login', 'app')->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
@@ -29,7 +34,13 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
 });
 
-Route::view('/dashboard', 'app')->middleware('auth')->name('dashboard');
+Route::middleware('auth')->group(function () {
+    Route::view('/dashboard', 'app')->name('dashboard');
+    Route::view('/facilities', 'app');
+    Route::view('/create-match', 'app');
+    Route::view('/ranking', 'app');
+    Route::view('/game-room', 'app');
+});
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')

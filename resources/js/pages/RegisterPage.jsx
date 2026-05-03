@@ -76,7 +76,7 @@ export function RegisterPage() {
 
     return (
         <div className="relative flex min-h-[max(884px,100dvh)] flex-col overflow-hidden bg-[#121216] text-[#e4e1e6]">
-            <main className="flex grow items-center justify-center px-6 py-8 md:py-12">
+            <main className="flex grow items-center justify-center px-6 py-8 tab:py-12">
                 <div className="w-full max-w-md space-y-12">
                     <AuthBrandHeader />
 

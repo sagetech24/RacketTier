@@ -12,4 +12,7 @@
     --font-geist-sans: 'Geist', 'Geist Fallback';
 
     --color-primary: #7877c6;
+
+    /* Tablet step immediately after mobile (base); pairs with `tab:` utilities */
+    --breakpoint-tab: 48rem;
 }
