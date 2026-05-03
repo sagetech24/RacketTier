@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AuthBrandHeader } from '../components/AuthBrandHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { postForm } from '../lib/http.js';
 
@@ -62,15 +63,7 @@ export function LoginPage() {
         <div className="relative flex min-h-[max(850px,100dvh)] flex-col overflow-hidden bg-[#121216] text-[#e4e1e6]">
             <main className="flex grow items-center justify-center px-6 py-8">
                 <div className="w-full max-w-md space-y-12">
-                    <div className="space-y-4 text-center">
-                        <div className="inline-flex items-center justify-center">
-                            <img src="/images/rt-logo.png" alt="RacketTier" className="h-11 w-11" />
-                        </div>
-                        <h1 className="text-4xl font-bold tracking-tight text-[#e4e1e6]">RacketTier</h1>
-                        <p className="font-medium tracking-tight text-[#c8c5d2]">
-                            Enter the kinetic world of racket sports <br />where every smash counts.
-                        </p>
-                    </div>
+                    <AuthBrandHeader />
 
                     <div className="space-y-8 rounded-xl bg-[#1b1b1e] p-8">
                         <form className="space-y-6" onSubmit={handleSubmit} aria-busy={submitting}>
@@ -90,10 +83,10 @@ export function LoginPage() {
                                     autoComplete="email"
                                     disabled={submitting}
                                     placeholder="name@example.com"
-                                    className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
+                                    className="w-full rounded-lg border-none bg-[#2a2a2d] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
                                 />
                                 {fieldErrors.email?.[0] ? (
-                                    <p className="text-sm text-[#ffdad6]">{fieldErrors.email[0]}</p>
+                                    <p className="text-sm text-red-100">{fieldErrors.email[0]}</p>
                                 ) : null}
                             </div>
 
@@ -121,15 +114,15 @@ export function LoginPage() {
                                     autoComplete="current-password"
                                     disabled={submitting}
                                     placeholder="••••••••"
-                                    className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
+                                    className="w-full rounded-lg border-none bg-[#2a2a2d] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
                                 />
                                 {fieldErrors.password?.[0] ? (
-                                    <p className="text-sm text-[#ffdad6]">{fieldErrors.password[0]}</p>
+                                    <p className="text-sm text-red-100">{fieldErrors.password[0]}</p>
                                 ) : null}
                             </div>
 
                             {error ? (
-                                <div className="rounded-lg bg-[#93000a]/35 px-3 py-2 text-sm text-[#ffdad6]" role="alert">
+                                <div className="rounded-lg bg-[#93000a]/35 px-3 py-2 text-sm text-red-100" role="alert">
                                     {error}
                                 </div>
                             ) : null}
@@ -137,13 +130,13 @@ export function LoginPage() {
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className="w-full rounded-xl bg-[#7877C6] py-4 font-bold text-[#211e6a] shadow-[0_20px_40px_-10px_rgba(194,193,255,0.2)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+                                className="w-full rounded-xl bg-primary py-4 font-bold text-[#211e6a] shadow-[0_20px_40px_-10px_rgba(194,193,255,0.2)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
                             >
                                 {submitting ? 'Signing in...' : 'Sign In'}
                             </button>
                         </form>
 
-                        <div className="relative flex items-center justify-center py-2">
+                        {/* <div className="relative flex items-center justify-center py-2">
                             <div className="absolute inset-0 flex items-center">
                                 <div className="w-full border-t border-[#474651]/15" />
                             </div>
@@ -172,7 +165,7 @@ export function LoginPage() {
                                     <span className="text-xs font-semibold uppercase tracking-wider">Apple</span>
                                 </button>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
 
                     <p className="text-center text-sm text-[#c8c5d2]">
