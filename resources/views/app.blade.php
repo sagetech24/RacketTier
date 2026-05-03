@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name') }}</title>
+    <title>{{ config('app.name') }} | Turn your passion into a competitive edge</title>
+    <link rel="icon" href="{{ asset('images/rt-logo.png') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ asset('images/rt-logo.png') }}">
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/main.jsx'])
