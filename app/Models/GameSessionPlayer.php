@@ -14,6 +14,9 @@ class GameSessionPlayer extends Model
         'is_waiting',
         'is_playing',
         'team',
+        'wins_count',
+        'losses_count',
+        'session_points',
     ];
 
     /**
@@ -25,6 +28,9 @@ class GameSessionPlayer extends Model
             'is_waiting' => 'boolean',
             'is_playing' => 'boolean',
             'team' => 'integer',
+            'wins_count' => 'integer',
+            'losses_count' => 'integer',
+            'session_points' => 'integer',
         ];
     }
 

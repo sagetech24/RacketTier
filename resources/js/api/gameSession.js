@@ -66,6 +66,25 @@ export function postCreateGameSession(payload) {
 
 /**
  * @typedef {{
+ *   user_id: number,
+ *   name: string,
+ *   team: number,
+ *   won: boolean,
+ *   rating_before: number,
+ *   rating_after: number,
+ *   rating_change: number,
+ *   session_points_earned: number,
+ * }} LastMatchPlayerBreakdown
+ *
+ * @typedef {{
+ *   team1_score: number,
+ *   team2_score: number,
+ *   winning_team: number | null,
+ *   finished_at: string | null,
+ *   players: LastMatchPlayerBreakdown[],
+ * }} GameSessionLastMatch
+ *
+ * @typedef {{
  *   id: number,
  *   facility?: { id: number, name: string, address: string | null },
  *   sport: { slug: string, name: string, code: string },
@@ -74,6 +93,7 @@ export function postCreateGameSession(payload) {
  *   court_preference: string | null,
  *   is_active: boolean,
  *   status: 'queueing' | 'ongoing' | 'finished',
+ *   last_match?: GameSessionLastMatch,
  *   started_at: string | null,
  *   ended_at: string | null,
  *   is_host: boolean,
@@ -85,6 +105,10 @@ export function postCreateGameSession(payload) {
  *     is_waiting: boolean,
  *     is_playing: boolean,
  *     team?: number | null,
+ *     wins_count?: number,
+ *     losses_count?: number,
+ *     session_points?: number,
+ *     elo_rating?: number,
  *     user: { id: number, name: string, email: string },
  *   }>,
  * }} GameSessionDetail
@@ -167,6 +191,50 @@ export async function postStartGameSessionMatch(id, opts = {}) {
     }
     if (!res.ok) {
         let msg = 'Could not start the match.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') {
+                msg = j.message;
+            } else if (j.errors && typeof j.errors === 'object') {
+                const first = Object.values(j.errors)[0];
+                if (Array.isArray(first) && first[0]) {
+                    msg = String(first[0]);
+                }
+            }
+        } catch {
+            /* keep default */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    if (!json.data) {
+        throw new Error('Invalid session response');
+    }
+    return json.data;
+}
+
+/**
+ * @param {string | number} id
+ * @param {{ team1_score: number, team2_score: number, facilityId?: number | string }} body
+ * @returns {Promise<GameSessionDetail>}
+ */
+export async function postFinishGameSessionMatch(id, body) {
+    const payload = {
+        team1_score: body.team1_score,
+        team2_score: body.team2_score,
+    };
+    if (body.facilityId != null && String(body.facilityId).trim() !== '') {
+        payload.facility_id = Number(body.facilityId);
+    }
+    const res = await postJson(`/auth/game-sessions/${encodeURIComponent(String(id))}/finish-match`, payload);
+    if (res.status === 401) {
+        throw new Error('Unauthorized');
+    }
+    if (res.status === 403) {
+        throw new Error('Only the session host can finish the match.');
+    }
+    if (!res.ok) {
+        let msg = 'Could not finish the match.';
         try {
             const j = await res.json();
             if (typeof j.message === 'string') {

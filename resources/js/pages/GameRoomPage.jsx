@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchFacilities } from '../api/facilities.js';
 import { fetchFacilityGameRoom } from '../api/facilityGameRoom.js';
-import { fetchGameSession, postStartGameSessionMatch } from '../api/gameSession.js';
+import { fetchGameSession, postFinishGameSessionMatch, postStartGameSessionMatch } from '../api/gameSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -53,7 +53,13 @@ function mapQueueRow(session, row, currentUserId) {
         tier: isHost ? 'Host' : `Queue #${row.queue_position}`,
         status: statusLabel,
         statusColor,
-        detail: row.user.email,
+        detail: [
+            row.user.email,
+            typeof row.session_points === 'number' ? `${row.session_points} session pts` : null,
+            typeof row.elo_rating === 'number' ? `Elo ${row.elo_rating}` : null,
+        ]
+            .filter(Boolean)
+            .join(' · '),
         isSelf: currentUserId != null && row.user.id === currentUserId,
         _playing: playing,
         _waiting: waiting,
@@ -90,15 +96,22 @@ export function GameRoomPage() {
     const [startBusy, setStartBusy] = useState(false);
     const [startError, setStartError] = useState('');
 
+    const [showFinishModal, setShowFinishModal] = useState(false);
+    const [finishTeam1Score, setFinishTeam1Score] = useState('');
+    const [finishTeam2Score, setFinishTeam2Score] = useState('');
+    const [finishBusy, setFinishBusy] = useState(false);
+    const [finishError, setFinishError] = useState('');
+
     const gameRoomBase = facilityIdNum != null ? `/facility/${facilityIdNum}/game-room` : '/facilities';
 
-    const { canStartMatch, anyPlaying, requiredPlayers, waitingForMatchCount } = useMemo(() => {
+    const { canStartMatch, anyPlaying, requiredPlayers, waitingForMatchCount, showFinishMatch } = useMemo(() => {
         if (!sessionDetail?.players) {
             return {
                 canStartMatch: false,
                 anyPlaying: false,
                 requiredPlayers: 2,
                 waitingForMatchCount: 0,
+                showFinishMatch: false,
             };
         }
         const need = sessionDetail.match_type === 'doubles' ? 4 : 2;
@@ -107,11 +120,15 @@ export function GameRoomPage() {
         const waiting = players.filter((p) => p.is_waiting && !p.is_playing).length;
         const can =
             Boolean(sessionDetail.is_active && sessionDetail.is_host && !playing && waiting >= need);
+        const ongoing = sessionDetail.status === 'ongoing';
+        const finish =
+            Boolean(sessionDetail.is_active && sessionDetail.is_host && ongoing && playing);
         return {
             canStartMatch: can,
             anyPlaying: playing,
             requiredPlayers: need,
             waitingForMatchCount: waiting,
+            showFinishMatch: finish,
         };
     }, [sessionDetail]);
 
@@ -211,6 +228,13 @@ export function GameRoomPage() {
         setStartError('');
     }, [sessionIdParam, facilityIdNum]);
 
+    useEffect(() => {
+        setFinishError('');
+        setShowFinishModal(false);
+        setFinishTeam1Score('');
+        setFinishTeam2Score('');
+    }, [sessionIdParam, facilityIdNum]);
+
     const queueRows = useMemo(() => {
         if (!sessionDetail?.players?.length) {
             return [];
@@ -284,6 +308,39 @@ export function GameRoomPage() {
         }
     }
 
+    async function handleSubmitFinishMatch() {
+        if (!sessionIdParam || !/^\d+$/.test(sessionIdParam) || facilityIdNum == null) {
+            return;
+        }
+        const s1 = Number.parseInt(String(finishTeam1Score).trim(), 10);
+        const s2 = Number.parseInt(String(finishTeam2Score).trim(), 10);
+        if (!Number.isFinite(s1) || !Number.isFinite(s2) || s1 < 0 || s2 < 0) {
+            setFinishError('Enter valid non-negative scores for both teams.');
+            return;
+        }
+        if (s1 === s2) {
+            setFinishError('Scores cannot be tied—there must be a winner.');
+            return;
+        }
+        setFinishError('');
+        setFinishBusy(true);
+        try {
+            const data = await postFinishGameSessionMatch(sessionIdParam, {
+                facilityId: facilityIdNum,
+                team1_score: s1,
+                team2_score: s2,
+            });
+            setSessionDetail(data);
+            setShowFinishModal(false);
+            setFinishTeam1Score('');
+            setFinishTeam2Score('');
+        } catch (e) {
+            setFinishError(e instanceof Error ? e.message : 'Could not finish the match.');
+        } finally {
+            setFinishBusy(false);
+        }
+    }
+
     return (
         <div className="min-h-screen bg-[#131316] text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
@@ -329,6 +386,46 @@ export function GameRoomPage() {
                                     <dd className="text-right font-medium text-[#4ce081]">{sessionStatusDisplay}</dd>
                                 </div>
                             </dl>
+                            {sessionDetail.last_match ? (
+                                <div className="mt-4 rounded-xl border border-[#474651]/40 bg-[#1b1b1e] p-4">
+                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c2c1ff]">
+                                        Last match result
+                                    </h3>
+                                    <p className="mt-2 text-sm font-semibold text-[#e4e1e6]">
+                                        Team 1 {sessionDetail.last_match.team1_score} — Team 2{' '}
+                                        {sessionDetail.last_match.team2_score}
+                                        {sessionDetail.last_match.winning_team != null ? (
+                                            <span className="ml-2 font-bold text-[#4ce081]">
+                                                (Winner: Team {sessionDetail.last_match.winning_team})
+                                            </span>
+                                        ) : null}
+                                    </p>
+                                    {sessionDetail.last_match.players?.length ? (
+                                        <ul className="mt-3 space-y-2 border-t border-white/5 pt-3 text-xs text-[#c8c5d2]">
+                                            {sessionDetail.last_match.players.map((p) => (
+                                                <li key={p.user_id} className="flex justify-between gap-3">
+                                                    <span className="min-w-0 truncate font-medium text-[#e4e1e6]">
+                                                        {p.name}
+                                                        {p.won ? (
+                                                            <span className="ml-1.5 text-[#4ce081]">W</span>
+                                                        ) : (
+                                                            <span className="ml-1.5 text-[#918f9c]">L</span>
+                                                        )}
+                                                    </span>
+                                                    <span className="shrink-0 text-right tabular-nums">
+                                                        <span className={p.rating_change >= 0 ? 'text-[#4ce081]' : 'text-[#ffb4ab]'}>
+                                                            {p.rating_change >= 0 ? '+' : ''}
+                                                            {p.rating_change} Elo
+                                                        </span>
+                                                        <span className="text-[#918f9c]"> · </span>
+                                                        <span className="text-[#c2c1ff]">+{p.session_points_earned} pts</span>
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : null}
+                                </div>
+                            ) : null}
                         </>
                     ) : (
                         <p className="mt-4 text-sm leading-relaxed text-[#c8c5d2]">
@@ -576,33 +673,128 @@ export function GameRoomPage() {
                     )}
                     {sessionDetail?.is_active && sessionDetail?.is_host ? (
                         <div className="mt-8 space-y-2">
-                            <button
-                                type="button"
-                                onClick={() => void handleStartGame()}
-                                disabled={!canStartMatch || startBusy}
-                                aria-busy={startBusy}
-                                className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
-                            >
-                                {startBusy ? 'Starting…' : 'Start Game'}
-                            </button>
-                            {!anyPlaying && waitingForMatchCount < requiredPlayers ? (
-                                <p className="text-center text-xs text-[#918f9c]">
-                                    Need {requiredPlayers} waiting players in the queue to start ({waitingForMatchCount}{' '}
-                                    ready).
-                                </p>
-                            ) : null}
-                            {anyPlaying ? (
-                                <p className="text-center text-xs text-[#918f9c]">A match is in progress.</p>
-                            ) : null}
-                            {startError ? (
-                                <p className="text-center text-sm text-[#ffb4ab]" role="alert">
-                                    {startError}
-                                </p>
-                            ) : null}
+                            {showFinishMatch ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setFinishError('');
+                                            setShowFinishModal(true);
+                                        }}
+                                        className="w-full shrink-0 rounded-xl border-2 border-[#ffb86b]/60 bg-[#ffb86b]/15 px-10 py-4 text-lg font-black tracking-tight text-[#ffb86b] shadow-lg transition-transform enabled:active:scale-95 md:w-auto"
+                                    >
+                                        Finish game
+                                    </button>
+                                    <p className="text-center text-xs text-[#918f9c]">
+                                        Enter the final score to update Elo for this sport, session points, and the
+                                        queue.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleStartGame()}
+                                        disabled={!canStartMatch || startBusy}
+                                        aria-busy={startBusy}
+                                        className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
+                                    >
+                                        {startBusy ? 'Starting…' : 'Start Game'}
+                                    </button>
+                                    {!anyPlaying && waitingForMatchCount < requiredPlayers ? (
+                                        <p className="text-center text-xs text-[#918f9c]">
+                                            Need {requiredPlayers} waiting players in the queue to start (
+                                            {waitingForMatchCount} ready).
+                                        </p>
+                                    ) : null}
+                                    {anyPlaying && !showFinishMatch ? (
+                                        <p className="text-center text-xs text-[#918f9c]">A match is in progress.</p>
+                                    ) : null}
+                                    {startError ? (
+                                        <p className="text-center text-sm text-[#ffb4ab]" role="alert">
+                                            {startError}
+                                        </p>
+                                    ) : null}
+                                </>
+                            )}
                         </div>
                     ) : null}
                 </section>
             </main>
+
+            {showFinishModal ? (
+                <div
+                    className="fixed inset-0 z-100 flex items-end justify-center bg-black/70 p-4 sm:items-center"
+                    role="presentation"
+                    onClick={() => (finishBusy ? null : setShowFinishModal(false))}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="finish-match-title"
+                        className="w-full max-w-md rounded-2xl border border-[#474651]/50 bg-[#1b1b1e] p-6 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 id="finish-match-title" className="text-lg font-bold text-[#e4e1e6]">
+                            Report final score
+                        </h2>
+                        <p className="mt-2 text-sm text-[#918f9c]">
+                            Team 1 vs Team 2 (same sides as when the session was created). One side must have a higher
+                            score.
+                        </p>
+                        <div className="mt-5 grid grid-cols-2 gap-3">
+                            <label className="block">
+                                <span className="mb-1.5 block text-xs font-semibold text-[#c8c5d2]">Team 1 score</span>
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    value={finishTeam1Score}
+                                    onChange={(e) => setFinishTeam1Score(e.target.value)}
+                                    className="w-full rounded-xl border border-[#474651] bg-[#131316] px-3 py-2.5 text-[#e4e1e6] outline-none focus:border-[#c2c1ff]/60"
+                                    autoComplete="off"
+                                />
+                            </label>
+                            <label className="block">
+                                <span className="mb-1.5 block text-xs font-semibold text-[#c8c5d2]">Team 2 score</span>
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    value={finishTeam2Score}
+                                    onChange={(e) => setFinishTeam2Score(e.target.value)}
+                                    className="w-full rounded-xl border border-[#474651] bg-[#131316] px-3 py-2.5 text-[#e4e1e6] outline-none focus:border-[#c2c1ff]/60"
+                                    autoComplete="off"
+                                />
+                            </label>
+                        </div>
+                        {finishError ? (
+                            <p className="mt-3 text-sm text-[#ffb4ab]" role="alert">
+                                {finishError}
+                            </p>
+                        ) : null}
+                        <div className="mt-6 grid grid-cols-3 gap-2">
+                            <button
+                                type="button"
+                                disabled={finishBusy}
+                                onClick={() => setShowFinishModal(false)}
+                                className="col-span-1 rounded-xl border border-[#474651] px-4 py-3 text-sm font-semibold text-[#e4e1e6] hover:bg-white/5 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={finishBusy}
+                                aria-busy={finishBusy}
+                                onClick={() => void handleSubmitFinishMatch()}
+                                className="rt-kinetic-gradient col-span-2 rounded-xl px-4 py-3 text-sm font-black text-[#211e6a] disabled:opacity-50"
+                            >
+                                {finishBusy ? 'Saving…' : 'Save & update'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             <DashboardMobileNav />
         </div>

@@ -16,6 +16,11 @@ class GameSession extends Model
         'created_by',
         'is_active',
         'status',
+        'last_team1_score',
+        'last_team2_score',
+        'last_winning_team',
+        'last_finished_at',
+        'last_result_breakdown',
         'game_type',
         'court_preference',
         'started_at',
@@ -31,6 +36,8 @@ class GameSession extends Model
             'is_active' => 'boolean',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'last_finished_at' => 'datetime',
+            'last_result_breakdown' => 'array',
         ];
     }
 
