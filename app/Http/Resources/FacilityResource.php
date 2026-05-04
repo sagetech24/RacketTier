@@ -20,6 +20,7 @@ class FacilityResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'address' => $this->address,
+            'game_sessions_count' => (int) ($this->game_sessions_count ?? 0),
         ];
     }
 }

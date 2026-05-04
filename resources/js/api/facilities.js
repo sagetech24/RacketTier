@@ -1,7 +1,7 @@
 import { postJson } from '../lib/http.js';
 
 /**
- * @typedef {{ id: number, name: string, address: string | null }} FacilityRow
+ * @typedef {{ id: number, name: string, address: string | null, game_sessions_count?: number }} FacilityRow
  */
 
 /**

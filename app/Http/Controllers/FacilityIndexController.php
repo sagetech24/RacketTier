@@ -16,7 +16,10 @@ class FacilityIndexController extends Controller
 
         $q = trim((string) $request->query('q', ''));
 
-        $query = Facility::query()->orderBy('name')->limit(80);
+        $query = Facility::query()
+            ->withCount('gameSessions')
+            ->orderBy('name')
+            ->limit(80);
 
         if ($q !== '') {
             $query->where(function ($sub) use ($q): void {
