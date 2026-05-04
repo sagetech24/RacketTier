@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\GameSession;
 use App\Models\User;
 
 class GetDashboardSummary
@@ -20,6 +21,16 @@ class GetDashboardSummary
      */
     public function execute(User $user): array
     {
+        $sessionsActive = GameSession::query()
+            ->where('is_active', true)
+            ->where(function ($q) use ($user): void {
+                $q->where('created_by', $user->id)
+                    ->orWhereHas('players', function ($p) use ($user): void {
+                        $p->where('user_id', $user->id);
+                    });
+            })
+            ->count();
+
         return [
             'user' => [
                 'id' => $user->id,
@@ -31,7 +42,7 @@ class GetDashboardSummary
                 'rating' => 1000,
                 'matches_played' => 0,
                 'matches_won' => 0,
-                'sessions_active' => 0,
+                'sessions_active' => $sessionsActive,
             ],
             'highlights' => [],
         ];

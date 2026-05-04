@@ -3,6 +3,9 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\DashboardSummaryController;
+use App\Http\Controllers\FacilityPlayersController;
+use App\Http\Controllers\GameSessionStoreController;
+use App\Http\Controllers\SportsListController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -40,6 +43,10 @@ Route::middleware('auth')->group(function () {
     Route::view('/create-match', 'app');
     Route::view('/ranking', 'app');
     Route::view('/game-room', 'app');
+
+    Route::get('/auth/sports', [SportsListController::class, 'index'])->name('auth.sports');
+    Route::get('/auth/facility-players', [FacilityPlayersController::class, 'index'])->name('auth.facility-players');
+    Route::post('/auth/game-sessions', [GameSessionStoreController::class, 'store'])->name('auth.game-sessions.store');
 });
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

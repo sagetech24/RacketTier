@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
@@ -59,6 +59,8 @@ function TrophyIcon({ className }) {
 
 export function GameRoomPage() {
     const { user } = useAuth();
+    const [searchParams] = useSearchParams();
+    const createdSessionId = searchParams.get('session');
     const [playerSearch, setPlayerSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [fastMatchmaking, setFastMatchmaking] = useState(false);
@@ -90,6 +92,18 @@ export function GameRoomPage() {
 
             <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-28">
                 <section className="mb-8">
+                    {createdSessionId ? (
+                        <div
+                            className="mb-6 rounded-xl border border-[#4ce081]/35 bg-[#4ce081]/10 px-4 py-3 text-sm text-[#c8f5d8]"
+                            role="status"
+                        >
+                            <span className="font-bold text-[#4ce081]">Session saved.</span>{' '}
+                            <span className="text-[#c8c5d2]">
+                                Match #{createdSessionId} is live in your account. Queue and live court data will plug
+                                in here as those APIs ship.
+                            </span>
+                        </div>
+                    ) : null}
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#4ce081]">
                         Ground Zero Fitness Hub
                     </p>

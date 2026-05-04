@@ -14,6 +14,24 @@ export function csrfToken() {
  * @param {Record<string, string>} fields
  * @returns {Promise<Response>}
  */
+/**
+ * @param {string} url
+ * @param {Record<string, unknown>} body
+ * @returns {Promise<Response>}
+ */
+export function postJson(url, body) {
+    return fetch(url, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
+    });
+}
+
 export function postForm(url, fields) {
     const body = new URLSearchParams();
     for (const [key, value] of Object.entries(fields)) {
