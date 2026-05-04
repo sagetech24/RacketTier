@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchFacilities, postFacility } from '../api/facilities.js';
 import { fetchFacilityPlayers, fetchSports, postCreateGameSession } from '../api/gameSession.js';
@@ -52,6 +52,7 @@ function buildCourtPreference(court, courtSpecify) {
 
 export function CreateMatchPage() {
     const navigate = useNavigate();
+    const { facilityId: facilityIdParam } = useParams();
     const { user } = useAuth();
 
     const [sports, setSports] = useState(/** @type {import('../api/gameSession.js').SportRow[]} */ ([]));
@@ -125,6 +126,24 @@ export function CreateMatchPage() {
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        if (pageLoading) {
+            return;
+        }
+        if (!facilityIdParam || !/^\d+$/.test(facilityIdParam)) {
+            navigate('/facilities', { replace: true });
+            return;
+        }
+        const id = Number.parseInt(facilityIdParam, 10);
+        if (!facilities.some((f) => f.id === id)) {
+            setPageLoadError('That facility was not found in your directory.');
+            setFacilityId(null);
+            return;
+        }
+        setPageLoadError('');
+        setFacilityId(id);
+    }, [pageLoading, facilities, facilityIdParam, navigate]);
 
     const facilityQ = facilitySearch.trim().toLowerCase();
     const filteredFacilities = useMemo(() => {
@@ -253,6 +272,7 @@ export function CreateMatchPage() {
             });
             setFacilities((prev) => [created, ...prev.filter((f) => f.id !== created.id)]);
             setFacilityId(created.id);
+            navigate(`/facility/${created.id}/create-match`, { replace: true });
             setAddFacilityOpen(false);
             setNewFacilityName('');
             setNewFacilityAddress('');
@@ -386,7 +406,7 @@ export function CreateMatchPage() {
                                         <button
                                             key={f.id}
                                             type="button"
-                                            onClick={() => setFacilityId(f.id)}
+                                            onClick={() => navigate(`/facility/${f.id}/create-match`)}
                                             className={`rounded-xl border p-5 text-left transition-all ${
                                                 on
                                                     ? 'border-[#4ce081] bg-[#4ce081]/15 ring-1 ring-[#4ce081]/40'

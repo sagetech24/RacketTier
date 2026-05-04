@@ -2,13 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchFacilities } from '../api/facilities.js';
-import { fetchGameSession, fetchMyGameSessions } from '../api/gameSession.js';
+import { fetchFacilityGameRoom } from '../api/facilityGameRoom.js';
+import { fetchGameSession } from '../api/gameSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const COURT_BG =
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCcNm6e9LXXjtc5jcT-ghsNkK9q8hjmxzNvrRg1H3D1pMGtmyfNOCiQYDljR2p48bIDcX84peZBIee_F4XgW3X0YybcmJvJwuD3YI5hOxFHTjYQu8o8nicOhWn3zUBpM_i6k_JhfclYhalVsHJX20zONHpKVnYT-7JtnfSCBSYUc1Yqu55qhm9n-MnJ1USAnIvk79jXD9lfaLwHKBm43Az0enw4SmavKyq4yIWrl-8fFwyTArAKQbcVxKj9brvWrupqgBzpJwfOQFc';
 
 /**
  * @param {string} name
@@ -82,7 +80,7 @@ export function GameRoomPage() {
     const [sessionDetail, setSessionDetail] = useState(
         /** @type {import('../api/gameSession.js').GameSessionDetail | null} */ (null),
     );
-    const [mySessions, setMySessions] = useState(/** @type {import('../api/gameSession.js').GameSessionDetail[]} */ ([]));
+    const [lobby, setLobby] = useState(/** @type {import('../api/facilityGameRoom.js').FacilityGameRoomPayload | null} */ (null));
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -127,7 +125,7 @@ export function GameRoomPage() {
             setError('');
             setLoading(true);
             setSessionDetail(null);
-            setMySessions([]);
+            setLobby(null);
 
             try {
                 if (facilityIdNum == null) {
@@ -142,9 +140,9 @@ export function GameRoomPage() {
                         setSessionDetail(data);
                     }
                 } else {
-                    const list = await fetchMyGameSessions(facilityIdNum);
+                    const room = await fetchFacilityGameRoom(facilityIdNum);
                     if (!cancelled) {
-                        setMySessions(list);
+                        setLobby(room);
                     }
                 }
             } catch (e) {
@@ -171,10 +169,32 @@ export function GameRoomPage() {
         return sessionDetail.players.map((row) => mapQueueRow(sessionDetail, row, user?.id));
     }, [sessionDetail, user?.id]);
 
+    const lobbyPlayerRows = useMemo(() => {
+        if (!lobby?.players?.length) {
+            return [];
+        }
+        return lobby.players.map((p) => ({
+            key: `lobby-${p.id}`,
+            initials: initialsFromName(p.name),
+            name: p.name,
+            tier: 'At this facility',
+            status: 'On roster',
+            statusColor: 'text-[#4ce081]',
+            detail: p.email,
+            isSelf: user?.id != null && p.id === user.id,
+            _playing: false,
+            _waiting: true,
+        }));
+    }, [lobby?.players, user?.id]);
+
     const q = playerSearch.trim().toLowerCase();
     const filteredPlayers = useMemo(() => {
+        if (sessionDetail) {
+            return queueRows;
+        }
+
         const searched = q
-            ? queueRows.filter(
+            ? lobbyPlayerRows.filter(
                   (p) =>
                       p.name.toLowerCase().includes(q) ||
                       p.tier.toLowerCase().includes(q) ||
@@ -190,7 +210,7 @@ export function GameRoomPage() {
             return searched.filter((p) => p._waiting);
         }
         return searched;
-    }, [q, statusFilter, queueRows]);
+    }, [sessionDetail, q, statusFilter, queueRows, lobbyPlayerRows]);
 
     const sessionHeadline = sessionDetail
         ? `${sessionDetail.sport?.name ?? 'Session'} · ${sessionDetail.match_type === 'doubles' ? 'Doubles' : 'Singles'}`
@@ -247,8 +267,8 @@ export function GameRoomPage() {
                         </dl>
                     ) : (
                         <p className="mt-4 text-sm leading-relaxed text-[#c8c5d2]">
-                            Open a session below or create a new match. Queue and roster update from the server in
-                            real time when you refresh this page.
+                            Active sessions and everyone on the roster at this facility. Open a session for full queue
+                            details, or refresh to update the list.
                         </p>
                     )}
                 </section>
@@ -268,204 +288,175 @@ export function GameRoomPage() {
                     </div>
                 ) : null}
 
-                <Link
-                    to="/create-match"
-                    className="mb-8 inline-flex items-center gap-2 rounded-full bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] px-5 py-3 text-xs font-bold tracking-wider text-[#282671] uppercase"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="size-5 text-[#282671]"
-                        aria-hidden
+                {!error && facilityIdNum != null && !sessionIdParam ? (
+                    <Link
+                        to={`/facility/${facilityIdNum}/create-match`}
+                        className="mb-8 inline-flex items-center gap-2 rounded-full bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] px-5 py-3 text-xs font-bold tracking-wider text-[#282671] uppercase"
                     >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Create Match
-                </Link>
-
-                {!sessionIdParam && !loading && mySessions.length > 0 ? (
-                    <section className="mb-8 space-y-3">
-                        <h2 className="text-lg font-bold text-[#e4e1e6]">Sessions at this facility</h2>
-                        <ul className="space-y-2">
-                            {mySessions.map((s) => (
-                                <li key={s.id}>
-                                    <Link
-                                        to={`${gameRoomBase}?session=${s.id}`}
-                                        className="block rounded-xl border border-[#474651]/40 bg-[#1b1b1e] px-4 py-3 transition-colors hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22]"
-                                    >
-                                        <p className="text-sm font-bold text-[#e4e1e6]">
-                                            {s.sport?.name ?? 'Session'} #{s.id}
-                                        </p>
-                                        <p className="mt-1 text-xs text-[#918f9c]">
-                                            {s.facility?.name ? `${s.facility.name} · ` : ''}
-                                            {s.match_type} · {s.game_type}
-                                            {typeof s.participant_count === 'number' ? ` · ${s.participant_count} players` : ''}
-                                            {s.is_host ? (
-                                                <span className="ml-2 font-semibold text-[#4ce081]">You host</span>
-                                            ) : null}
-                                        </p>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                ) : null}
-
-                <section
-                    className="relative mb-8 min-h-[280px] overflow-hidden bg-cover bg-center p-4"
-                    style={{ backgroundImage: `url(${COURT_BG})` }}
-                >
-                    <div className="pointer-events-none absolute inset-0 bg-black/60" />
-                    <div className="relative z-10">
-                        <h2 className="text-3xl font-bold text-[#e4e1e6]">
-                            {sessionDetail ? 'This session' : 'Facility overview'}
-                        </h2>
-                        <p className="mb-4 text-base text-[#c8c5d2]">
-                            {sessionDetail
-                                ? 'Court preference and roster are loaded from your saved match.'
-                                : 'Per-court telemetry will appear here as facilities go live.'}
-                        </p>
-
-                        {loading ? (
-                            <div className="space-y-2">
-                                <div className="h-16 animate-pulse rounded-md bg-[#131316]/80" />
-                                <div className="h-16 animate-pulse rounded-md bg-[#131316]/80" />
-                            </div>
-                        ) : sessionDetail ? (
-                            <div className="rounded-md bg-[#131316]/80 p-3">
-                                <p className="text-[10px] font-semibold tracking-widest text-[#c8c5d2]">
-                                    SESSION #{sessionDetail.id}
-                                </p>
-                                <p className="mt-1 text-sm font-bold text-[#4ce081]">
-                                    {sessionDetail.is_active ? 'Queue active' : 'Session ended'}
-                                </p>
-                                <p className="mt-2 text-xs text-[#c8c5d2]">
-                                    {sessionDetail.facility ? (
-                                        <>
-                                            <span className="font-semibold text-[#e4e1e6]">{sessionDetail.facility.name}</span>
-                                            <br />
-                                        </>
-                                    ) : null}
-                                    {sessionDetail.court_preference
-                                        ? `Preferred court: ${sessionDetail.court_preference}`
-                                        : 'No court preference set.'}
-                                </p>
-                            </div>
-                        ) : (
-                            <p className="rounded-md bg-[#131316]/80 p-3 text-sm text-[#918f9c]">
-                                No session selected. Pick one from the list above or create a match.
-                            </p>
-                        )}
-                    </div>
-                </section>
-
-                <section className="mb-6">
-                    <h2 className="mb-3 text-base font-bold text-[#e4e1e6]">
-                        {sessionDetail ? 'Session queue' : "Who's on the court"}
-                    </h2>
-                    <label className="mb-4 flex items-center gap-3 rounded-xl bg-[#0e0e11] px-4 py-3 ring-1 ring-white/5 focus-within:ring-[#c2c1ff]/40">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="size-4 shrink-0 stroke-[#918f9c]"
+                            className="size-5 text-[#282671]"
                             aria-hidden
                         >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                            />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        <input
-                            type="search"
-                            value={playerSearch}
-                            onChange={(e) => setPlayerSearch(e.target.value)}
-                            placeholder="Search by name, email, or queue…"
-                            autoComplete="off"
-                            spellCheck={false}
-                            className="min-w-0 flex-1 bg-transparent text-sm text-[#e4e1e6] placeholder:text-[#918f9c] outline-none"
-                            aria-label="Search players"
-                            disabled={!sessionDetail?.players?.length}
-                        />
-                    </label>
+                        Create Match
+                    </Link>
+                ) : null}
 
-                    <h3 className="mb-3 text-xs font-semibold text-[#e4e1e6]">Status Filters</h3>
-                    <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filter players by status">
-                        <button
-                            type="button"
-                            className={filterButtonClass(statusFilter === 'all')}
-                            aria-pressed={statusFilter === 'all'}
-                            onClick={() => setStatusFilter('all')}
-                            disabled={!sessionDetail?.players?.length}
-                        >
-                            All Players
-                        </button>
-                        <button
-                            type="button"
-                            className={filterButtonClass(statusFilter === 'playing')}
-                            aria-pressed={statusFilter === 'playing'}
-                            onClick={() => setStatusFilter('playing')}
-                            disabled={!sessionDetail?.players?.length}
-                        >
-                            Playing
-                        </button>
-                        <button
-                            type="button"
-                            className={filterButtonClass(statusFilter === 'available')}
-                            aria-pressed={statusFilter === 'available'}
-                            onClick={() => setStatusFilter('available')}
-                            disabled={!sessionDetail?.players?.length}
-                        >
-                            In queue
-                        </button>
-                    </div>
+                {!sessionIdParam && !error ? (
+                    <section className="mb-8 space-y-3">
+                        <h2 className="text-lg font-bold text-[#e4e1e6]">Sessions at this facility</h2>
+                        {loading ? (
+                            <div className="space-y-2">
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                    <div key={i} className="h-[72px] animate-pulse rounded-xl bg-[#1b1b1e]" aria-hidden />
+                                ))}
+                            </div>
+                        ) : lobby && lobby.sessions.length > 0 ? (
+                            <ul className="space-y-2">
+                                {lobby.sessions.map((s) => (
+                                    <li key={s.id}>
+                                        <Link
+                                            to={`${gameRoomBase}?session=${s.id}`}
+                                            className="block rounded-xl border border-[#474651]/40 bg-[#1b1b1e] px-4 py-3 transition-colors hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22]"
+                                        >
+                                            <p className="text-sm font-bold text-[#e4e1e6]">
+                                                {s.sport?.name ?? 'Session'} #{s.id}
+                                            </p>
+                                            <p className="mt-1 text-xs text-[#918f9c]">
+                                                {s.match_type} · {s.game_type}
+                                                {typeof s.participant_count === 'number'
+                                                    ? ` · ${s.participant_count} players`
+                                                    : ''}
+                                                {s.is_host ? (
+                                                    <span className="ml-2 font-semibold text-[#4ce081]">You host</span>
+                                                ) : null}
+                                            </p>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="rounded-xl bg-[#1b1b1e] px-4 py-4 text-sm text-[#918f9c]">
+                                No active sessions at this facility yet.
+                            </p>
+                        )}
+                    </section>
+                ) : null}
 
-                    <p className="mt-4 mb-2 text-xs tracking-wide text-[#c8c5d2]">
-                        Enable AI-integrated matchmaking to find your next match faster. (coming soon)
-                    </p>
-                    <label className="mb-5 flex cursor-pointer items-center justify-between gap-3 rounded-full bg-[#c2c1ff]/10 px-3 py-2 text-[10px] font-bold tracking-widest text-[#c2c1ff] uppercase opacity-70">
-                        <span className="flex min-w-0 items-center gap-2">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="size-5 shrink-0 stroke-[#4ce081]"
-                                aria-hidden
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
+                <section className="mb-6">
+                    <h2 className="mb-3 text-base font-bold text-[#e4e1e6]">
+                        {sessionDetail ? 'Session queue' : 'Players at this facility'}
+                    </h2>
+                    {!sessionDetail ? (
+                        <>
+                            <label className="mb-4 flex items-center gap-3 rounded-xl bg-[#0e0e11] px-4 py-3 ring-1 ring-white/5 focus-within:ring-[#c2c1ff]/40">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={1.5}
+                                    stroke="currentColor"
+                                    className="size-4 shrink-0 stroke-[#918f9c]"
+                                    aria-hidden
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                                    />
+                                </svg>
+                                <input
+                                    type="search"
+                                    value={playerSearch}
+                                    onChange={(e) => setPlayerSearch(e.target.value)}
+                                    placeholder="Search by name, email, or queue…"
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    className="min-w-0 flex-1 bg-transparent text-sm text-[#e4e1e6] placeholder:text-[#918f9c] outline-none"
+                                    aria-label="Search players"
+                                    disabled={!sessionDetail?.players?.length && lobbyPlayerRows.length === 0}
                                 />
-                            </svg>
-                            <span>AI-integrated matchmaking</span>
-                        </span>
-                        <span className="relative inline-flex shrink-0 items-center">
-                            <input
-                                type="checkbox"
-                                disabled
-                                role="switch"
-                                checked={fastMatchmaking}
-                                onChange={(e) => setFastMatchmaking(e.target.checked)}
-                                className="peer sr-only"
-                                aria-label="Fast matchmaking"
-                            />
-                            <span
-                                className="relative flex h-7 w-12 items-center rounded-full bg-[#6b696f] p-0.5 transition-colors peer-checked:bg-[#4ce081]/85 peer-checked:[&>.thumb]:translate-x-[22px] peer-focus-visible:ring-2 peer-focus-visible:ring-[#c2c1ff]/50 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[#131316]"
-                                aria-hidden
-                            >
-                                <span className="thumb block h-6 w-6 translate-x-0 rounded-full bg-white shadow transition-transform duration-200 ease-out" />
-                            </span>
-                        </span>
-                    </label>
+                            </label>
+
+                            <h3 className="mb-3 text-xs font-semibold text-[#e4e1e6]">Status Filters</h3>
+                            <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filter players by status">
+                                <button
+                                    type="button"
+                                    className={filterButtonClass(statusFilter === 'all')}
+                                    aria-pressed={statusFilter === 'all'}
+                                    onClick={() => setStatusFilter('all')}
+                                    disabled={!sessionDetail?.players?.length && lobbyPlayerRows.length === 0}
+                                >
+                                    All Players
+                                </button>
+                                <button
+                                    type="button"
+                                    className={filterButtonClass(statusFilter === 'playing')}
+                                    aria-pressed={statusFilter === 'playing'}
+                                    onClick={() => setStatusFilter('playing')}
+                                    disabled={!sessionDetail?.players?.length && lobbyPlayerRows.length === 0}
+                                >
+                                    Playing
+                                </button>
+                                <button
+                                    type="button"
+                                    className={filterButtonClass(statusFilter === 'available')}
+                                    aria-pressed={statusFilter === 'available'}
+                                    onClick={() => setStatusFilter('available')}
+                                    disabled={!sessionDetail?.players?.length && lobbyPlayerRows.length === 0}
+                                >
+                                    In queue
+                                </button>
+                            </div>
+
+                            <p className="mt-4 mb-2 text-xs tracking-wide text-[#c8c5d2]">
+                                Enable AI-integrated matchmaking to find your next match faster. (coming soon)
+                            </p>
+                            <label className="mb-5 flex cursor-pointer items-center justify-between gap-3 rounded-full bg-[#c2c1ff]/10 px-3 py-2 text-[10px] font-bold tracking-widest text-[#c2c1ff] uppercase opacity-70">
+                                <span className="flex min-w-0 items-center gap-2">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth={1.5}
+                                        stroke="currentColor"
+                                        className="size-5 shrink-0 stroke-[#4ce081]"
+                                        aria-hidden
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
+                                        />
+                                    </svg>
+                                    <span>AI-integrated matchmaking</span>
+                                </span>
+                                <span className="relative inline-flex shrink-0 items-center">
+                                    <input
+                                        type="checkbox"
+                                        disabled
+                                        role="switch"
+                                        checked={fastMatchmaking}
+                                        onChange={(e) => setFastMatchmaking(e.target.checked)}
+                                        className="peer sr-only"
+                                        aria-label="Fast matchmaking"
+                                    />
+                                    <span
+                                        className="relative flex h-7 w-12 items-center rounded-full bg-[#6b696f] p-0.5 transition-colors peer-checked:bg-[#4ce081]/85 peer-checked:[&>.thumb]:translate-x-[22px] peer-focus-visible:ring-2 peer-focus-visible:ring-[#c2c1ff]/50 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[#131316]"
+                                        aria-hidden
+                                    >
+                                        <span className="thumb block h-6 w-6 translate-x-0 rounded-full bg-white shadow transition-transform duration-200 ease-out" />
+                                    </span>
+                                </span>
+                            </label>
+                        </>
+                    ) : null}
 
                     {loading ? (
                         <div className="space-y-3">
@@ -473,11 +464,11 @@ export function GameRoomPage() {
                                 <div key={i} className="h-[88px] animate-pulse rounded-2xl bg-[#1b1b1e]" aria-hidden />
                             ))}
                         </div>
-                    ) : !sessionDetail?.players?.length ? (
+                    ) : !sessionDetail?.players?.length && (!lobbyPlayerRows.length || sessionDetail) ? (
                         <p className="rounded-2xl bg-[#1b1b1e] px-4 py-6 text-center text-sm text-[#918f9c]">
                             {sessionIdParam
                                 ? 'No players on this session yet.'
-                                : 'Open a session to see the live queue, or create a match to get started.'}
+                                : 'No players on active sessions at this facility yet.'}
                         </p>
                     ) : (
                         <div className="space-y-3">

@@ -34,7 +34,7 @@ export function AppRoutes() {
                     }
                 />
                 <Route
-                    path="create-match"
+                    path="facility/:facilityId/create-match"
                     element={
                         <ProtectedRoute>
                             <CreateMatchPage />

@@ -2,13 +2,13 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { LogoutButton } from './LogoutButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const V2_SHELL_PATHS = new Set(['/dashboard', '/facilities', '/create-match', '/ranking']);
+const V2_SHELL_PATHS = new Set(['/dashboard', '/facilities', '/ranking']);
 
 function isV2DashboardShellPath(pathname) {
     if (V2_SHELL_PATHS.has(pathname)) {
         return true;
     }
-    return /^\/facility\/\d+\/game-room$/.test(pathname);
+    return /^\/facility\/\d+\/(game-room|create-match)$/.test(pathname);
 }
 
 export function RootLayout() {

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\DashboardSummaryController;
+use App\Http\Controllers\FacilityGameRoomController;
 use App\Http\Controllers\FacilityIndexController;
 use App\Http\Controllers\FacilityPlayersController;
 use App\Http\Controllers\FacilityStoreController;
@@ -44,12 +45,14 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::view('/dashboard', 'app')->name('dashboard');
     Route::view('/facilities', 'app');
-    Route::view('/create-match', 'app');
     Route::view('/ranking', 'app');
     Route::view('/facility/{facility}/game-room', 'app')->whereNumber('facility');
+    Route::view('/facility/{facility}/create-match', 'app')->whereNumber('facility');
 
     Route::get('/auth/sports', [SportsListController::class, 'index'])->name('auth.sports');
     Route::get('/auth/facilities', [FacilityIndexController::class, 'index'])->name('auth.facilities.index');
+    Route::get('/auth/facilities/{facility}/game-room', [FacilityGameRoomController::class, 'index'])
+        ->name('auth.facilities.game-room');
     Route::post('/auth/facilities', [FacilityStoreController::class, 'store'])->name('auth.facilities.store');
     Route::get('/auth/facility-players', [FacilityPlayersController::class, 'index'])->name('auth.facility-players');
     Route::get('/auth/game-sessions', [GameSessionIndexController::class, 'index'])->name('auth.game-sessions.index');
