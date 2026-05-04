@@ -9,6 +9,7 @@ use App\Http\Controllers\FacilityPlayersController;
 use App\Http\Controllers\FacilityStoreController;
 use App\Http\Controllers\GameSessionIndexController;
 use App\Http\Controllers\GameSessionShowController;
+use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
 use App\Http\Controllers\SportsListController;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/auth/facility-players', [FacilityPlayersController::class, 'index'])->name('auth.facility-players');
     Route::get('/auth/game-sessions', [GameSessionIndexController::class, 'index'])->name('auth.game-sessions.index');
     Route::get('/auth/game-sessions/{gameSession}', [GameSessionShowController::class, 'show'])->name('auth.game-sessions.show');
+    Route::post('/auth/game-sessions/{gameSession}/start-match', GameSessionStartMatchController::class)
+        ->name('auth.game-sessions.start-match');
     Route::post('/auth/game-sessions', [GameSessionStoreController::class, 'store'])->name('auth.game-sessions.store');
 });
 

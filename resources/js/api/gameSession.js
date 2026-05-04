@@ -56,6 +56,7 @@ export async function fetchFacilityPlayers(q = '') {
  *   game_type: string,
  *   court_preference: string | null,
  *   player_ids: number[],
+ *   team_assignments: Array<{ user_id: number, team: 1 | 2 }>,
  * }} payload
  * @returns {Promise<Response>}
  */
@@ -72,6 +73,7 @@ export function postCreateGameSession(payload) {
  *   game_type: string,
  *   court_preference: string | null,
  *   is_active: boolean,
+ *   status: 'queueing' | 'ongoing' | 'finished',
  *   started_at: string | null,
  *   ended_at: string | null,
  *   is_host: boolean,
@@ -82,6 +84,7 @@ export function postCreateGameSession(payload) {
  *     queue_position: number,
  *     is_waiting: boolean,
  *     is_playing: boolean,
+ *     team?: number | null,
  *     user: { id: number, name: string, email: string },
  *   }>,
  * }} GameSessionDetail
@@ -137,6 +140,47 @@ export async function fetchGameSession(id, opts = {}) {
     }
     if (!res.ok) {
         throw new Error('Failed to load session');
+    }
+    const json = await res.json();
+    if (!json.data) {
+        throw new Error('Invalid session response');
+    }
+    return json.data;
+}
+
+/**
+ * @param {string | number} id
+ * @param {{ facilityId?: number | string }} [opts]
+ * @returns {Promise<GameSessionDetail>}
+ */
+export async function postStartGameSessionMatch(id, opts = {}) {
+    const body = {};
+    if (opts.facilityId != null && String(opts.facilityId).trim() !== '') {
+        body.facility_id = Number(opts.facilityId);
+    }
+    const res = await postJson(`/auth/game-sessions/${encodeURIComponent(String(id))}/start-match`, body);
+    if (res.status === 401) {
+        throw new Error('Unauthorized');
+    }
+    if (res.status === 403) {
+        throw new Error('Only the session host can start a match.');
+    }
+    if (!res.ok) {
+        let msg = 'Could not start the match.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') {
+                msg = j.message;
+            } else if (j.errors && typeof j.errors === 'object') {
+                const first = Object.values(j.errors)[0];
+                if (Array.isArray(first) && first[0]) {
+                    msg = String(first[0]);
+                }
+            }
+        } catch {
+            /* keep default */
+        }
+        throw new Error(msg);
     }
     const json = await res.json();
     if (!json.data) {

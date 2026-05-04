@@ -13,6 +13,7 @@ class GameSessionPlayer extends Model
         'queue_position',
         'is_waiting',
         'is_playing',
+        'team',
     ];
 
     /**
@@ -23,6 +24,7 @@ class GameSessionPlayer extends Model
         return [
             'is_waiting' => 'boolean',
             'is_playing' => 'boolean',
+            'team' => 'integer',
         ];
     }
 

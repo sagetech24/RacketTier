@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchFacilities } from '../api/facilities.js';
 import { fetchFacilityGameRoom } from '../api/facilityGameRoom.js';
-import { fetchGameSession } from '../api/gameSession.js';
+import { fetchGameSession, postStartGameSessionMatch } from '../api/gameSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -43,8 +43,8 @@ function mapQueueRow(session, row, currentUserId) {
     const isHost = hostId != null && row.user.id === hostId;
     const playing = row.is_playing;
     const waiting = row.is_waiting && !row.is_playing;
-    const statusLabel = playing ? 'Playing' : waiting ? 'In queue' : 'Idle';
-    const statusColor = playing ? 'text-[#c2c1ff]' : waiting ? 'text-[#4ce081]' : 'text-[#918f9c]';
+    const statusLabel = playing ? 'Currently Playing...' : waiting ? 'Waiting...' : 'Idle';
+    const statusColor = playing ? 'text-orange-300' : waiting ? 'text-[#4ce081]' : 'text-[#918f9c]';
 
     return {
         key: String(row.id),
@@ -87,8 +87,53 @@ export function GameRoomPage() {
     const [playerSearch, setPlayerSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [fastMatchmaking, setFastMatchmaking] = useState(false);
+    const [startBusy, setStartBusy] = useState(false);
+    const [startError, setStartError] = useState('');
 
     const gameRoomBase = facilityIdNum != null ? `/facility/${facilityIdNum}/game-room` : '/facilities';
+
+    const { canStartMatch, anyPlaying, requiredPlayers, waitingForMatchCount } = useMemo(() => {
+        if (!sessionDetail?.players) {
+            return {
+                canStartMatch: false,
+                anyPlaying: false,
+                requiredPlayers: 2,
+                waitingForMatchCount: 0,
+            };
+        }
+        const need = sessionDetail.match_type === 'doubles' ? 4 : 2;
+        const players = sessionDetail.players;
+        const playing = players.some((p) => p.is_playing);
+        const waiting = players.filter((p) => p.is_waiting && !p.is_playing).length;
+        const can =
+            Boolean(sessionDetail.is_active && sessionDetail.is_host && !playing && waiting >= need);
+        return {
+            canStartMatch: can,
+            anyPlaying: playing,
+            requiredPlayers: need,
+            waitingForMatchCount: waiting,
+        };
+    }, [sessionDetail]);
+
+    const sessionStatusDisplay = useMemo(() => {
+        if (!sessionDetail) {
+            return '';
+        }
+        if (!sessionDetail.is_active) {
+            return 'Ended';
+        }
+        const s = sessionDetail.status ?? 'queueing';
+        if (s === 'ongoing') {
+            return 'Ongoing';
+        }
+        if (s === 'finished') {
+            return 'Finished';
+        }
+        if (s === 'queueing' || s === 'pending') {
+            return 'Queueing';
+        }
+        return s ? String(s) : 'Queueing';
+    }, [sessionDetail]);
 
     useEffect(() => {
         if (facilityIdNum == null) {
@@ -162,6 +207,10 @@ export function GameRoomPage() {
         };
     }, [sessionIdParam, facilityIdNum]);
 
+    useEffect(() => {
+        setStartError('');
+    }, [sessionIdParam, facilityIdNum]);
+
     const queueRows = useMemo(() => {
         if (!sessionDetail?.players?.length) {
             return [];
@@ -219,6 +268,22 @@ export function GameRoomPage() {
     const facilityEyebrow =
         sessionDetail?.facility?.name ?? (facilityLabel.trim() ? facilityLabel : 'Game room');
 
+    async function handleStartGame() {
+        if (!sessionIdParam || !/^\d+$/.test(sessionIdParam) || facilityIdNum == null) {
+            return;
+        }
+        setStartError('');
+        setStartBusy(true);
+        try {
+            const data = await postStartGameSessionMatch(sessionIdParam, { facilityId: facilityIdNum });
+            setSessionDetail(data);
+        } catch (e) {
+            setStartError(e instanceof Error ? e.message : 'Could not start the match.');
+        } finally {
+            setStartBusy(false);
+        }
+    }
+
     return (
         <div className="min-h-screen bg-[#131316] text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
@@ -230,41 +295,41 @@ export function GameRoomPage() {
                     </p>
                     <h1 className="text-5xl font-extrabold tracking-tight">{sessionHeadline}</h1>
                     {sessionDetail ? (
-                        <dl className="mt-4 space-y-1 text-sm text-[#c8c5d2]">
-                            {sessionDetail.facility ? (
+                        <>
+                            <dl className="mt-4 space-y-1 text-sm text-[#c8c5d2]">
+                                {sessionDetail.facility ? (
+                                    <div className="flex justify-between gap-4">
+                                        <dt className="shrink-0 text-[#918f9c]">Facility</dt>
+                                        <dd className="max-w-[65%] text-right font-medium text-[#e4e1e6]">
+                                            <span className="block">{sessionDetail.facility.name}</span>
+                                            <span className="mt-0.5 block text-xs font-normal text-[#918f9c]">
+                                                {sessionDetail.facility.address ?? '—'}
+                                            </span>
+                                        </dd>
+                                    </div>
+                                ) : null}
                                 <div className="flex justify-between gap-4">
-                                    <dt className="shrink-0 text-[#918f9c]">Facility</dt>
-                                    <dd className="max-w-[65%] text-right font-medium text-[#e4e1e6]">
-                                        <span className="block">{sessionDetail.facility.name}</span>
-                                        <span className="mt-0.5 block text-xs font-normal text-[#918f9c]">
-                                            {sessionDetail.facility.address ?? '—'}
-                                        </span>
+                                    <dt className="text-[#918f9c]">Game type</dt>
+                                    <dd className="text-right font-medium text-[#e4e1e6]">{sessionDetail.game_type}</dd>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                    <dt className="text-[#918f9c]">Court</dt>
+                                    <dd className="text-right font-medium text-[#e4e1e6]">
+                                        {sessionDetail.court_preference ?? '—'}
                                     </dd>
                                 </div>
-                            ) : null}
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-[#918f9c]">Game type</dt>
-                                <dd className="text-right font-medium text-[#e4e1e6]">{sessionDetail.game_type}</dd>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-[#918f9c]">Court</dt>
-                                <dd className="text-right font-medium text-[#e4e1e6]">
-                                    {sessionDetail.court_preference ?? '—'}
-                                </dd>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-[#918f9c]">Players</dt>
-                                <dd className="text-right font-medium text-[#e4e1e6]">
-                                    {sessionDetail.participant_count ?? sessionDetail.players?.length ?? '—'}
-                                </dd>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-[#918f9c]">Status</dt>
-                                <dd className="text-right font-medium text-[#4ce081]">
-                                    {sessionDetail.is_active ? 'Active' : 'Ended'}
-                                </dd>
-                            </div>
-                        </dl>
+                                <div className="flex justify-between gap-4">
+                                    <dt className="text-[#918f9c]">Players</dt>
+                                    <dd className="text-right font-medium text-[#e4e1e6]">
+                                        {sessionDetail.participant_count ?? sessionDetail.players?.length ?? '—'}
+                                    </dd>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                    <dt className="text-[#918f9c]">Status</dt>
+                                    <dd className="text-right font-medium text-[#4ce081]">{sessionStatusDisplay}</dd>
+                                </div>
+                            </dl>
+                        </>
                     ) : (
                         <p className="mt-4 text-sm leading-relaxed text-[#c8c5d2]">
                             Active sessions and everyone on the roster at this facility. Open a session for full queue
@@ -509,6 +574,33 @@ export function GameRoomPage() {
                             ))}
                         </div>
                     )}
+                    {sessionDetail?.is_active && sessionDetail?.is_host ? (
+                        <div className="mt-8 space-y-2">
+                            <button
+                                type="button"
+                                onClick={() => void handleStartGame()}
+                                disabled={!canStartMatch || startBusy}
+                                aria-busy={startBusy}
+                                className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
+                            >
+                                {startBusy ? 'Starting…' : 'Start Game'}
+                            </button>
+                            {!anyPlaying && waitingForMatchCount < requiredPlayers ? (
+                                <p className="text-center text-xs text-[#918f9c]">
+                                    Need {requiredPlayers} waiting players in the queue to start ({waitingForMatchCount}{' '}
+                                    ready).
+                                </p>
+                            ) : null}
+                            {anyPlaying ? (
+                                <p className="text-center text-xs text-[#918f9c]">A match is in progress.</p>
+                            ) : null}
+                            {startError ? (
+                                <p className="text-center text-sm text-[#ffb4ab]" role="alert">
+                                    {startError}
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </section>
             </main>
 

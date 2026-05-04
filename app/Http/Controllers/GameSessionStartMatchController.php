@@ -2,25 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\StartGameSessionMatch;
+use App\Http\Requests\StartGameSessionMatchRequest;
 use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
-class GameSessionShowController extends Controller
+class GameSessionStartMatchController extends Controller
 {
-    public function show(Request $request, GameSession $gameSession): JsonResponse
+    public function __invoke(StartGameSessionMatchRequest $request, GameSession $gameSession, StartGameSessionMatch $startGameSessionMatch): JsonResponse
     {
-        $user = $request->user();
-        abort_if(! $user, 401);
+        $startGameSessionMatch->execute($gameSession);
 
-        $validated = $request->validate([
-            'facility_id' => ['sometimes', 'integer', 'exists:facilities,id'],
-        ]);
-        if (isset($validated['facility_id']) && (int) $validated['facility_id'] !== (int) $gameSession->facility_id) {
-            abort(404);
-        }
-
+        $gameSession->refresh();
         $gameSession->load([
             'sport',
             'facility',

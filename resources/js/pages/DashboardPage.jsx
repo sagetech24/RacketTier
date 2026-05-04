@@ -7,7 +7,6 @@ import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { LogoutButton } from '../components/LogoutButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useDefaultGameRoomHref } from '../hooks/useDefaultGameRoomHref.js';
 
 const IMG_PLAY_BG =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuAdeD9jD4wFP5m8jeHYihc9onG4ZLyRfTmD5RvFgsnbJueMquK9TNRW_SyHqXiIDR9B3CH692i5gr4ce_y_Oup803Q_AcpyvX-y5KMaYf_yXfTl5AOu0K8GL2lcpnv7uvGZvNwoLRT4Sf3r-w5mlohM6S-Dtd2AngioMwnLGH8pUY4eXUvZAWvpm65heuxqA3sVBvBmhR6wRxb6rrp4U3yk5rc-MHX2OG0Jp16jur2xfsCeZV090T9-FFgbHyrLZj9mOjaMMqBev_U';
@@ -53,7 +52,6 @@ function greetingFirstName(user) {
 
 export function DashboardPage() {
     const { user: authUser } = useAuth();
-    const gameRoomHref = useDefaultGameRoomHref();
     const [summary, setSummary] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
@@ -131,7 +129,7 @@ export function DashboardPage() {
 
                 <div className="mb-10 grid grid-cols-2 gap-4">
                     <Link
-                        to={gameRoomHref}
+                        to="/facilities"
                         className="group relative col-span-2 block h-48 cursor-pointer overflow-hidden rounded-xl bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] transition-transform duration-200 active:scale-95"
                     >
                         <div className="absolute inset-0 opacity-20 mix-blend-overlay">

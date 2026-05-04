@@ -16,6 +16,15 @@ class GameSessionStoreController extends Controller
 
         $court = $request->validated('court_preference');
 
+        /** @var array<int, array{user_id: int, team: int}> $teamAssignments */
+        $teamAssignments = collect($request->validated('team_assignments'))
+            ->map(fn (array $row): array => [
+                'user_id' => (int) $row['user_id'],
+                'team' => (int) $row['team'],
+            ])
+            ->values()
+            ->all();
+
         $result = $createGameSession->execute(
             $user,
             (int) $request->validated('facility_id'),
@@ -23,7 +32,7 @@ class GameSessionStoreController extends Controller
             $request->validated('match_type'),
             $request->validated('game_type'),
             $court !== null && $court !== '' ? $court : null,
-            $request->validated('player_ids'),
+            $teamAssignments,
         );
 
         $session = $result['session'];
@@ -31,7 +40,7 @@ class GameSessionStoreController extends Controller
             'sport',
             'facility',
             'creator:id,name,email',
-            'players' => fn ($q) => $q->orderBy('queue_position'),
+            'players' => fn ($q) => $q->orderByDesc('is_playing')->orderBy('queue_position'),
             'players.user:id,name,email',
         ]);
         $session->loadCount('players');

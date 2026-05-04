@@ -15,6 +15,7 @@ class GameSession extends Model
         'match_type',
         'created_by',
         'is_active',
+        'status',
         'game_type',
         'court_preference',
         'started_at',

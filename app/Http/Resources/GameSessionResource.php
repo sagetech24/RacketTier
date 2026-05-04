@@ -34,6 +34,7 @@ class GameSessionResource extends JsonResource
             'game_type' => $this->game_type,
             'court_preference' => $this->court_preference,
             'is_active' => $this->is_active,
+            'status' => $this->status,
             'started_at' => $this->started_at?->toIso8601String(),
             'ended_at' => $this->ended_at?->toIso8601String(),
             'is_host' => $user !== null && (int) $this->created_by === (int) $user->id,
@@ -44,11 +45,15 @@ class GameSessionResource extends JsonResource
             ]),
             'participant_count' => $this->whenCounted('players'),
             'players' => $this->whenLoaded('players', function () {
-                return $this->players->sortBy('queue_position')->values()->map(fn ($p): array => [
+                return $this->players->sortBy([
+                    ['is_playing', 'desc'],
+                    ['queue_position', 'asc'],
+                ])->values()->map(fn ($p): array => [
                     'id' => $p->id,
                     'queue_position' => $p->queue_position,
                     'is_waiting' => $p->is_waiting,
                     'is_playing' => $p->is_playing,
+                    'team' => $p->team,
                     'user' => [
                         'id' => $p->user?->id,
                         'name' => $p->user?->name,

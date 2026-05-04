@@ -117,10 +117,10 @@ export function FacilitiesPage() {
                 <div className="mb-10 mt-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                     <div>
                         <h1 className="mb-4 text-4xl font-extrabold leading-none tracking-tighter md:text-6xl">
-                            Your <span className="text-[#c2c1ff]">Facilities</span>
+                            Partner <span className="text-[#c2c1ff]">Facilities</span>
                         </h1>
                         <p className="max-w-md font-medium text-[#c8c5d2]">
-                            Venues you use for sessions. Open a game room or start a new match for any location.
+                            RacketTier partner facilities. Open a game room or start a new match for any facility.
                         </p>
                     </div>
                     <button

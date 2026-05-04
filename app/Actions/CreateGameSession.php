@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\DB;
 class CreateGameSession
 {
     /**
-     * @param  array<int>  $invitedUserIds
-     * @return array{session: GameSession, players: array<int, array{id: int, user_id: int, queue_position: int, is_waiting: bool, is_playing: bool}>}
+     * @param  array<int, array{user_id: int, team: int}>  $teamAssignments
+     * @return array{session: GameSession, players: array<int, array{id: int, user_id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null}>}
      */
     public function execute(
         User $creator,
@@ -21,19 +21,30 @@ class CreateGameSession
         string $matchType,
         string $gameType,
         ?string $courtPreference,
-        array $invitedUserIds,
+        array $teamAssignments,
     ): array {
         $sport = Sport::query()->where('slug', $sportSlug)->firstOrFail();
 
-        $orderedInvitees = collect($invitedUserIds)->unique()->values()->all();
+        $byTeamThenUser = collect($teamAssignments)
+            ->map(fn (array $row): array => [
+                'user_id' => (int) $row['user_id'],
+                'team' => (int) $row['team'],
+            ])
+            ->sortBy([
+                ['team', 'asc'],
+                ['user_id', 'asc'],
+            ])
+            ->values()
+            ->all();
 
-        return DB::transaction(function () use ($creator, $facilityId, $sport, $matchType, $gameType, $courtPreference, $orderedInvitees): array {
+        return DB::transaction(function () use ($creator, $facilityId, $sport, $matchType, $gameType, $courtPreference, $byTeamThenUser): array {
             $session = GameSession::query()->create([
                 'facility_id' => $facilityId,
                 'sport_id' => $sport->id,
                 'match_type' => $matchType,
                 'created_by' => $creator->id,
                 'is_active' => true,
+                'status' => 'queueing',
                 'game_type' => $gameType,
                 'court_preference' => $courtPreference,
                 'started_at' => now(),
@@ -42,24 +53,16 @@ class CreateGameSession
             $rows = [];
             $position = 1;
 
-            $host = GameSessionPlayer::query()->create([
-                'game_session_id' => $session->id,
-                'user_id' => $creator->id,
-                'queue_position' => $position++,
-                'is_waiting' => true,
-                'is_playing' => false,
-            ]);
-            $rows[] = $this->playerPayload($host);
-
-            foreach ($orderedInvitees as $userId) {
-                $row = GameSessionPlayer::query()->create([
+            foreach ($byTeamThenUser as $row) {
+                $player = GameSessionPlayer::query()->create([
                     'game_session_id' => $session->id,
-                    'user_id' => $userId,
+                    'user_id' => $row['user_id'],
                     'queue_position' => $position++,
                     'is_waiting' => true,
                     'is_playing' => false,
+                    'team' => $row['team'],
                 ]);
-                $rows[] = $this->playerPayload($row);
+                $rows[] = $this->playerPayload($player);
             }
 
             $session->load(['sport', 'creator', 'facility']);
@@ -72,7 +75,7 @@ class CreateGameSession
     }
 
     /**
-     * @return array{id: int, user_id: int, queue_position: int, is_waiting: bool, is_playing: bool}
+     * @return array{id: int, user_id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null}
      */
     private function playerPayload(GameSessionPlayer $player): array
     {
@@ -82,6 +85,7 @@ class CreateGameSession
             'queue_position' => $player->queue_position,
             'is_waiting' => $player->is_waiting,
             'is_playing' => $player->is_playing,
+            'team' => $player->team,
         ];
     }
 }
