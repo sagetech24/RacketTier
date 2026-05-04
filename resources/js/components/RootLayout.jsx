@@ -2,14 +2,21 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { LogoutButton } from './LogoutButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const V2_SHELL_PATHS = new Set(['/dashboard', '/facilities', '/create-match', '/ranking', '/game-room']);
+const V2_SHELL_PATHS = new Set(['/dashboard', '/facilities', '/create-match', '/ranking']);
+
+function isV2DashboardShellPath(pathname) {
+    if (V2_SHELL_PATHS.has(pathname)) {
+        return true;
+    }
+    return /^\/facility\/\d+\/game-room$/.test(pathname);
+}
 
 export function RootLayout() {
     const { user } = useAuth();
     const location = useLocation();
     const isLoginPage = location.pathname === '/login';
     const isRegisterPage = location.pathname === '/register';
-    const isV2Shell = V2_SHELL_PATHS.has(location.pathname);
+    const isV2Shell = isV2DashboardShellPath(location.pathname);
 
     return (
         <div className="flex min-h-screen flex-col">

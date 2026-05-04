@@ -16,6 +16,7 @@ class CreateGameSession
      */
     public function execute(
         User $creator,
+        int $facilityId,
         string $sportSlug,
         string $matchType,
         string $gameType,
@@ -26,8 +27,9 @@ class CreateGameSession
 
         $orderedInvitees = collect($invitedUserIds)->unique()->values()->all();
 
-        return DB::transaction(function () use ($creator, $sport, $matchType, $gameType, $courtPreference, $orderedInvitees): array {
+        return DB::transaction(function () use ($creator, $facilityId, $sport, $matchType, $gameType, $courtPreference, $orderedInvitees): array {
             $session = GameSession::query()->create([
+                'facility_id' => $facilityId,
                 'sport_id' => $sport->id,
                 'match_type' => $matchType,
                 'created_by' => $creator->id,
@@ -60,7 +62,7 @@ class CreateGameSession
                 $rows[] = $this->playerPayload($row);
             }
 
-            $session->load(['sport', 'creator']);
+            $session->load(['sport', 'creator', 'facility']);
 
             return [
                 'session' => $session,

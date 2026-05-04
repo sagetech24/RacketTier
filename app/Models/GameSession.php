@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class GameSession extends Model
 {
     protected $fillable = [
+        'facility_id',
         'sport_id',
         'match_type',
         'created_by',
@@ -29,6 +31,14 @@ class GameSession extends Model
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Facility, $this>
+     */
+    public function facility(): BelongsTo
+    {
+        return $this->belongsTo(Facility::class);
     }
 
     /**
@@ -53,5 +63,19 @@ class GameSession extends Model
     public function players(): HasMany
     {
         return $this->hasMany(GameSessionPlayer::class);
+    }
+
+    /**
+     * @param  Builder<GameSession>  $query
+     * @return Builder<GameSession>
+     */
+    public function scopeWhereUserIsParticipant(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $q) use ($user): void {
+            $q->where('created_by', $user->id)
+                ->orWhereHas('players', function (Builder $p) use ($user): void {
+                    $p->where('user_id', $user->id);
+                });
+        });
     }
 }

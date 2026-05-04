@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\CreateGameSession;
 use App\Http\Requests\StoreGameSessionRequest;
+use App\Http\Resources\GameSessionResource;
 use Illuminate\Http\JsonResponse;
 
 class GameSessionStoreController extends Controller
@@ -17,6 +18,7 @@ class GameSessionStoreController extends Controller
 
         $result = $createGameSession->execute(
             $user,
+            (int) $request->validated('facility_id'),
             $request->validated('sport_slug'),
             $request->validated('match_type'),
             $request->validated('game_type'),
@@ -25,21 +27,17 @@ class GameSessionStoreController extends Controller
         );
 
         $session = $result['session'];
+        $session->load([
+            'sport',
+            'facility',
+            'creator:id,name,email',
+            'players' => fn ($q) => $q->orderBy('queue_position'),
+            'players.user:id,name,email',
+        ]);
+        $session->loadCount('players');
 
         return response()->json([
-            'data' => [
-                'id' => $session->id,
-                'sport' => [
-                    'slug' => $session->sport?->slug,
-                    'name' => $session->sport?->name,
-                ],
-                'match_type' => $session->match_type,
-                'game_type' => $session->game_type,
-                'court_preference' => $session->court_preference,
-                'is_active' => $session->is_active,
-                'created_by' => $session->created_by,
-                'players' => $result['players'],
-            ],
+            'data' => new GameSessionResource($session),
         ], 201);
     }
 }

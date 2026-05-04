@@ -17,6 +17,7 @@ class GameSessionStoreTest extends TestCase
         $peer = User::factory()->create();
 
         $response = $this->actingAs($creator)->postJson('/auth/game-sessions', [
+            'facility_id' => 1,
             'sport_slug' => 'badminton',
             'match_type' => 'singles',
             'game_type' => '1st-set',
@@ -28,11 +29,13 @@ class GameSessionStoreTest extends TestCase
         $response->assertJsonPath('data.match_type', 'singles');
         $response->assertJsonPath('data.game_type', '1st-set');
         $response->assertJsonPath('data.court_preference', 'Court 2');
+        $response->assertJsonPath('data.facility.id', 1);
 
         $sessionId = $response->json('data.id');
         $this->assertNotNull($sessionId);
 
         $session = GameSession::query()->findOrFail($sessionId);
+        $this->assertSame(1, $session->facility_id);
         $this->assertSame($creator->id, $session->created_by);
         $this->assertCount(2, $session->players);
     }
@@ -44,6 +47,7 @@ class GameSessionStoreTest extends TestCase
         $b = User::factory()->create();
 
         $response = $this->actingAs($creator)->postJson('/auth/game-sessions', [
+            'facility_id' => 1,
             'sport_slug' => 'tennis',
             'match_type' => 'doubles',
             'game_type' => 'final-set',

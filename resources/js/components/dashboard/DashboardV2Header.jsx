@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useDefaultGameRoomHref } from '../../hooks/useDefaultGameRoomHref.js';
 import { RacketTierWordmark } from './RacketTierWordmark.jsx';
 
 const IMG_AVATAR_FALLBACK =
@@ -37,6 +38,7 @@ function initialsFromName(name) {
  * }} props
  */
 export function DashboardV2Header({ user, profileLoading = false }) {
+    const gameRoomHref = useDefaultGameRoomHref();
     const label = user?.name?.trim() || user?.email?.trim() || 'User';
 
     return (
@@ -65,7 +67,7 @@ export function DashboardV2Header({ user, profileLoading = false }) {
                         Facilities
                     </Link>
                     <Link
-                        to="/game-room"
+                        to={gameRoomHref}
                         className="text-sm font-medium uppercase tracking-wider text-[#c2c1ff] transition-opacity hover:opacity-80"
                     >
                         Play

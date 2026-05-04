@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
+import { fetchFacilities, postFacility } from '../api/facilities.js';
 import { fetchFacilityPlayers, fetchSports, postCreateGameSession } from '../api/gameSession.js';
 import { SportCard } from '../components/dashboard/SportCard.jsx';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
@@ -54,11 +55,21 @@ export function CreateMatchPage() {
     const { user } = useAuth();
 
     const [sports, setSports] = useState(/** @type {import('../api/gameSession.js').SportRow[]} */ ([]));
+    const [facilities, setFacilities] = useState(/** @type {import('../api/facilities.js').FacilityRow[]} */ ([]));
     const [facilityPlayers, setFacilityPlayers] = useState(
         /** @type {import('../api/gameSession.js').FacilityPlayerRow[]} */ ([]),
     );
     const [pageLoadError, setPageLoadError] = useState('');
     const [pageLoading, setPageLoading] = useState(true);
+
+    const [facilityId, setFacilityId] = useState(/** @type {number | null} */ (null));
+    const [facilitySearch, setFacilitySearch] = useState('');
+    const [addFacilityOpen, setAddFacilityOpen] = useState(false);
+    const [newFacilityName, setNewFacilityName] = useState('');
+    const [newFacilityAddress, setNewFacilityAddress] = useState('');
+    const [addFacilitySubmitting, setAddFacilitySubmitting] = useState(false);
+    const [addFacilityError, setAddFacilityError] = useState('');
+    const [addFacilityFieldErrors, setAddFacilityFieldErrors] = useState(/** @type {Record<string, string[]>} */ ({}));
 
     const [sportSlug, setSportSlug] = useState('');
     const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
@@ -84,12 +95,17 @@ export function CreateMatchPage() {
             setPageLoadError('');
             setPageLoading(true);
             try {
-                const [sportRows, playerRows] = await Promise.all([fetchSports(), fetchFacilityPlayers()]);
+                const [sportRows, playerRows, facilityRows] = await Promise.all([
+                    fetchSports(),
+                    fetchFacilityPlayers(),
+                    fetchFacilities(),
+                ]);
                 if (cancelled) {
                     return;
                 }
                 setSports(sportRows);
                 setFacilityPlayers(playerRows);
+                setFacilities(facilityRows);
                 if (sportRows.length > 0) {
                     setSportSlug((prev) => (sportRows.some((s) => s.slug === prev) ? prev : sportRows[0].slug));
                 }
@@ -109,6 +125,23 @@ export function CreateMatchPage() {
             cancelled = true;
         };
     }, []);
+
+    const facilityQ = facilitySearch.trim().toLowerCase();
+    const filteredFacilities = useMemo(() => {
+        if (!facilityQ) {
+            return facilities;
+        }
+        return facilities.filter(
+            (f) =>
+                f.name.toLowerCase().includes(facilityQ) ||
+                (f.address ?? '').toLowerCase().includes(facilityQ),
+        );
+    }, [facilities, facilityQ]);
+
+    const selectedFacility = useMemo(
+        () => facilities.find((f) => f.id === facilityId) ?? null,
+        [facilities, facilityId],
+    );
 
     const q = playerSearch.trim().toLowerCase();
     const filteredPlayers = useMemo(() => {
@@ -154,6 +187,7 @@ export function CreateMatchPage() {
         try {
             const courtPreference = buildCourtPreference(court, courtSpecify);
             const res = await postCreateGameSession({
+                facility_id: facilityId ?? 0,
                 sport_slug: sportSlug,
                 match_type: matchType,
                 game_type: gameType,
@@ -177,8 +211,14 @@ export function CreateMatchPage() {
             }
 
             const sessionId = data.data?.id;
-            if (sessionId != null) {
-                navigate(`/game-room?session=${encodeURIComponent(String(sessionId))}`, { replace: false });
+            if (sessionId != null && facilityId != null) {
+                navigate(
+                    `/facility/${facilityId}/game-room?session=${encodeURIComponent(String(sessionId))}`,
+                    { replace: false },
+                );
+            } else if (sessionId != null) {
+                setSubmitError('Session created but facility was missing.');
+                setSubmitting(false);
             } else {
                 setSubmitError('Session created but response was unexpected.');
                 setSubmitting(false);
@@ -193,11 +233,38 @@ export function CreateMatchPage() {
     const canSubmit =
         !pageLoading &&
         !submitting &&
+        facilityId != null &&
         sportSlug.length > 0 &&
         invitedIds.size >= minOthers &&
         sports.length > 0;
 
     const playerIdsError = fieldErrors.player_ids?.[0] ?? '';
+    const facilityIdError = fieldErrors.facility_id?.[0] ?? '';
+
+    async function handleAddFacility(e) {
+        e.preventDefault();
+        setAddFacilityError('');
+        setAddFacilityFieldErrors({});
+        setAddFacilitySubmitting(true);
+        try {
+            const created = await postFacility({
+                name: newFacilityName.trim(),
+                address: newFacilityAddress.trim(),
+            });
+            setFacilities((prev) => [created, ...prev.filter((f) => f.id !== created.id)]);
+            setFacilityId(created.id);
+            setAddFacilityOpen(false);
+            setNewFacilityName('');
+            setNewFacilityAddress('');
+        } catch (err) {
+            if (err && typeof err === 'object' && 'errors' in err && err.errors) {
+                setAddFacilityFieldErrors(/** @type {Record<string, string[]>} */ (err.errors));
+            }
+            setAddFacilityError(err instanceof Error ? err.message : 'Could not add facility.');
+        } finally {
+            setAddFacilitySubmitting(false);
+        }
+    }
 
     return (
         <div className="min-h-screen bg-[#131316] pb-32 text-[#e4e1e6]">
@@ -213,8 +280,8 @@ export function CreateMatchPage() {
                         CREATE <span className="italic text-[#c2c1ff]">MATCH</span>
                     </h1>
                     <p className="max-w-md text-sm leading-relaxed text-[#c8c5d2]">
-                        Organize elite gameplay at the North Wing Facility. Select your discipline, recruit competitors,
-                        and lock in the schedule.
+                        Start by choosing a facility, then pick sport, players, and game details. Add a new venue anytime
+                        if yours is not in the directory.
                     </p>
                 </header>
 
@@ -245,11 +312,102 @@ export function CreateMatchPage() {
                     </div>
                 ) : null}
 
+                {facilityIdError ? (
+                    <div
+                        className="mb-8 rounded-xl border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffb4ab]"
+                        role="alert"
+                    >
+                        {facilityIdError}
+                    </div>
+                ) : null}
+
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
                     <section className="md:col-span-12">
                         <h2 className="mb-6 flex items-center gap-3 text-xl font-bold">
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
                                 1
+                            </span>
+                            SELECT FACILITY
+                        </h2>
+                        <p className="mb-4 text-xs text-[#918f9c]">
+                            Required before sport or players. Search the directory or add a new facility if needed.
+                        </p>
+                        <div className="relative mb-4">
+                            <MaterialIcon
+                                name="search"
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#c8c5d2]"
+                            />
+                            <input
+                                className="w-full rounded-lg border-none bg-[#1b1b1e] py-4 pl-12 pr-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                placeholder="Search venues by name or address…"
+                                type="search"
+                                value={facilitySearch}
+                                onChange={(e) => setFacilitySearch(e.target.value)}
+                                aria-label="Search facilities"
+                                disabled={pageLoading}
+                            />
+                        </div>
+                        <div className="mb-6">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setAddFacilityOpen(true);
+                                    setAddFacilityError('');
+                                    setAddFacilityFieldErrors({});
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#c2c1ff] transition-colors hover:bg-[#c2c1ff]/20"
+                            >
+                                <MaterialIcon name="add" className="text-base" />
+                                Add new facility
+                            </button>
+                        </div>
+                        {pageLoading ? (
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="h-28 animate-pulse rounded-xl bg-[#1b1b1e]" aria-hidden />
+                                ))}
+                            </div>
+                        ) : filteredFacilities.length === 0 ? (
+                            <p className="rounded-xl bg-[#1b1b1e] px-4 py-6 text-sm text-[#918f9c]">
+                                No facilities match your search.{' '}
+                                <button
+                                    type="button"
+                                    className="font-semibold text-[#c2c1ff] underline-offset-2 hover:underline"
+                                    onClick={() => setAddFacilityOpen(true)}
+                                >
+                                    Add a new facility
+                                </button>
+                            </p>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {filteredFacilities.map((f) => {
+                                    const on = facilityId === f.id;
+                                    return (
+                                        <button
+                                            key={f.id}
+                                            type="button"
+                                            onClick={() => setFacilityId(f.id)}
+                                            className={`rounded-xl border p-5 text-left transition-all ${
+                                                on
+                                                    ? 'border-[#4ce081] bg-[#4ce081]/15 ring-1 ring-[#4ce081]/40'
+                                                    : 'border-[#353438] bg-[#1b1b1e] hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22]'
+                                            }`}
+                                        >
+                                            <p className="text-base font-bold text-[#e4e1e6]">{f.name}</p>
+                                            <p className="mt-2 text-xs leading-relaxed text-[#918f9c]">
+                                                {f.address ?? '—'}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
+
+                    <section className={`md:col-span-12 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}>
+                        <h2 className="mb-6 flex items-center gap-3 text-xl font-bold">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
+                                2
                             </span>
                             SELECT SPORTS
                         </h2>
@@ -281,10 +439,10 @@ export function CreateMatchPage() {
                         )}
                     </section>
 
-                    <section className="md:col-span-7">
+                    <section className={`md:col-span-7 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}>
                         <h2 className="mb-6 flex items-center gap-3 text-xl font-bold">
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
-                                2
+                                3
                             </span>
                             SELECT PLAYERS
                         </h2>
@@ -388,10 +546,10 @@ export function CreateMatchPage() {
                         </div>
                     </section>
 
-                    <section className="md:col-span-5">
+                    <section className={`md:col-span-5 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}>
                         <h2 className="mb-6 flex items-center gap-3 text-xl font-bold">
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
-                                3
+                                4
                             </span>
                             GAME DETAILS
                         </h2>
@@ -483,16 +641,35 @@ export function CreateMatchPage() {
                     </section>
                 </div>
 
-                <h2 className="mt-8 flex items-center gap-3 text-xl font-bold">
+                <h2
+                    className={`mt-8 flex items-center gap-3 text-xl font-bold ${!facilityId ? 'opacity-40' : ''}`}
+                >
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
-                        4
+                        5
                     </span>
                     MATCH SUMMARY
                 </h2>
-                <div className="flex flex-col items-stretch justify-between gap-8 border-t border-[#474651]/10 pt-4 md:flex-row md:items-end">
+                <div
+                    className={`flex flex-col items-stretch justify-between gap-8 border-t border-[#474651]/10 pt-4 md:flex-row md:items-end ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}
+                >
                     <div className="w-full max-w-md min-w-0 flex-1 space-y-4 rounded-xl border border-[#474651]/25 bg-[#1b1b1e] p-5">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4ce081]">Match summary</p>
                         <dl className="space-y-3 text-sm">
+                            <div className="flex items-start justify-between gap-4">
+                                <dt className="shrink-0 text-[#918f9c]">Facility</dt>
+                                <dd className="max-w-[60%] text-right font-bold text-[#e4e1e6]">
+                                    {selectedFacility ? (
+                                        <>
+                                            <span className="block">{selectedFacility.name}</span>
+                                            <span className="mt-1 block text-xs font-normal text-[#918f9c]">
+                                                {selectedFacility.address ?? '—'}
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span className="text-[#918f9c]">Not selected</span>
+                                    )}
+                                </dd>
+                            </div>
                             <div className="flex items-start justify-between gap-4">
                                 <dt className="shrink-0 text-[#918f9c]">Sport</dt>
                                 <dd className="text-right font-bold text-[#e4e1e6]">{sportLabel || '—'}</dd>
@@ -539,8 +716,12 @@ export function CreateMatchPage() {
                         disabled={!canSubmit}
                         aria-busy={submitting}
                         title={
-                            !canSubmit && !submitting && sportSlug
-                                ? `Select at least ${minOthers} other player${minOthers > 1 ? 's' : ''}.`
+                            !canSubmit && !submitting
+                                ? !facilityId
+                                    ? 'Select a facility first.'
+                                    : sportSlug
+                                      ? `Select at least ${minOthers} other player${minOthers > 1 ? 's' : ''}.`
+                                      : undefined
                                 : undefined
                         }
                         className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
@@ -549,6 +730,84 @@ export function CreateMatchPage() {
                     </button>
                 </div>
             </main>
+
+            {addFacilityOpen ? (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="rt-add-facility-title"
+                >
+                    <div className="w-full max-w-md rounded-2xl border border-[#474651]/40 bg-[#1b1b1e] p-6 shadow-2xl">
+                        <h2 id="rt-add-facility-title" className="mb-1 text-lg font-bold text-[#e4e1e6]">
+                            Add new facility
+                        </h2>
+                        <p className="mb-6 text-xs text-[#918f9c]">
+                            This venue will be available for everyone on your account after you save it.
+                        </p>
+                        {addFacilityError ? (
+                            <p className="mb-4 rounded-lg bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffb4ab]" role="alert">
+                                {addFacilityError}
+                            </p>
+                        ) : null}
+                        <form className="space-y-4" onSubmit={(e) => void handleAddFacility(e)}>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
+                                    Venue name
+                                </label>
+                                <input
+                                    required
+                                    value={newFacilityName}
+                                    onChange={(e) => setNewFacilityName(e.target.value)}
+                                    className="w-full rounded-lg border-none bg-[#0e0e11] py-3 px-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                    placeholder="e.g. Riverside Sports Center"
+                                    autoComplete="organization"
+                                />
+                                {addFacilityFieldErrors.name?.[0] ? (
+                                    <p className="text-xs text-[#ffb4ab]">{addFacilityFieldErrors.name[0]}</p>
+                                ) : null}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
+                                    Address
+                                </label>
+                                <textarea
+                                    required
+                                    value={newFacilityAddress}
+                                    onChange={(e) => setNewFacilityAddress(e.target.value)}
+                                    rows={3}
+                                    className="w-full resize-none rounded-lg border-none bg-[#0e0e11] py-3 px-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                    placeholder="Street, city, region, postal code"
+                                    autoComplete="street-address"
+                                />
+                                {addFacilityFieldErrors.address?.[0] ? (
+                                    <p className="text-xs text-[#ffb4ab]">{addFacilityFieldErrors.address[0]}</p>
+                                ) : null}
+                            </div>
+                            <div className="flex flex-wrap justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAddFacilityOpen(false);
+                                        setAddFacilityError('');
+                                        setAddFacilityFieldErrors({});
+                                    }}
+                                    className="rounded-lg px-4 py-2 text-sm font-semibold text-[#c8c5d2] hover:bg-[#353438]"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={addFacilitySubmitting}
+                                    className="rounded-lg bg-[#4ce081] px-5 py-2 text-sm font-bold text-[#003919] disabled:opacity-50"
+                                >
+                                    {addFacilitySubmitting ? 'Saving…' : 'Save facility'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            ) : null}
 
             <DashboardMobileNav />
         </div>

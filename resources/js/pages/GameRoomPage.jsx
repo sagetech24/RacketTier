@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
+import { fetchFacilities } from '../api/facilities.js';
+import { fetchGameSession, fetchMyGameSessions } from '../api/gameSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -8,39 +10,15 @@ import { useAuth } from '../context/AuthContext.jsx';
 const COURT_BG =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuCcNm6e9LXXjtc5jcT-ghsNkK9q8hjmxzNvrRg1H3D1pMGtmyfNOCiQYDljR2p48bIDcX84peZBIee_F4XgW3X0YybcmJvJwuD3YI5hOxFHTjYQu8o8nicOhWn3zUBpM_i6k_JhfclYhalVsHJX20zONHpKVnYT-7JtnfSCBSYUc1Yqu55qhm9n-MnJ1USAnIvk79jXD9lfaLwHKBm43Az0enw4SmavKyq4yIWrl-8fFwyTArAKQbcVxKj9brvWrupqgBzpJwfOQFc';
 
-const COURTS = [
-    { id: 'COURT 01', status: 'MATCH ACTIVE', active: true },
-    { id: 'COURT 02', status: 'OPENING SOON', active: false },
-    { id: 'COURT 03', status: 'MATCH ACTIVE', active: true },
-    { id: 'COURT 04', status: 'MAINTENANCE', active: false },
-];
-
-const PLAYERS = [
-    {
-        initials: 'MR',
-        name: 'MARCUS REED',
-        tier: 'Tier 1',
-        status: 'Available',
-        detail: 'WR  SJ',
-        statusColor: 'text-[#4ce081]',
-    },
-    {
-        initials: 'EV',
-        name: 'ELENA VOGEL',
-        tier: 'Tier 2',
-        status: 'Playing',
-        detail: 'Currently on Court 03',
-        statusColor: 'text-[#c2c1ff]',
-    },
-    {
-        initials: 'JL',
-        name: 'JORDAN LI',
-        tier: 'Tier 2',
-        status: 'Waiting for Confirmation',
-        detail: 'Invited by Coach Sam',
-        statusColor: 'text-[#ffb4ab]',
-    },
-];
+/**
+ * @param {string} name
+ */
+function initialsFromName(name) {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 function filterButtonClass(active) {
     return active
@@ -57,34 +35,169 @@ function TrophyIcon({ className }) {
     );
 }
 
+/**
+ * @param {import('../api/gameSession.js').GameSessionDetail} session
+ * @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} row
+ * @param {number | undefined} currentUserId
+ */
+function mapQueueRow(session, row, currentUserId) {
+    const hostId = session.created_by?.id;
+    const isHost = hostId != null && row.user.id === hostId;
+    const playing = row.is_playing;
+    const waiting = row.is_waiting && !row.is_playing;
+    const statusLabel = playing ? 'Playing' : waiting ? 'In queue' : 'Idle';
+    const statusColor = playing ? 'text-[#c2c1ff]' : waiting ? 'text-[#4ce081]' : 'text-[#918f9c]';
+
+    return {
+        key: String(row.id),
+        initials: initialsFromName(row.user.name),
+        name: row.user.name,
+        tier: isHost ? 'Host' : `Queue #${row.queue_position}`,
+        status: statusLabel,
+        statusColor,
+        detail: row.user.email,
+        isSelf: currentUserId != null && row.user.id === currentUserId,
+        _playing: playing,
+        _waiting: waiting,
+    };
+}
+
 export function GameRoomPage() {
     const { user } = useAuth();
+    const { facilityId: facilityIdParam } = useParams();
     const [searchParams] = useSearchParams();
-    const createdSessionId = searchParams.get('session');
+    const sessionIdParam = searchParams.get('session');
+
+    const facilityIdNum = useMemo(() => {
+        const raw = facilityIdParam ?? '';
+        if (!/^\d+$/.test(raw)) {
+            return null;
+        }
+        const n = Number.parseInt(raw, 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }, [facilityIdParam]);
+
+    const [facilityLabel, setFacilityLabel] = useState('');
+
+    const [sessionDetail, setSessionDetail] = useState(
+        /** @type {import('../api/gameSession.js').GameSessionDetail | null} */ (null),
+    );
+    const [mySessions, setMySessions] = useState(/** @type {import('../api/gameSession.js').GameSessionDetail[]} */ ([]));
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
     const [playerSearch, setPlayerSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [fastMatchmaking, setFastMatchmaking] = useState(false);
 
+    const gameRoomBase = facilityIdNum != null ? `/facility/${facilityIdNum}/game-room` : '/facilities';
+
+    useEffect(() => {
+        if (facilityIdNum == null) {
+            setFacilityLabel('');
+            return;
+        }
+        let cancelled = false;
+
+        async function loadFacilityName() {
+            try {
+                const list = await fetchFacilities();
+                if (cancelled) {
+                    return;
+                }
+                const row = list.find((f) => f.id === facilityIdNum);
+                setFacilityLabel(row?.name ?? '');
+            } catch {
+                if (!cancelled) {
+                    setFacilityLabel('');
+                }
+            }
+        }
+
+        void loadFacilityName();
+        return () => {
+            cancelled = true;
+        };
+    }, [facilityIdNum]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function load() {
+            setError('');
+            setLoading(true);
+            setSessionDetail(null);
+            setMySessions([]);
+
+            try {
+                if (facilityIdNum == null) {
+                    throw new Error('Invalid facility in URL.');
+                }
+                if (sessionIdParam) {
+                    if (!/^\d+$/.test(sessionIdParam)) {
+                        throw new Error('Invalid session link.');
+                    }
+                    const data = await fetchGameSession(sessionIdParam, { facilityId: facilityIdNum });
+                    if (!cancelled) {
+                        setSessionDetail(data);
+                    }
+                } else {
+                    const list = await fetchMyGameSessions(facilityIdNum);
+                    if (!cancelled) {
+                        setMySessions(list);
+                    }
+                }
+            } catch (e) {
+                if (!cancelled) {
+                    setError(e instanceof Error ? e.message : 'Could not load the game room.');
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        void load();
+        return () => {
+            cancelled = true;
+        };
+    }, [sessionIdParam, facilityIdNum]);
+
+    const queueRows = useMemo(() => {
+        if (!sessionDetail?.players?.length) {
+            return [];
+        }
+        return sessionDetail.players.map((row) => mapQueueRow(sessionDetail, row, user?.id));
+    }, [sessionDetail, user?.id]);
+
     const q = playerSearch.trim().toLowerCase();
     const filteredPlayers = useMemo(() => {
         const searched = q
-            ? PLAYERS.filter(
+            ? queueRows.filter(
                   (p) =>
                       p.name.toLowerCase().includes(q) ||
                       p.tier.toLowerCase().includes(q) ||
                       p.status.toLowerCase().includes(q) ||
                       p.detail.toLowerCase().includes(q),
               )
-            : [...PLAYERS];
+            : [...queueRows];
 
         if (statusFilter === 'playing') {
-            return searched.filter((p) => p.status === 'Playing');
+            return searched.filter((p) => p._playing);
         }
         if (statusFilter === 'available') {
-            return searched.filter((p) => p.status === 'Available');
+            return searched.filter((p) => p._waiting);
         }
         return searched;
-    }, [q, statusFilter]);
+    }, [q, statusFilter, queueRows]);
+
+    const sessionHeadline = sessionDetail
+        ? `${sessionDetail.sport?.name ?? 'Session'} · ${sessionDetail.match_type === 'doubles' ? 'Doubles' : 'Singles'}`
+        : 'GAME ROOM';
+
+    const facilityEyebrow =
+        sessionDetail?.facility?.name ?? (facilityLabel.trim() ? facilityLabel : 'Game room');
 
     return (
         <div className="min-h-screen bg-[#131316] text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
@@ -92,28 +205,68 @@ export function GameRoomPage() {
 
             <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-28">
                 <section className="mb-8">
-                    {createdSessionId ? (
-                        <div
-                            className="mb-6 rounded-xl border border-[#4ce081]/35 bg-[#4ce081]/10 px-4 py-3 text-sm text-[#c8f5d8]"
-                            role="status"
-                        >
-                            <span className="font-bold text-[#4ce081]">Session saved.</span>{' '}
-                            <span className="text-[#c8c5d2]">
-                                Match #{createdSessionId} is live in your account. Queue and live court data will plug
-                                in here as those APIs ship.
-                            </span>
-                        </div>
-                    ) : null}
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#4ce081]">
-                        Ground Zero Fitness Hub
+                        {facilityEyebrow}
                     </p>
-                    <h1 className="text-5xl font-extrabold tracking-tight">GAME ROOM</h1>
-                    <p className="mt-4 text-sm leading-relaxed text-[#c8c5d2]">
-                        Connect with 24 active players currently on-site.
-                        <br />
-                        The court is waiting for your next move.
-                    </p>
+                    <h1 className="text-5xl font-extrabold tracking-tight">{sessionHeadline}</h1>
+                    {sessionDetail ? (
+                        <dl className="mt-4 space-y-1 text-sm text-[#c8c5d2]">
+                            {sessionDetail.facility ? (
+                                <div className="flex justify-between gap-4">
+                                    <dt className="shrink-0 text-[#918f9c]">Facility</dt>
+                                    <dd className="max-w-[65%] text-right font-medium text-[#e4e1e6]">
+                                        <span className="block">{sessionDetail.facility.name}</span>
+                                        <span className="mt-0.5 block text-xs font-normal text-[#918f9c]">
+                                            {sessionDetail.facility.address ?? '—'}
+                                        </span>
+                                    </dd>
+                                </div>
+                            ) : null}
+                            <div className="flex justify-between gap-4">
+                                <dt className="text-[#918f9c]">Game type</dt>
+                                <dd className="text-right font-medium text-[#e4e1e6]">{sessionDetail.game_type}</dd>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <dt className="text-[#918f9c]">Court</dt>
+                                <dd className="text-right font-medium text-[#e4e1e6]">
+                                    {sessionDetail.court_preference ?? '—'}
+                                </dd>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <dt className="text-[#918f9c]">Players</dt>
+                                <dd className="text-right font-medium text-[#e4e1e6]">
+                                    {sessionDetail.participant_count ?? sessionDetail.players?.length ?? '—'}
+                                </dd>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <dt className="text-[#918f9c]">Status</dt>
+                                <dd className="text-right font-medium text-[#4ce081]">
+                                    {sessionDetail.is_active ? 'Active' : 'Ended'}
+                                </dd>
+                            </div>
+                        </dl>
+                    ) : (
+                        <p className="mt-4 text-sm leading-relaxed text-[#c8c5d2]">
+                            Open a session below or create a new match. Queue and roster update from the server in
+                            real time when you refresh this page.
+                        </p>
+                    )}
                 </section>
+
+                {error ? (
+                    <div
+                        className="mb-6 rounded-xl border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffb4ab]"
+                        role="alert"
+                    >
+                        <p className="mb-2">{error}</p>
+                        <Link
+                            to={gameRoomBase}
+                            className="font-semibold text-[#c2c1ff] underline-offset-2 hover:underline"
+                        >
+                            Back to facility sessions
+                        </Link>
+                    </div>
+                ) : null}
 
                 <Link
                     to="/create-match"
@@ -133,38 +286,86 @@ export function GameRoomPage() {
                     Create Match
                 </Link>
 
+                {!sessionIdParam && !loading && mySessions.length > 0 ? (
+                    <section className="mb-8 space-y-3">
+                        <h2 className="text-lg font-bold text-[#e4e1e6]">Sessions at this facility</h2>
+                        <ul className="space-y-2">
+                            {mySessions.map((s) => (
+                                <li key={s.id}>
+                                    <Link
+                                        to={`${gameRoomBase}?session=${s.id}`}
+                                        className="block rounded-xl border border-[#474651]/40 bg-[#1b1b1e] px-4 py-3 transition-colors hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22]"
+                                    >
+                                        <p className="text-sm font-bold text-[#e4e1e6]">
+                                            {s.sport?.name ?? 'Session'} #{s.id}
+                                        </p>
+                                        <p className="mt-1 text-xs text-[#918f9c]">
+                                            {s.facility?.name ? `${s.facility.name} · ` : ''}
+                                            {s.match_type} · {s.game_type}
+                                            {typeof s.participant_count === 'number' ? ` · ${s.participant_count} players` : ''}
+                                            {s.is_host ? (
+                                                <span className="ml-2 font-semibold text-[#4ce081]">You host</span>
+                                            ) : null}
+                                        </p>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                ) : null}
+
                 <section
-                    className="relative mb-8 min-h-[450px] overflow-hidden bg-cover bg-center p-4"
+                    className="relative mb-8 min-h-[280px] overflow-hidden bg-cover bg-center p-4"
                     style={{ backgroundImage: `url(${COURT_BG})` }}
                 >
                     <div className="pointer-events-none absolute inset-0 bg-black/60" />
                     <div className="relative z-10">
-                        <h2 className="text-3xl font-bold text-[#e4e1e6]">Active Games</h2>
-                        <p className="mb-4 text-base text-[#c8c5d2]">Real-time ongoing matches</p>
+                        <h2 className="text-3xl font-bold text-[#e4e1e6]">
+                            {sessionDetail ? 'This session' : 'Facility overview'}
+                        </h2>
+                        <p className="mb-4 text-base text-[#c8c5d2]">
+                            {sessionDetail
+                                ? 'Court preference and roster are loaded from your saved match.'
+                                : 'Per-court telemetry will appear here as facilities go live.'}
+                        </p>
 
-                        <div className="grid grid-cols-1 gap-3">
-                            {COURTS.map((court) => (
-                                <div
-                                    key={court.id}
-                                    className="rounded-md bg-[#131316]/80 p-3"
-                                    aria-label={`${court.id} ${court.status}`}
-                                >
-                                    <p className="text-[10px] font-semibold tracking-widest text-[#c8c5d2]">{court.id}</p>
-                                    <p
-                                        className={`mt-1 text-[10px] font-bold tracking-[0.12em] ${
-                                            court.active ? 'text-[#4ce081]' : 'text-[#c8c5d2]'
-                                        }`}
-                                    >
-                                        {court.status}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
+                        {loading ? (
+                            <div className="space-y-2">
+                                <div className="h-16 animate-pulse rounded-md bg-[#131316]/80" />
+                                <div className="h-16 animate-pulse rounded-md bg-[#131316]/80" />
+                            </div>
+                        ) : sessionDetail ? (
+                            <div className="rounded-md bg-[#131316]/80 p-3">
+                                <p className="text-[10px] font-semibold tracking-widest text-[#c8c5d2]">
+                                    SESSION #{sessionDetail.id}
+                                </p>
+                                <p className="mt-1 text-sm font-bold text-[#4ce081]">
+                                    {sessionDetail.is_active ? 'Queue active' : 'Session ended'}
+                                </p>
+                                <p className="mt-2 text-xs text-[#c8c5d2]">
+                                    {sessionDetail.facility ? (
+                                        <>
+                                            <span className="font-semibold text-[#e4e1e6]">{sessionDetail.facility.name}</span>
+                                            <br />
+                                        </>
+                                    ) : null}
+                                    {sessionDetail.court_preference
+                                        ? `Preferred court: ${sessionDetail.court_preference}`
+                                        : 'No court preference set.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="rounded-md bg-[#131316]/80 p-3 text-sm text-[#918f9c]">
+                                No session selected. Pick one from the list above or create a match.
+                            </p>
+                        )}
                     </div>
                 </section>
 
                 <section className="mb-6">
-                    <h2 className="mb-3 text-base font-bold text-[#e4e1e6]">Who&apos;s on the court</h2>
+                    <h2 className="mb-3 text-base font-bold text-[#e4e1e6]">
+                        {sessionDetail ? 'Session queue' : "Who's on the court"}
+                    </h2>
                     <label className="mb-4 flex items-center gap-3 rounded-xl bg-[#0e0e11] px-4 py-3 ring-1 ring-white/5 focus-within:ring-[#c2c1ff]/40">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -185,11 +386,12 @@ export function GameRoomPage() {
                             type="search"
                             value={playerSearch}
                             onChange={(e) => setPlayerSearch(e.target.value)}
-                            placeholder="Search players by name, tier, or status…"
+                            placeholder="Search by name, email, or queue…"
                             autoComplete="off"
                             spellCheck={false}
                             className="min-w-0 flex-1 bg-transparent text-sm text-[#e4e1e6] placeholder:text-[#918f9c] outline-none"
                             aria-label="Search players"
+                            disabled={!sessionDetail?.players?.length}
                         />
                     </label>
 
@@ -200,6 +402,7 @@ export function GameRoomPage() {
                             className={filterButtonClass(statusFilter === 'all')}
                             aria-pressed={statusFilter === 'all'}
                             onClick={() => setStatusFilter('all')}
+                            disabled={!sessionDetail?.players?.length}
                         >
                             All Players
                         </button>
@@ -208,6 +411,7 @@ export function GameRoomPage() {
                             className={filterButtonClass(statusFilter === 'playing')}
                             aria-pressed={statusFilter === 'playing'}
                             onClick={() => setStatusFilter('playing')}
+                            disabled={!sessionDetail?.players?.length}
                         >
                             Playing
                         </button>
@@ -216,8 +420,9 @@ export function GameRoomPage() {
                             className={filterButtonClass(statusFilter === 'available')}
                             aria-pressed={statusFilter === 'available'}
                             onClick={() => setStatusFilter('available')}
+                            disabled={!sessionDetail?.players?.length}
                         >
-                            Available
+                            In queue
                         </button>
                     </div>
 
@@ -262,34 +467,57 @@ export function GameRoomPage() {
                         </span>
                     </label>
 
-                    <div className="space-y-3">
-                        {filteredPlayers.map((player) => (
-                            <article
-                                key={player.name}
-                                className="flex items-center justify-between rounded-2xl bg-[#1b1b1e] p-4 transition-colors hover:bg-[#1f1f22]"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#353438] text-sm font-bold text-[#e4e1e6]">
-                                        {player.initials}
+                    {loading ? (
+                        <div className="space-y-3">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="h-[88px] animate-pulse rounded-2xl bg-[#1b1b1e]" aria-hidden />
+                            ))}
+                        </div>
+                    ) : !sessionDetail?.players?.length ? (
+                        <p className="rounded-2xl bg-[#1b1b1e] px-4 py-6 text-center text-sm text-[#918f9c]">
+                            {sessionIdParam
+                                ? 'No players on this session yet.'
+                                : 'Open a session to see the live queue, or create a match to get started.'}
+                        </p>
+                    ) : (
+                        <div className="space-y-3">
+                            {filteredPlayers.map((player) => (
+                                <article
+                                    key={player.key}
+                                    className={`flex items-center justify-between rounded-2xl p-4 transition-colors ${
+                                        player.isSelf
+                                            ? 'bg-[#c2c1ff]/10 ring-1 ring-[#c2c1ff]/30 hover:bg-[#c2c1ff]/15'
+                                            : 'bg-[#1b1b1e] hover:bg-[#1f1f22]'
+                                    }`}
+                                >
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#353438] text-sm font-bold text-[#e4e1e6]">
+                                            {player.initials}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="truncate text-sm font-extrabold tracking-wide text-[#e4e1e6]">
+                                                {player.name}
+                                                {player.isSelf ? (
+                                                    <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#c2c1ff]">
+                                                        You
+                                                    </span>
+                                                ) : null}
+                                            </h4>
+                                            <p className="flex items-center">
+                                                <TrophyIcon className="mr-1 inline-block size-3 shrink-0 text-[#c8c5d2]" />
+                                                <span className="text-sm text-[#c8c5d2]">{player.tier}</span>
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                        <h4 className="truncate text-sm font-extrabold tracking-wide text-[#e4e1e6]">
-                                            {player.name}
-                                        </h4>
-                                        <p className="flex items-center">
-                                            <TrophyIcon className="mr-1 inline-block size-3 shrink-0 text-[#c8c5d2]" />
-                                            <span className="text-sm text-[#c8c5d2]">{player.tier}</span>
-                                        </p>
-                                    </div>
-                                </div>
 
-                                <div className="space-y-1 text-right">
-                                    <p className={`text-xs font-bold ${player.statusColor}`}>{player.status}</p>
-                                    <p className="text-xs text-[#c8c5d2]">{player.detail}</p>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
+                                    <div className="ml-3 shrink-0 space-y-1 text-right">
+                                        <p className={`text-xs font-bold ${player.statusColor}`}>{player.status}</p>
+                                        <p className="max-w-[140px] truncate text-xs text-[#c8c5d2]">{player.detail}</p>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    )}
                 </section>
             </main>
 

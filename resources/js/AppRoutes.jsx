@@ -50,7 +50,7 @@ export function AppRoutes() {
                     }
                 />
                 <Route
-                    path="game-room"
+                    path="facility/:facilityId/game-room"
                     element={
                         <ProtectedRoute>
                             <GameRoomPage />

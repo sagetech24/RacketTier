@@ -18,6 +18,7 @@ class StoreGameSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'facility_id' => ['required', 'integer', 'exists:facilities,id'],
             'sport_slug' => ['required', 'string', 'max:64', 'exists:sports,slug'],
             'match_type' => ['required', 'string', 'in:singles,doubles'],
             'game_type' => ['required', 'string', 'max:64'],

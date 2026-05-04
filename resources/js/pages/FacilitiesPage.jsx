@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 const FACILITIES = [
     {
+        id: 1,
         key: 'north-wing',
         image:
             'https://lh3.googleusercontent.com/aida-public/AB6AXuBIvy-5TrZeBrBNJipuvbN3IkkBPP56NU9ZgBrVSVcgdU6sA0lX9SWuVXZiUidNCF1hSeKh_CP6IGL6ubGoG7pgLPqhPOlfNRvsfWHPFrG4xWmaf1UoMyS7Wrk4w25DPZQsRiOYCQ5qufcOsAm0E5nzgx-_RxhX8srk4SJg5WxTN-MFd6tvxQ-0t2FE6M1VGcaochNLKR8nXqVZF6k-6ctnApVXk9Gx_u9_sNx5rzwLR3IgdP74PYbhBqO7FhiUA9_UhsWvrEzZg-g',
@@ -13,6 +14,7 @@ const FACILITIES = [
         address: 'Tipolo, Subangdaku, Cebu City, PH 6000',
     },
     {
+        id: 2,
         key: 'metro-sports-club-cebu',
         image:
             'https://lh3.googleusercontent.com/aida-public/AB6AXuCsGae15FWCctrIyKUBvIoL0eHSVf6qTdHT3XfSn0OjsQOFdskSjiTn9luc8NRnH93ADfdUeYUuF1jnH2CW0s1sokeRJs1uDCdbxz9EuYcz6Q91_yv_Cz-hpidI-8Rgn9_FK1uij9g02lLrrFECFGJE016p3uCHjyZ2cqh71K9W2KuApkSWaQIw2UmhcRUBpimfW3kWwJmhL7M4yJAVEDxM5NqhOh30PRfeLKrwsNWWTKari29wusxlzUfW3ZW2HZuyY3JuQNYG1U8',
@@ -135,7 +137,7 @@ export function FacilitiesPage() {
                                                 View Details
                                             </button>
                                             <Link
-                                                to="/game-room"
+                                                to={`/facility/${f.id}/game-room`}
                                                 className="rounded-xl bg-linear-to-br from-[#4ce081] to-[#4ce081] px-3.5 py-2 text-xs font-bold tracking-tight text-[#131316] transition-transform active:scale-95"
                                             >
                                                 Gameroom
