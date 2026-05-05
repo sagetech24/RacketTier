@@ -32,6 +32,24 @@ export function postJson(url, body) {
     });
 }
 
+/**
+ * @param {string} url
+ * @param {Record<string, unknown>} body
+ * @returns {Promise<Response>}
+ */
+export function patchJson(url, body) {
+    return fetch(url, {
+        method: 'PATCH',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
+    });
+}
+
 export function postForm(url, fields) {
     const body = new URLSearchParams();
     for (const [key, value] of Object.entries(fields)) {

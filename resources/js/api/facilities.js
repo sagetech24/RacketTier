@@ -1,7 +1,13 @@
-import { postJson } from '../lib/http.js';
+import { patchJson, postJson } from '../lib/http.js';
 
 /**
- * @typedef {{ id: number, name: string, address: string | null, game_sessions_count?: number }} FacilityRow
+ * @typedef {{
+ *   id: number,
+ *   name: string,
+ *   address: string | null,
+ *   game_sessions_count?: number,
+ *   today_checked_in_players_count?: number
+ * }} FacilityRow
  */
 
 /**
@@ -45,6 +51,30 @@ export async function postFacility(payload) {
     }
     if (!res.ok) {
         throw new Error(data.message ?? 'Could not add facility');
+    }
+    if (!data.data) {
+        throw new Error('Invalid response');
+    }
+    return data.data;
+}
+
+/**
+ * @param {number} facilityId
+ * @param {{ name: string, address: string }} payload
+ * @returns {Promise<FacilityRow>}
+ */
+export async function patchFacility(facilityId, payload) {
+    const res = await patchJson(`/auth/facilities/${facilityId}`, payload);
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 422) {
+        const err = new Error(data.message ?? 'Check the form and try again.');
+        /** @type {Record<string, string[]>} */
+        const errors = data.errors ?? {};
+        Object.assign(err, { errors });
+        throw err;
+    }
+    if (!res.ok) {
+        throw new Error(data.message ?? 'Could not update facility');
     }
     if (!data.data) {
         throw new Error('Invalid response');

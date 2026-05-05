@@ -18,6 +18,14 @@ class FacilityIndexController extends Controller
 
         $query = Facility::query()
             ->withCount('gameSessions')
+            ->select('facilities.*')
+            ->selectSub(function ($sub): void {
+                $sub->from('game_session_players')
+                    ->join('game_sessions', 'game_sessions.id', '=', 'game_session_players.game_session_id')
+                    ->selectRaw('COUNT(DISTINCT game_session_players.user_id)')
+                    ->whereColumn('game_sessions.facility_id', 'facilities.id')
+                    ->whereDate('game_sessions.created_at', now()->toDateString());
+            }, 'today_checked_in_players_count')
             ->orderBy('name')
             ->limit(80);
 

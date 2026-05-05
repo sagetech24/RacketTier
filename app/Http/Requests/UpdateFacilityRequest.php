@@ -6,7 +6,7 @@ use App\Models\Facility;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
-class StoreFacilityRequest extends FormRequest
+class UpdateFacilityRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -38,6 +38,9 @@ class StoreFacilityRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $facility = $this->route('facility');
+            $facilityId = $facility instanceof Facility ? $facility->id : null;
+
             $name = mb_strtolower((string) $this->input('name', ''));
             $address = mb_strtolower((string) $this->input('address', ''));
 
@@ -46,6 +49,7 @@ class StoreFacilityRequest extends FormRequest
             }
 
             $exists = Facility::query()
+                ->when($facilityId, fn ($q) => $q->whereKeyNot($facilityId))
                 ->whereRaw('LOWER(name) = ?', [$name])
                 ->whereRaw('LOWER(address) = ?', [$address])
                 ->exists();

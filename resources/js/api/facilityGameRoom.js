@@ -1,7 +1,13 @@
 /**
  * @typedef {{ id: number, name: string, address: string | null }} FacilitySummary
  * @typedef {import('./gameSession.js').GameSessionDetail} GameSessionSummary
- * @typedef {{ id: number, name: string, email: string }} FacilityRosterPlayer
+ * @typedef {{
+ *   id: number,
+ *   name: string,
+ *   email: string,
+ *   is_playing?: boolean,
+ *   is_in_queue?: boolean,
+ * }} FacilityRosterPlayer
  * @typedef {{ facility: FacilitySummary, sessions: GameSessionSummary[], players: FacilityRosterPlayer[] }} FacilityGameRoomPayload
  */
 

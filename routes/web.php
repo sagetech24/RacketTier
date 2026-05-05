@@ -7,6 +7,7 @@ use App\Http\Controllers\FacilityGameRoomController;
 use App\Http\Controllers\FacilityIndexController;
 use App\Http\Controllers\FacilityPlayersController;
 use App\Http\Controllers\FacilityStoreController;
+use App\Http\Controllers\FacilityUpdateController;
 use App\Http\Controllers\GameSessionIndexController;
 use App\Http\Controllers\GameSessionShowController;
 use App\Http\Controllers\GameSessionFinishMatchController;
@@ -56,6 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/auth/facilities/{facility}/game-room', [FacilityGameRoomController::class, 'index'])
         ->name('auth.facilities.game-room');
     Route::post('/auth/facilities', [FacilityStoreController::class, 'store'])->name('auth.facilities.store');
+    Route::patch('/auth/facilities/{facility}', FacilityUpdateController::class)->name('auth.facilities.update');
     Route::get('/auth/facility-players', [FacilityPlayersController::class, 'index'])->name('auth.facility-players');
     Route::get('/auth/game-sessions', [GameSessionIndexController::class, 'index'])->name('auth.game-sessions.index');
     Route::get('/auth/game-sessions/{gameSession}', [GameSessionShowController::class, 'show'])->name('auth.game-sessions.show');

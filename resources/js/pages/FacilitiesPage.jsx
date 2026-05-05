@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchFacilities, postFacility } from '../api/facilities.js';
+import { fetchFacilities, patchFacility, postFacility } from '../api/facilities.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
@@ -24,15 +24,6 @@ function initialsFromName(name) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/**
- * @param {string | null | undefined} address
- */
-function mapsHref(address) {
-    const q = (address ?? '').trim();
-    if (!q) return null;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-}
-
 export function FacilitiesPage() {
     const { user } = useAuth();
     const [searchInput, setSearchInput] = useState('');
@@ -48,6 +39,13 @@ export function FacilitiesPage() {
     const [addSubmitting, setAddSubmitting] = useState(false);
     const [addError, setAddError] = useState('');
     const [addFieldErrors, setAddFieldErrors] = useState(/** @type {Record<string, string[]>} */ ({}));
+    const [editOpen, setEditOpen] = useState(false);
+    const [editingFacilityId, setEditingFacilityId] = useState(/** @type {number | null} */ (null));
+    const [editName, setEditName] = useState('');
+    const [editAddress, setEditAddress] = useState('');
+    const [editSubmitting, setEditSubmitting] = useState(false);
+    const [editError, setEditError] = useState('');
+    const [editFieldErrors, setEditFieldErrors] = useState(/** @type {Record<string, string[]>} */ ({}));
 
     useEffect(() => {
         const t = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
@@ -94,7 +92,11 @@ export function FacilitiesPage() {
             });
             setFacilities((prev) => {
                 const rest = prev.filter((f) => f.id !== created.id);
-                return [{ ...created, game_sessions_count: created.game_sessions_count ?? 0 }, ...rest];
+                return [{
+                    ...created,
+                    game_sessions_count: created.game_sessions_count ?? 0,
+                    today_checked_in_players_count: created.today_checked_in_players_count ?? 0,
+                }, ...rest];
             });
             setAddOpen(false);
             setNewName('');
@@ -106,6 +108,63 @@ export function FacilitiesPage() {
             setAddError(err instanceof Error ? err.message : 'Could not add facility.');
         } finally {
             setAddSubmitting(false);
+        }
+    }
+
+    /**
+     * @param {import('../api/facilities.js').FacilityRow} facility
+     */
+    function openEditModal(facility) {
+        setEditingFacilityId(facility.id);
+        setEditName(facility.name ?? '');
+        setEditAddress(facility.address ?? '');
+        setEditError('');
+        setEditFieldErrors({});
+        setEditOpen(true);
+    }
+
+    function closeEditModal() {
+        if (editSubmitting) return;
+        setEditOpen(false);
+        setEditingFacilityId(null);
+        setEditName('');
+        setEditAddress('');
+        setEditError('');
+        setEditFieldErrors({});
+    }
+
+    async function handleEditFacility(e) {
+        e.preventDefault();
+        if (!editingFacilityId) return;
+
+        setEditError('');
+        setEditFieldErrors({});
+        setEditSubmitting(true);
+
+        try {
+            const updated = await patchFacility(editingFacilityId, {
+                name: editName.trim(),
+                address: editAddress.trim(),
+            });
+
+            setFacilities((prev) => prev.map((f) => (f.id === editingFacilityId
+                ? {
+                    ...f,
+                    ...updated,
+                    game_sessions_count: updated.game_sessions_count ?? f.game_sessions_count ?? 0,
+                    today_checked_in_players_count:
+                        updated.today_checked_in_players_count ?? f.today_checked_in_players_count ?? 0,
+                }
+                : f)));
+
+            closeEditModal();
+        } catch (err) {
+            if (err && typeof err === 'object' && 'errors' in err && err.errors) {
+                setEditFieldErrors(/** @type {Record<string, string[]>} */ (err.errors));
+            }
+            setEditError(err instanceof Error ? err.message : 'Could not update facility.');
+        } finally {
+            setEditSubmitting(false);
         }
     }
 
@@ -230,7 +289,7 @@ export function FacilitiesPage() {
                     {facilities.map((f) => {
                         const hue = cardGradientHue(f.id);
                         const sessionCount = f.game_sessions_count ?? 0;
-                        const mapUrl = mapsHref(f.address);
+                        const checkedInTodayCount = f.today_checked_in_players_count ?? 0;
                         return (
                             <div
                                 key={f.id}
@@ -238,13 +297,13 @@ export function FacilitiesPage() {
                             >
                                 <div className="flex h-full flex-col md:flex-row">
                                     <div
-                                        className="relative flex h-48 shrink-0 items-center justify-center overflow-hidden md:h-auto md:w-1/3 md:min-h-[200px]"
+                                        className="relative flex h-38 shrink-0 items-center justify-center overflow-hidden md:h-auto md:w-1/3 md:min-h-[200px]"
                                         style={{
                                             background: `linear-gradient(145deg, hsl(${hue}, 42%, 22%), hsl(${(hue + 55) % 360}, 38%, 14%))`,
                                         }}
                                     >
                                         <div
-                                            className="flex h-24 w-24 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-2xl font-black text-white/90 backdrop-blur-sm"
+                                            className="flex h-48 w-48 items-center justify-center text-4xl font-black text-zinc-400/60"
                                             aria-hidden
                                         >
                                             {initialsFromName(f.name)}
@@ -279,25 +338,24 @@ export function FacilitiesPage() {
                                                     <span className="min-w-0 wrap-break-word">{f.address?.trim() || '—'}</span>
                                                 </div>
                                             </div>
-                                            <p className="mt-3 text-xs font-bold uppercase tracking-widest text-[#918f9c]">
+                                            <p className="mt-3 text-xs font-bold uppercase tracking-wide text-[#918f9c]">
                                                 {sessionCount === 0
-                                                    ? 'No sessions yet'
-                                                    : `${sessionCount} game session${sessionCount === 1 ? '' : 's'}`}
+                                                    ? 'No Matches Yet'
+                                                    : `${sessionCount} match${sessionCount === 1 ? '' : 'es'}`}
+                                                {' \u2022 '}
+                                                {checkedInTodayCount} checked in player{checkedInTodayCount === 1 ? '' : 's'}
                                             </p>
                                         </div>
 
                                         <div className="mt-8 flex flex-wrap items-center justify-end gap-2">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                {mapUrl ? (
-                                                    <a
-                                                        href={mapUrl}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="rounded-xl border border-[#353438] bg-[#0e0e11] px-3.5 py-2 text-xs font-bold tracking-tight text-[#c8c5d2] transition-colors hover:border-[#c2c1ff]/40 hover:text-[#e4e1e6]"
-                                                    >
-                                                        Directions
-                                                    </a>
-                                                ) : null}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openEditModal(f)}
+                                                    className="rounded-xl border border-gray-500/30 bg-gray-500/20 px-3.5 py-2 text-xs font-bold tracking-tight text-gray-200 transition-colors hover:border-gray-400/40 hover:text-gray-100"
+                                                >
+                                                    Edit
+                                                </button>
                                                 <Link
                                                     to={`/facility/${f.id}/create-match`}
                                                     className="rounded-xl bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] px-3.5 py-2 text-xs font-bold tracking-tight text-[#131316] transition-transform active:scale-95"
@@ -393,6 +451,80 @@ export function FacilitiesPage() {
                                     className="rounded-lg bg-[#4ce081] px-5 py-2 text-sm font-bold text-[#003919] disabled:opacity-50"
                                 >
                                     {addSubmitting ? 'Saving…' : 'Save facility'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            ) : null}
+
+            {editOpen ? (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="rt-facilities-edit-title"
+                >
+                    <div className="w-full max-w-md rounded-2xl border border-[#474651]/40 bg-[#1b1b1e] p-6 shadow-2xl">
+                        <h2 id="rt-facilities-edit-title" className="mb-1 text-lg font-bold text-[#e4e1e6]">
+                            Edit facility
+                        </h2>
+                        <p className="mb-6 text-xs text-[#918f9c]">
+                            Update the facility details used for search and game room setup.
+                        </p>
+                        {editError ? (
+                            <p className="mb-4 rounded-lg bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffb4ab]" role="alert">
+                                {editError}
+                            </p>
+                        ) : null}
+                        <form className="space-y-4" onSubmit={(e) => void handleEditFacility(e)}>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
+                                    Venue name
+                                </label>
+                                <input
+                                    required
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="w-full rounded-lg border-none bg-[#0e0e11] py-3 px-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                    placeholder="e.g. Riverside Sports Center"
+                                    autoComplete="organization"
+                                />
+                                {editFieldErrors.name?.[0] ? (
+                                    <p className="text-xs text-[#ffb4ab]">{editFieldErrors.name[0]}</p>
+                                ) : null}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
+                                    Address
+                                </label>
+                                <textarea
+                                    required
+                                    value={editAddress}
+                                    onChange={(e) => setEditAddress(e.target.value)}
+                                    rows={3}
+                                    className="w-full resize-none rounded-lg border-none bg-[#0e0e11] py-3 px-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                    placeholder="Street, city, region, postal code"
+                                    autoComplete="street-address"
+                                />
+                                {editFieldErrors.address?.[0] ? (
+                                    <p className="text-xs text-[#ffb4ab]">{editFieldErrors.address[0]}</p>
+                                ) : null}
+                            </div>
+                            <div className="flex flex-wrap justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={closeEditModal}
+                                    className="rounded-lg px-4 py-2 text-sm font-semibold text-[#c8c5d2] hover:bg-[#353438]"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={editSubmitting}
+                                    className="rounded-lg bg-[#c2c1ff] px-5 py-2 text-sm font-bold text-[#282671] disabled:opacity-50"
+                                >
+                                    {editSubmitting ? 'Saving…' : 'Save changes'}
                                 </button>
                             </div>
                         </form>

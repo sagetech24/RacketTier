@@ -25,6 +25,9 @@ function filterButtonClass(active) {
         : 'rounded-full bg-[#353438] px-4 py-2 text-xs font-semibold text-[#e4e1e6]';
 }
 
+const PLAYER_LIST_INITIAL_COUNT = 6;
+const PLAYER_LIST_LOAD_STEP = 6;
+
 function TrophyIcon({ className }) {
     return (
         <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -155,6 +158,7 @@ export function GameRoomPage() {
     const [finishTeam2Score, setFinishTeam2Score] = useState('');
     const [finishBusy, setFinishBusy] = useState(false);
     const [finishError, setFinishError] = useState('');
+    const [visiblePlayerCount, setVisiblePlayerCount] = useState(PLAYER_LIST_INITIAL_COUNT);
 
     const gameRoomBase = facilityIdNum != null ? `/facility/${facilityIdNum}/game-room` : '/facilities';
 
@@ -302,18 +306,24 @@ export function GameRoomPage() {
         if (!lobby?.players?.length) {
             return [];
         }
-        return lobby.players.map((p) => ({
-            key: `lobby-${p.id}`,
-            initials: initialsFromName(p.name),
-            name: p.name,
-            tier: 'At this facility',
-            status: 'On roster',
-            statusColor: 'text-[#4ce081]',
-            detail: p.email,
-            isSelf: user?.id != null && p.id === user.id,
-            _playing: false,
-            _waiting: true,
-        }));
+        return lobby.players.map((p) => {
+            const playing = Boolean(p.is_playing);
+            const inQueue = Boolean(p.is_in_queue);
+            const statusLabel = playing ? 'Playing' : inQueue ? 'In queue' : 'Not in a match';
+            const statusColor = playing ? 'text-orange-300' : inQueue ? 'text-[#4ce081]' : 'text-sky-600';
+            return {
+                key: `lobby-${p.id}`,
+                initials: initialsFromName(p.name),
+                name: p.name,
+                tier: 'Sessions today',
+                status: statusLabel,
+                statusColor,
+                detail: p.email,
+                isSelf: user?.id != null && p.id === user.id,
+                _playing: playing,
+                _waiting: inQueue,
+            };
+        });
     }, [lobby?.players, user?.id]);
 
     const q = playerSearch.trim().toLowerCase();
@@ -330,7 +340,7 @@ export function GameRoomPage() {
                       p.status.toLowerCase().includes(q) ||
                       p.detail.toLowerCase().includes(q),
               )
-            : [...queueRows];
+            : [...lobbyPlayerRows];
 
         if (statusFilter === 'playing') {
             return searched.filter((p) => p._playing);
@@ -340,6 +350,39 @@ export function GameRoomPage() {
         }
         return searched;
     }, [sessionDetail, q, statusFilter, queueRows, lobbyPlayerRows]);
+
+    useEffect(() => {
+        setVisiblePlayerCount(PLAYER_LIST_INITIAL_COUNT);
+    }, [sessionIdParam, statusFilter, q, lobbyPlayerRows.length, queueRows.length]);
+
+    const visiblePlayers = useMemo(() => {
+        if (sessionDetail || filteredPlayers.length === 0) {
+            return filteredPlayers;
+        }
+        if (filteredPlayers.length >= PLAYER_LIST_INITIAL_COUNT) {
+            return filteredPlayers;
+        }
+        const placeholders = Array.from({ length: PLAYER_LIST_INITIAL_COUNT - filteredPlayers.length }).map((_, idx) => ({
+            key: `placeholder-${idx}`,
+            initials: '—',
+            name: 'Open slot',
+            tier: 'Sessions today',
+            status: 'Waiting for player',
+            statusColor: 'text-[#918f9c]',
+            detail: '—',
+            isSelf: false,
+            _playing: false,
+            _waiting: false,
+            _placeholder: true,
+        }));
+        return [...filteredPlayers, ...placeholders];
+    }, [sessionDetail, filteredPlayers]);
+
+    const playersToRender = useMemo(
+        () => visiblePlayers.slice(0, visiblePlayerCount),
+        [visiblePlayers, visiblePlayerCount],
+    );
+    const hasMorePlayers = visiblePlayers.length > visiblePlayerCount;
 
     const sessionHeadline = sessionDetail
         ? `${sessionDetail.sport?.name ?? 'Session'} · ${sessionDetail.match_type === 'doubles' ? 'Doubles' : 'Singles'}`
@@ -734,15 +777,17 @@ export function GameRoomPage() {
                         <p className="rounded-2xl bg-[#1b1b1e] px-4 py-6 text-center text-sm text-[#918f9c]">
                             {sessionIdParam
                                 ? 'No players on this session yet.'
-                                : 'No players on active sessions at this facility yet.'}
+                                : 'No players from sessions created today at this facility yet.'}
                         </p>
                     ) : (
                         <div className="space-y-3">
-                            {filteredPlayers.map((player) => (
+                            {playersToRender.map((player) => (
                                 <article
                                     key={player.key}
                                     className={`flex items-center justify-between rounded-2xl p-4 transition-colors ${
-                                        player.isSelf
+                                        player._placeholder
+                                            ? 'bg-[#16161a] ring-1 ring-white/5'
+                                            : player.isSelf
                                             ? 'bg-[#c2c1ff]/10 ring-1 ring-[#c2c1ff]/30 hover:bg-[#c2c1ff]/15'
                                             : 'bg-[#1b1b1e] hover:bg-[#1f1f22]'
                                     }`}
@@ -775,6 +820,17 @@ export function GameRoomPage() {
                             ))}
                         </div>
                     )}
+                    {!loading && !(!sessionDetail?.players?.length && (!lobbyPlayerRows.length || sessionDetail)) && hasMorePlayers ? (
+                        <div className="mt-4">
+                            <button
+                                type="button"
+                                onClick={() => setVisiblePlayerCount((n) => n + PLAYER_LIST_LOAD_STEP)}
+                                className="w-full rounded-xl border border-[#474651] bg-[#1b1b1e] px-4 py-3 text-sm font-bold text-[#e4e1e6] transition hover:bg-[#242429]"
+                            >
+                                Load More
+                            </button>
+                        </div>
+                    ) : null}
                     {sessionDetail?.is_active && sessionDetail?.is_host ? (
                         <div className="mt-8 space-y-2">
                             {showFinishMatch ? (
@@ -787,10 +843,10 @@ export function GameRoomPage() {
                                         }}
                                         className="w-full shrink-0 rounded-xl border-2 border-[#ffb86b]/60 bg-[#ffb86b]/15 px-10 py-4 text-lg font-black tracking-tight text-[#ffb86b] shadow-lg transition-transform enabled:active:scale-95 md:w-auto"
                                     >
-                                        Finish game
+                                        Finish Game
                                     </button>
                                     <p className="text-center text-xs text-[#918f9c]">
-                                        Enter the final score to update Elo, credit session points to member wallets,
+                                        Enter the final score to update rankings, credit session points to member wallets,
                                         and end this session for everyone.
                                     </p>
                                 </>
