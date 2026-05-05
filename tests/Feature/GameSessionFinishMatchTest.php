@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Facility;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Models\MemberPointWallet;
 use App\Models\Ranking;
 use App\Models\RatingHistory;
 use App\Models\Sport;
@@ -19,8 +21,8 @@ class GameSessionFinishMatchTest extends TestCase
     {
         $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
         $facility = $facilityId !== null
-            ? \App\Models\Facility::query()->whereKey($facilityId)->firstOrFail()
-            : \App\Models\Facility::query()->orderBy('id')->firstOrFail();
+            ? Facility::query()->whereKey($facilityId)->firstOrFail()
+            : Facility::query()->orderBy('id')->firstOrFail();
 
         $session = GameSession::query()->create([
             'facility_id' => $facility->id,
@@ -53,7 +55,7 @@ class GameSessionFinishMatchTest extends TestCase
         return $session;
     }
 
-    public function test_host_can_finish_singles_match_and_returns_to_queueing(): void
+    public function test_host_can_finish_singles_match_ends_session_and_credits_wallets(): void
     {
         $host = User::factory()->create();
         $guest = User::factory()->create();
@@ -70,15 +72,20 @@ class GameSessionFinishMatchTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('data.status', 'queueing');
+        $response->assertJsonPath('data.status', 'finished');
+        $response->assertJsonPath('data.is_active', false);
         $response->assertJsonPath('data.last_match.team1_score', 21);
         $response->assertJsonPath('data.last_match.team2_score', 15);
         $response->assertJsonPath('data.last_match.winning_team', 1);
         $response->assertJsonPath('data.players.0.is_playing', false);
-        $response->assertJsonPath('data.players.0.is_waiting', true);
+        $response->assertJsonPath('data.players.0.is_waiting', false);
 
         $this->assertSame(1, RatingHistory::query()->where('user_id', $host->id)->count());
         $this->assertSame(1, Ranking::query()->where('user_id', $host->id)->where('sport_id', $session->sport_id)->count());
+
+        // Winner: 25 + min(10, margin 6) = 31 session pts; loser: 8
+        $this->assertSame(31, (int) MemberPointWallet::query()->where('user_id', $host->id)->where('sport_id', $session->sport_id)->value('balance'));
+        $this->assertSame(8, (int) MemberPointWallet::query()->where('user_id', $guest->id)->where('sport_id', $session->sport_id)->value('balance'));
     }
 
     public function test_finish_rejects_tied_scores(): void
@@ -175,7 +182,8 @@ class GameSessionFinishMatchTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('data.status', 'queueing');
+        $response->assertJsonPath('data.status', 'finished');
+        $response->assertJsonPath('data.is_active', false);
         $response->assertJsonPath('data.last_match.winning_team', 1);
         $this->assertSame(4, RatingHistory::query()->where('game_session_id', $session->id)->count());
     }

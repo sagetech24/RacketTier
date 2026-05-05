@@ -15,6 +15,7 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate
+php artisan db:seed
 npm install && npm run build
 php artisan serve
 ```
@@ -35,7 +36,8 @@ These `.mdc` files use Cursor’s `alwaysApply: true` front matter so they are i
 | `rackettier-flow.mdc` | End-to-end flow: Session → Queue → Match → Result → Ranking → repeat; required **React** feature areas; session fields; `session_players`; match lifecycle; post-match stats, ELO, `rating_histories`; session end and leaderboard. |
 | `queue-system.mdc` | Sequential `queue_position`, `is_waiting` / `is_playing`, FIFO v1, reorder on leave, players return to end of queue after matches. |
 | `matchmaking.mdc` | Singles (2) / doubles (4), top-of-queue selection, team layout, validation, `matches` / `match_players`, mark selected players `is_playing`. |
-| `ranking-system.mdc` | ELO for registered users only (initial 1000, K default 32), `rankings` + `rating_histories`; guests excluded. |
+| `ranking-system.mdc` | ELO for registered users only (initial 1000, K default 32), `rankings` + `rating_histories`; guests excluded; links session-point wallets. |
+| `tier-ranking.mdc` | **`tier_ranks`** brackets per sport; **`member_point_wallets`** + **`point_wallet_transactions`**; resolved via wallet balance vs ELO. |
 
 ### Skills (`.cursor/skills/`)
 

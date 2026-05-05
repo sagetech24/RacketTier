@@ -14,6 +14,7 @@ class FinishGameSessionMatch
 {
     public function __construct(
         private EloCalculator $elo,
+        private CreditMemberPointWallet $creditMemberPointWallet,
     ) {}
 
     public function execute(GameSession $session, int $team1Score, int $team2Score): GameSession
@@ -66,10 +67,12 @@ class FinishGameSessionMatch
                 $team2Score,
             );
 
-            $this->requeueAfterMatch($locked->id);
+            $this->releasePlayersAfterSessionEnded($locked->id);
 
             GameSession::query()->whereKey($locked->id)->update([
-                'status' => 'queueing',
+                'status' => 'finished',
+                'is_active' => false,
+                'ended_at' => now(),
                 'last_team1_score' => $team1Score,
                 'last_team2_score' => $team2Score,
                 'last_winning_team' => $winningTeam,
@@ -196,6 +199,12 @@ class FinishGameSessionMatch
 
             $pk = $player->id;
             GameSessionPlayer::query()->whereKey($pk)->increment('session_points', $sessionPointsEarned);
+            $this->creditMemberPointWallet->execute(
+                $uid,
+                $sportId,
+                $sessionPointsEarned,
+                (int) $session->id,
+            );
             if ($won) {
                 GameSessionPlayer::query()->whereKey($pk)->increment('wins_count');
             } else {
@@ -296,36 +305,16 @@ class FinishGameSessionMatch
         return $out;
     }
 
-    private function requeueAfterMatch(int $sessionId): void
+    /**
+     * Session ends after the final scored match; clear court and queue flags for all roster rows.
+     */
+    private function releasePlayersAfterSessionEnded(int $sessionId): void
     {
-        $waiting = GameSessionPlayer::query()
+        GameSessionPlayer::query()
             ->where('game_session_id', $sessionId)
-            ->where('is_waiting', true)
-            ->where('is_playing', false)
-            ->orderBy('queue_position')
-            ->lockForUpdate()
-            ->get();
-
-        $finished = GameSessionPlayer::query()
-            ->where('game_session_id', $sessionId)
-            ->where('is_playing', true)
-            ->orderBy('queue_position')
-            ->lockForUpdate()
-            ->get();
-
-        $pos = 1;
-        foreach ($waiting as $row) {
-            GameSessionPlayer::query()->whereKey($row->id)->update([
-                'queue_position' => $pos++,
-            ]);
-        }
-
-        foreach ($finished as $row) {
-            GameSessionPlayer::query()->whereKey($row->id)->update([
+            ->update([
                 'is_playing' => false,
-                'is_waiting' => true,
-                'queue_position' => $pos++,
+                'is_waiting' => false,
             ]);
-        }
     }
 }

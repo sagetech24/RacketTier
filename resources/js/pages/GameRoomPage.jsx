@@ -790,8 +790,8 @@ export function GameRoomPage() {
                                         Finish game
                                     </button>
                                     <p className="text-center text-xs text-[#918f9c]">
-                                        Enter the final score to update Elo for this sport, session points, and the
-                                        queue.
+                                        Enter the final score to update Elo, credit session points to member wallets,
+                                        and end this session for everyone.
                                     </p>
                                 </>
                             ) : (
@@ -844,7 +844,7 @@ export function GameRoomPage() {
                         </h2>
                         <p className="mt-2 text-sm text-[#918f9c]">
                             Team 1 vs Team 2 (same sides as when the session was created). One side must have a higher
-                            score.
+                            score. Saving ends the session after points are applied.
                         </p>
                         <div className="mt-5 grid grid-cols-2 gap-3">
                             <label className="block">
