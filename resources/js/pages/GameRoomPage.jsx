@@ -6,6 +6,7 @@ import { fetchFacilityGameRoom } from '../api/facilityGameRoom.js';
 import { fetchGameSession, postFinishGameSessionMatch, postStartGameSessionMatch } from '../api/gameSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 /**
@@ -31,6 +32,59 @@ function TrophyIcon({ className }) {
             <path d="M8 21h8M12 17v4M9 3h6l1 3H8l1-3z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
     );
+}
+
+/**
+ * Display label, sort order (lower first), and pill styles for facility session list rows.
+ * Sort: ongoing → queueing/pending → finished → ended.
+ *
+ * @param {{ is_active?: boolean, status?: string }} session
+ */
+function facilitySessionListStatus(session) {
+    if (!session.is_active) {
+        return {
+            label: 'Ended',
+            sortRank: 4,
+            accentClass: 'border-l-4 border-l-red-400',
+            textClass: 'text-red-400',
+            pillClass: 'border border-red-400/35 bg-red-400/10',
+        };
+    }
+    const raw = session.status ?? 'queueing';
+    if (raw === 'ongoing') {
+        return {
+            label: 'Ongoing',
+            sortRank: 0,
+            accentClass: 'border-l-4 border-l-orange-400',
+            textClass: 'text-orange-300',
+            pillClass: 'border border-orange-400/35 bg-orange-400/10',
+        };
+    }
+    if (raw === 'finished') {
+        return {
+            label: 'Finished',
+            sortRank: 2,
+            accentClass: 'border-l-4 border-l-slate-400',
+            textClass: 'text-slate-400',
+            pillClass: 'border border-slate-400/30 bg-slate-400/10',
+        };
+    }
+    if (raw === 'queueing' || raw === 'pending') {
+        return {
+            label: 'Queueing',
+            sortRank: 1,
+            accentClass: 'border-l-4 border-l-[#4ce081]',
+            textClass: 'text-[#4ce081]',
+            pillClass: 'border border-[#4ce081]/35 bg-[#4ce081]/12',
+        };
+    }
+    return {
+        label: raw ? String(raw) : 'Queueing',
+        sortRank: 3,
+        accentClass: 'border-l-4 border-l-slate-400',
+        textClass: 'text-slate-400',
+        pillClass: 'border border-slate-400/30 bg-slate-400/10',
+    };
 }
 
 /**
@@ -132,25 +186,27 @@ export function GameRoomPage() {
         };
     }, [sessionDetail]);
 
-    const sessionStatusDisplay = useMemo(() => {
+    const sessionStatusUi = useMemo(() => {
         if (!sessionDetail) {
-            return '';
+            return { label: '', textClass: '' };
         }
-        if (!sessionDetail.is_active) {
-            return 'Ended';
-        }
-        const s = sessionDetail.status ?? 'queueing';
-        if (s === 'ongoing') {
-            return 'Ongoing';
-        }
-        if (s === 'finished') {
-            return 'Finished';
-        }
-        if (s === 'queueing' || s === 'pending') {
-            return 'Queueing';
-        }
-        return s ? String(s) : 'Queueing';
+        const m = facilitySessionListStatus(sessionDetail);
+        return { label: m.label, textClass: m.textClass };
     }, [sessionDetail]);
+
+    const sortedLobbySessions = useMemo(() => {
+        if (!lobby?.sessions?.length) {
+            return [];
+        }
+        return [...lobby.sessions].sort((a, b) => {
+            const ma = facilitySessionListStatus(a);
+            const mb = facilitySessionListStatus(b);
+            if (ma.sortRank !== mb.sortRank) {
+                return ma.sortRank - mb.sortRank;
+            }
+            return (b.id ?? 0) - (a.id ?? 0);
+        });
+    }, [lobby?.sessions]);
 
     useEffect(() => {
         if (facilityIdNum == null) {
@@ -350,7 +406,19 @@ export function GameRoomPage() {
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#4ce081]">
                         {facilityEyebrow}
                     </p>
-                    <h1 className="text-5xl font-extrabold tracking-tight">{sessionHeadline}</h1>
+                    <div className="flex items-start gap-3 sm:gap-4">
+                        {sessionDetail ? (
+                            <SportIcon
+                                icon={sessionDetail.sport?.icon ?? 'sports_tennis'}
+                                imgClassName="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
+                                materialClassName="text-5xl text-[#c2c1ff]"
+                                className="mt-1 shrink-0"
+                            />
+                        ) : null}
+                        <h1 className={`text-5xl font-extrabold tracking-tight ${sessionDetail ? 'min-w-0 flex-1' : ''}`}>
+                            {sessionHeadline}
+                        </h1>
+                    </div>
                     {sessionDetail ? (
                         <>
                             <dl className="mt-4 space-y-1 text-sm text-[#c8c5d2]">
@@ -383,7 +451,9 @@ export function GameRoomPage() {
                                 </div>
                                 <div className="flex justify-between gap-4">
                                     <dt className="text-[#918f9c]">Status</dt>
-                                    <dd className="text-right font-medium text-[#4ce081]">{sessionStatusDisplay}</dd>
+                                    <dd className={`text-right font-medium ${sessionStatusUi.textClass}`}>
+                                        {sessionStatusUi.label}
+                                    </dd>
                                 </div>
                             </dl>
                             {sessionDetail.last_match ? (
@@ -476,32 +546,66 @@ export function GameRoomPage() {
                         {loading ? (
                             <div className="space-y-2">
                                 {Array.from({ length: 3 }).map((_, i) => (
-                                    <div key={i} className="h-[72px] animate-pulse rounded-xl bg-[#1b1b1e]" aria-hidden />
+                                    <div key={i} className="h-[88px] animate-pulse rounded-xl bg-[#1b1b1e]" aria-hidden />
                                 ))}
                             </div>
-                        ) : lobby && lobby.sessions.length > 0 ? (
-                            <ul className="space-y-2">
-                                {lobby.sessions.map((s) => (
-                                    <li key={s.id}>
-                                        <Link
-                                            to={`${gameRoomBase}?session=${s.id}`}
-                                            className="block rounded-xl border border-[#474651]/40 bg-[#1b1b1e] px-4 py-3 transition-colors hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22]"
-                                        >
-                                            <p className="text-sm font-bold text-[#e4e1e6]">
-                                                {s.sport?.name ?? 'Session'} #{s.id}
-                                            </p>
-                                            <p className="mt-1 text-xs text-[#918f9c]">
-                                                {s.match_type} · {s.game_type}
-                                                {typeof s.participant_count === 'number'
-                                                    ? ` · ${s.participant_count} players`
-                                                    : ''}
-                                                {s.is_host ? (
-                                                    <span className="ml-2 font-semibold text-[#4ce081]">You host</span>
-                                                ) : null}
-                                            </p>
-                                        </Link>
-                                    </li>
-                                ))}
+                        ) : lobby && sortedLobbySessions.length > 0 ? (
+                            <ul className="space-y-2.5">
+                                {sortedLobbySessions.map((s) => {
+                                    const statusMeta = facilitySessionListStatus(s);
+                                    const matchLabel =
+                                        s.match_type === 'doubles'
+                                            ? 'Doubles'
+                                            : s.match_type === 'singles'
+                                              ? 'Singles'
+                                              : s.match_type ?? '';
+                                    const participantNote =
+                                        typeof s.participant_count === 'number'
+                                            ? `${s.participant_count} player${s.participant_count === 1 ? '' : 's'}`
+                                            : null;
+                                    return (
+                                        <li key={s.id}>
+                                            <Link
+                                                to={`${gameRoomBase}?session=${s.id}`}
+                                                className={`flex min-h-18 gap-3 rounded-xl border border-[#474651]/40 bg-[#1b1b1e] py-3 pl-4 pr-4 transition-colors hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22] ${statusMeta.accentClass}`}
+                                                aria-label={`${s.sport?.name ?? 'Session'} ${statusMeta.label}, open session`}
+                                            >
+                                                <div className="shrink-0 pt-0.5">
+                                                    <SportIcon
+                                                        icon={s.sport?.icon ?? 'sports_tennis'}
+                                                        imgClassName="h-9 w-9 object-contain"
+                                                        materialClassName="text-3xl text-[#c2c1ff]"
+                                                    />
+                                                </div>
+                                                <div className="min-w-0 flex-1 pt-0.5">
+                                                    <p className="truncate text-sm font-bold text-[#e4e1e6]">
+                                                        {s.sport?.name ?? 'Session'}
+                                                        <span className="ml-1.5 font-mono text-xs font-normal text-[#918f9c]">
+                                                            #{s.id}
+                                                        </span>
+                                                    </p>
+                                                    <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
+                                                        {[matchLabel, s.game_type, participantNote].filter(Boolean).join(' · ')}
+                                                        {s.is_host ? (
+                                                            <>
+                                                                {' '}
+                                                                <span className="font-semibold text-[#4ce081]">· You host</span>
+                                                            </>
+                                                        ) : null}
+                                                    </p>
+                                                </div>
+                                                <div className="flex shrink-0 flex-col items-end justify-center gap-1">
+                                                    <span
+                                                        className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusMeta.pillClass} ${statusMeta.textClass}`}
+                                                    >
+                                                        {statusMeta.label}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-[#918f9c]">Open →</span>
+                                                </div>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         ) : (
                             <p className="rounded-xl bg-[#1b1b1e] px-4 py-4 text-sm text-[#918f9c]">
@@ -513,7 +617,7 @@ export function GameRoomPage() {
 
                 <section className="mb-6">
                     <h2 className="mb-3 text-base font-bold text-[#e4e1e6]">
-                        {sessionDetail ? 'Session queue' : 'Players at this facility'}
+                        {sessionDetail ? 'Players' : 'Players at this facility'}
                     </h2>
                     {!sessionDetail ? (
                         <>

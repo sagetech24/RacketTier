@@ -42,6 +42,7 @@ class GameSessionResource extends JsonResource
                 'slug' => $this->sport?->slug,
                 'name' => $this->sport?->name,
                 'code' => $this->sport?->code,
+                'icon' => $this->sport?->icon,
             ],
             'match_type' => $this->match_type,
             'game_type' => $this->game_type,

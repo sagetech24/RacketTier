@@ -1,4 +1,4 @@
-import { MaterialIcon } from './MaterialIcon.jsx';
+import { SportIcon } from './SportIcon.jsx';
 
 /**
  * @param {{
@@ -22,11 +22,7 @@ export function SportCard({ name, icon, symbol, selected = false, onClick }) {
             ].join(' ')}
         >
             <div className="mb-8 flex items-start justify-between">
-                <MaterialIcon
-                    name={icon}
-                    className={selected ? 'text-4xl text-[#003919]' : 'text-4xl text-[#c2c1ff]'}
-                    filled={selected}
-                />
+                <SportIcon icon={icon} selected={selected} filled={selected} />
                 <span
                     className={
                         selected

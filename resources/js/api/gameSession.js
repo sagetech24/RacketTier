@@ -87,7 +87,7 @@ export function postCreateGameSession(payload) {
  * @typedef {{
  *   id: number,
  *   facility?: { id: number, name: string, address: string | null },
- *   sport: { slug: string, name: string, code: string },
+ *   sport: { slug: string, name: string, code: string, icon?: string },
  *   match_type: string,
  *   game_type: string,
  *   court_preference: string | null,
