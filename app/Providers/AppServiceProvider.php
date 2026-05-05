@@ -25,10 +25,32 @@ class AppServiceProvider extends ServiceProvider
             $user = auth()->user();
             abort_if(! $user, 401);
 
-            return GameSession::query()
+            $session = GameSession::query()->whereKey($value)->first();
+            abort_if(! $session, 404);
+
+            $isParticipant = GameSession::query()
                 ->whereKey($value)
                 ->whereUserIsParticipant($user)
-                ->firstOrFail();
+                ->exists();
+
+            if ($isParticipant) {
+                return $session;
+            }
+
+            // Facility game room lists every active session at a facility; allow read-only access when
+            // the client scopes by facility (same check as GameSessionShowController).
+            if (request()->isMethod('GET')) {
+                $facilityId = request()->query('facility_id');
+                if (
+                    $facilityId !== null && $facilityId !== ''
+                    && (int) $facilityId === (int) $session->facility_id
+                    && $session->is_active
+                ) {
+                    return $session;
+                }
+            }
+
+            abort(404);
         });
     }
 }

@@ -91,6 +91,19 @@ class GameSessionReadTest extends TestCase
         $response->assertNotFound();
     }
 
+    public function test_show_allows_non_participant_when_facility_query_matches_active_session(): void
+    {
+        $host = User::factory()->create();
+        $guest = User::factory()->create();
+        $stranger = User::factory()->create();
+        $session = $this->seedSessionWithPlayers($host, $guest, 1);
+
+        $response = $this->actingAs($stranger)->getJson('/auth/game-sessions/'.$session->id.'?facility_id=1');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.id', $session->id);
+    }
+
     public function test_index_filters_by_facility_id(): void
     {
         $host = User::factory()->create();
