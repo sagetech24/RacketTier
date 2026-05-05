@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDefaultGameRoomHref } from '../../hooks/useDefaultGameRoomHref.js';
 import { RacketTierWordmark } from './RacketTierWordmark.jsx';
 
@@ -24,13 +24,6 @@ function Spinner() {
     );
 }
 
-function initialsFromName(name) {
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    if (parts.length === 1 && parts[0].length) return parts[0].slice(0, 2).toUpperCase();
-    return '?';
-}
-
 /**
  * @param {{
  *   user: { name?: string; email?: string } | null;
@@ -39,6 +32,7 @@ function initialsFromName(name) {
  */
 export function DashboardV2Header({ user, profileLoading = false }) {
     const gameRoomHref = useDefaultGameRoomHref();
+    const navigate = useNavigate();
     const label = user?.name?.trim() || user?.email?.trim() || 'User';
 
     return (
@@ -90,24 +84,26 @@ export function DashboardV2Header({ user, profileLoading = false }) {
                         >
                             <Spinner />
                         </div>
-                    ) : (
-                        <Link
-                            to="/dashboard"
-                            className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#353438] transition-opacity hover:opacity-80"
-                            aria-label="Account"
+                    ) : user ? (
+                        <button
+                            type="button"
+                            onClick={() => navigate(-1)}
+                            className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#353438] text-[#c2c1ff] transition-opacity hover:opacity-80"
+                            aria-label="Go back"
+                            title={`Back from ${label}`}
                         >
-                            {user ? (
-                                <span className="flex h-full w-full items-center justify-center bg-[#353438] text-[10px] font-bold text-[#c2c1ff]">
-                                    {initialsFromName(label)}
-                                </span>
-                            ) : (
-                                <img
-                                    src={IMG_AVATAR_FALLBACK}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                />
-                            )}
-                        </Link>
+                            <span className="text-base leading-none" aria-hidden>
+                                ←
+                            </span>
+                        </button>
+                    ) : (
+                        <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#353438]">
+                            <img
+                                src={IMG_AVATAR_FALLBACK}
+                                alt=""
+                                className="h-full w-full object-cover"
+                            />
+                        </div>
                     )}
                 </div>
             </div>
