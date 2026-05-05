@@ -13,6 +13,7 @@ use App\Http\Controllers\GameSessionShowController;
 use App\Http\Controllers\GameSessionFinishMatchController;
 use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
+use App\Http\Controllers\RankingIndexController;
 use App\Http\Controllers\SportsListController;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +54,7 @@ Route::middleware('auth')->group(function () {
     Route::view('/facility/{facility}/create-match', 'app')->whereNumber('facility');
 
     Route::get('/auth/sports', [SportsListController::class, 'index'])->name('auth.sports');
+    Route::get('/auth/rankings', [RankingIndexController::class, 'index'])->name('auth.rankings');
     Route::get('/auth/facilities', [FacilityIndexController::class, 'index'])->name('auth.facilities.index');
     Route::get('/auth/facilities/{facility}/game-room', [FacilityGameRoomController::class, 'index'])
         ->name('auth.facilities.game-room');
