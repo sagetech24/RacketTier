@@ -40,7 +40,7 @@ export function DashboardMobileNav() {
     const { pathname } = useLocation();
     const homeActive = pathname === '/dashboard';
     const rankingActive = pathname === '/ranking';
-    const facilitiesActive = pathname === '/facilities';
+    const facilitiesActive = pathname === '/facility' || pathname === '/facilities' || pathname.startsWith('/facility/');
 
     return (
         <nav className="fixed bottom-0 left-0 z-50 w-full md:hidden" aria-label="Primary">

@@ -23,12 +23,23 @@ class FacilityGameRoomController extends Controller
         $startOfToday = Carbon::now($tz)->startOfDay();
         $endOfToday = Carbon::now($tz)->endOfDay();
 
-        $sessions = GameSession::query()
+        $activeSessions = GameSession::query()
             ->where('facility_id', $facility->id)
             ->where('is_active', true)
             ->whereBetween('created_at', [$startOfToday, $endOfToday])
             ->with(['sport', 'facility', 'creator:id,name,email'])
             ->withCount('players')
+            ->orderByDesc('updated_at')
+            ->limit(50)
+            ->get();
+
+        $finishedSessions = GameSession::query()
+            ->where('facility_id', $facility->id)
+            ->where('is_active', false)
+            ->whereBetween('created_at', [$startOfToday, $endOfToday])
+            ->with(['sport', 'facility', 'creator:id,name,email'])
+            ->withCount('players')
+            ->orderByDesc('ended_at')
             ->orderByDesc('updated_at')
             ->limit(50)
             ->get();
@@ -42,7 +53,8 @@ class FacilityGameRoomController extends Controller
         return response()->json([
             'data' => [
                 'facility' => new FacilityResource($facility),
-                'sessions' => GameSessionResource::collection($sessions),
+                'sessions' => GameSessionResource::collection($activeSessions),
+                'finished_sessions' => GameSessionResource::collection($finishedSessions),
                 'players' => $playersPayload,
             ],
         ]);

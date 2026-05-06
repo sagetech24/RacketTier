@@ -6,6 +6,7 @@ import { patchJson, postJson } from '../lib/http.js';
  *   name: string,
  *   address: string | null,
  *   game_sessions_count?: number,
+ *   today_matches_count?: number,
  *   today_checked_in_players_count?: number
  * }} FacilityRow
  */

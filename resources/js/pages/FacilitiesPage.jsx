@@ -95,6 +95,7 @@ export function FacilitiesPage() {
                 return [{
                     ...created,
                     game_sessions_count: created.game_sessions_count ?? 0,
+                    today_matches_count: created.today_matches_count ?? 0,
                     today_checked_in_players_count: created.today_checked_in_players_count ?? 0,
                 }, ...rest];
             });
@@ -152,6 +153,7 @@ export function FacilitiesPage() {
                     ...f,
                     ...updated,
                     game_sessions_count: updated.game_sessions_count ?? f.game_sessions_count ?? 0,
+                    today_matches_count: updated.today_matches_count ?? f.today_matches_count ?? 0,
                     today_checked_in_players_count:
                         updated.today_checked_in_players_count ?? f.today_checked_in_players_count ?? 0,
                 }
@@ -288,7 +290,6 @@ export function FacilitiesPage() {
                 <div className="space-y-6">
                     {facilities.map((f) => {
                         const hue = cardGradientHue(f.id);
-                        const sessionCount = f.game_sessions_count ?? 0;
                         const checkedInTodayCount = f.today_checked_in_players_count ?? 0;
                         return (
                             <div
@@ -339,10 +340,6 @@ export function FacilitiesPage() {
                                                 </div>
                                             </div>
                                             <p className="mt-3 text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                                {sessionCount === 0
-                                                    ? 'No Matches Yet'
-                                                    : `${sessionCount} match${sessionCount === 1 ? '' : 'es'}`}
-                                                {' \u2022 '}
                                                 {checkedInTodayCount} checked in player{checkedInTodayCount === 1 ? '' : 's'}
                                             </p>
                                         </div>

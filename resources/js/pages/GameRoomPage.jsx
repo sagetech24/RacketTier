@@ -212,6 +212,26 @@ export function GameRoomPage() {
         });
     }, [lobby?.sessions]);
 
+    const finishedLobbySessions = useMemo(() => {
+        const rows = lobby?.finished_sessions;
+        if (!rows?.length) {
+            return [];
+        }
+        return [...rows].sort((a, b) => {
+            const ea = a.ended_at ? Date.parse(a.ended_at) : 0;
+            const eb = b.ended_at ? Date.parse(b.ended_at) : 0;
+            if (Number.isFinite(ea) && Number.isFinite(eb) && ea !== eb) {
+                return eb - ea;
+            }
+            const fa = a.last_match?.finished_at ? Date.parse(a.last_match.finished_at) : 0;
+            const fb = b.last_match?.finished_at ? Date.parse(b.last_match.finished_at) : 0;
+            if (Number.isFinite(fa) && Number.isFinite(fb) && fa !== fb) {
+                return fb - fa;
+            }
+            return (b.id ?? 0) - (a.id ?? 0);
+        });
+    }, [lobby?.finished_sessions]);
+
     useEffect(() => {
         if (facilityIdNum == null) {
             setFacilityLabel('');
@@ -585,7 +605,7 @@ export function GameRoomPage() {
 
                 {!sessionIdParam && !error ? (
                     <section className="mb-8 space-y-3">
-                        <h2 className="text-lg font-bold text-[#e4e1e6]">Sessions at this facility</h2>
+                        <h2 className="text-lg font-bold text-[#e4e1e6]">Active Matches</h2>
                         {loading ? (
                             <div className="space-y-2">
                                 {Array.from({ length: 3 }).map((_, i) => (
@@ -652,7 +672,89 @@ export function GameRoomPage() {
                             </ul>
                         ) : (
                             <p className="rounded-xl bg-[#1b1b1e] px-4 py-4 text-sm text-[#918f9c]">
-                                No active sessions at this facility yet.
+                                No active matches at this facility yet.
+                            </p>
+                        )}
+                    </section>
+                ) : null}
+
+                {!sessionIdParam && !error ? (
+                    <section className="mb-8 space-y-3">
+                        <h2 className="text-lg font-bold text-[#e4e1e6]">Finished Today</h2>
+                        {loading ? (
+                            <div className="space-y-2">
+                                {Array.from({ length: 2 }).map((_, i) => (
+                                    <div key={i} className="h-[88px] animate-pulse rounded-xl bg-[#1b1b1e]" aria-hidden />
+                                ))}
+                            </div>
+                        ) : lobby && finishedLobbySessions.length > 0 ? (
+                            <ul className="space-y-2.5">
+                                {finishedLobbySessions.map((s) => {
+                                    const matchLabel =
+                                        s.match_type === 'doubles'
+                                            ? 'Doubles'
+                                            : s.match_type === 'singles'
+                                              ? 'Singles'
+                                              : s.match_type ?? '';
+                                    const participantNote =
+                                        typeof s.participant_count === 'number'
+                                            ? `${s.participant_count} player${s.participant_count === 1 ? '' : 's'}`
+                                            : null;
+                                    const scoreLine =
+                                        s.last_match?.team1_score != null && s.last_match?.team2_score != null
+                                            ? `Team 1 ${s.last_match.team1_score} — Team 2 ${s.last_match.team2_score}`
+                                            : null;
+                                    return (
+                                        <li key={s.id}>
+                                            <Link
+                                                to={`${gameRoomBase}?session=${s.id}`}
+                                                className="flex min-h-18 gap-3 rounded-xl border border-[#474651]/40 bg-[#1b1b1e] py-3 pl-4 pr-4 transition-colors hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22] border-l-4 border-l-red-400"
+                                                aria-label={`${s.sport?.name ?? 'Session'} finished, open details`}
+                                            >
+                                                <div className="shrink-0 pt-0.5">
+                                                    <SportIcon
+                                                        icon={s.sport?.icon ?? 'sports_tennis'}
+                                                        imgClassName="h-9 w-9 object-contain"
+                                                        materialClassName="text-3xl text-[#c2c1ff]"
+                                                    />
+                                                </div>
+                                                <div className="min-w-0 flex-1 pt-0.5">
+                                                    <p className="truncate text-sm font-bold text-[#e4e1e6]">
+                                                        {s.sport?.name ?? 'Session'}
+                                                        <span className="ml-1.5 font-mono text-xs font-normal text-[#918f9c]">
+                                                            #{s.id}
+                                                        </span>
+                                                    </p>
+                                                    <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
+                                                        {[matchLabel, s.game_type, participantNote, scoreLine]
+                                                            .filter(Boolean)
+                                                            .join(' · ')}
+                                                    </p>
+                                                    {s.last_match?.players?.length ? (
+                                                        <p className="mt-1 line-clamp-1 text-[11px] text-[#c8c5d2]">
+                                                            {s.last_match.players
+                                                                .slice(0, 4)
+                                                                .map((p) => p.name)
+                                                                .filter(Boolean)
+                                                                .join(' · ')}
+                                                            {s.last_match.players.length > 4 ? ' · …' : ''}
+                                                        </p>
+                                                    ) : null}
+                                                </div>
+                                                <div className="flex shrink-0 flex-col items-end justify-center gap-1">
+                                                    <span className="inline-flex rounded-full border border-red-400/35 bg-red-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-400">
+                                                        Ended
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-[#918f9c]">View →</span>
+                                                </div>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        ) : (
+                            <p className="rounded-xl bg-[#1b1b1e] px-4 py-4 text-sm text-[#918f9c]">
+                                No finished matches created today yet.
                             </p>
                         )}
                     </section>
@@ -693,7 +795,7 @@ export function GameRoomPage() {
                                 />
                             </label>
 
-                            <h3 className="mb-3 text-xs font-semibold text-[#e4e1e6]">Status Filters</h3>
+                            {/* <h3 className="mb-3 text-xs font-semibold text-[#e4e1e6]">Status Filters</h3> */}
                             <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filter players by status">
                                 <button
                                     type="button"
@@ -724,7 +826,7 @@ export function GameRoomPage() {
                                 </button>
                             </div>
 
-                            <p className="mt-4 mb-2 text-xs tracking-wide text-[#c8c5d2]">
+                            {/* <p className="mt-4 mb-2 text-xs tracking-wide text-[#c8c5d2]">
                                 Enable AI-integrated matchmaking to find your next match faster. (coming soon)
                             </p>
                             <label className="mb-5 flex cursor-pointer items-center justify-between gap-3 rounded-full bg-[#c2c1ff]/10 px-3 py-2 text-[10px] font-bold tracking-widest text-[#c2c1ff] uppercase opacity-70">
@@ -763,7 +865,7 @@ export function GameRoomPage() {
                                         <span className="thumb block h-6 w-6 translate-x-0 rounded-full bg-white shadow transition-transform duration-200 ease-out" />
                                     </span>
                                 </span>
-                            </label>
+                            </label> */}
                         </>
                     ) : null}
 

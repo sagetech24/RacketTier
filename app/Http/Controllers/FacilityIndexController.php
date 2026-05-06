@@ -18,6 +18,11 @@ class FacilityIndexController extends Controller
 
         $query = Facility::query()
             ->withCount('gameSessions')
+            ->withCount([
+                'gameSessions as today_matches_count' => function ($sub): void {
+                    $sub->whereDate('created_at', now()->toDateString());
+                },
+            ])
             ->select('facilities.*')
             ->selectSub(function ($sub): void {
                 $sub->from('game_session_players')

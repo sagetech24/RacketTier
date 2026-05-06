@@ -8,7 +8,12 @@
  *   is_playing?: boolean,
  *   is_in_queue?: boolean,
  * }} FacilityRosterPlayer
- * @typedef {{ facility: FacilitySummary, sessions: GameSessionSummary[], players: FacilityRosterPlayer[] }} FacilityGameRoomPayload
+ * @typedef {{
+ *   facility: FacilitySummary,
+ *   sessions: GameSessionSummary[],
+ *   finished_sessions?: GameSessionSummary[],
+ *   players: FacilityRosterPlayer[]
+ * }} FacilityGameRoomPayload
  */
 
 /**
