@@ -41,6 +41,7 @@ export function DashboardMobileNav() {
     const homeActive = pathname === '/dashboard';
     const rankingActive = pathname === '/ranking';
     const facilitiesActive = pathname === '/facility' || pathname === '/facilities' || pathname.startsWith('/facility/');
+    const profileActive = pathname === '/profile';
 
     return (
         <nav className="fixed bottom-0 left-0 z-50 w-full md:hidden" aria-label="Primary">
@@ -58,7 +59,7 @@ export function DashboardMobileNav() {
                     icon={IconBuilding}
                     active={facilitiesActive}
                 />
-                <DashboardMobileNavItem to="/" label="Profile" icon={IconUser} />
+                <DashboardMobileNavItem to="/profile" label="Profile" icon={IconUser} active={profileActive} />
             </div>
         </nav>
     );

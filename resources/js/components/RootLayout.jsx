@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { LogoutButton } from './LogoutButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const V2_SHELL_PATHS = new Set(['/dashboard', '/facilities', '/ranking']);
+const V2_SHELL_PATHS = new Set(['/dashboard', '/facilities', '/ranking', '/profile', '/activity']);
 
 function isV2DashboardShellPath(pathname) {
     if (V2_SHELL_PATHS.has(pathname)) {
@@ -20,7 +20,7 @@ export function RootLayout() {
 
     return (
         <div className="flex min-h-screen flex-col">
-            {!isLoginPage && !isRegisterPage && !isV2Shell ? (
+            {/* {!isLoginPage && !isRegisterPage && !isV2Shell ? (
                 <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 shadow-sm">
                     <div className="mx-auto flex max-w-5xl items-center justify-between">
                         <Link to="/" className="text-lg font-semibold tracking-tight text-white">
@@ -58,7 +58,7 @@ export function RootLayout() {
                         </nav>
                     </div>
                 </header>
-            ) : null}
+            ) : null} */}
             <main
                 className={
                     isLoginPage || isRegisterPage

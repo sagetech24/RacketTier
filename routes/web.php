@@ -8,13 +8,14 @@ use App\Http\Controllers\FacilityIndexController;
 use App\Http\Controllers\FacilityPlayersController;
 use App\Http\Controllers\FacilityStoreController;
 use App\Http\Controllers\FacilityUpdateController;
+use App\Http\Controllers\GameSessionFinishMatchController;
 use App\Http\Controllers\GameSessionIndexController;
 use App\Http\Controllers\GameSessionShowController;
-use App\Http\Controllers\GameSessionFinishMatchController;
 use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
 use App\Http\Controllers\RankingIndexController;
 use App\Http\Controllers\SportsListController;
+use App\Http\Controllers\UserActivityIndexController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -50,6 +51,8 @@ Route::middleware('auth')->group(function () {
     Route::view('/dashboard', 'app')->name('dashboard');
     Route::view('/facilities', 'app');
     Route::view('/ranking', 'app');
+    Route::view('/activity', 'app');
+    Route::view('/profile', 'app');
     Route::view('/facility/{facility}/game-room', 'app')->whereNumber('facility');
     Route::view('/facility/{facility}/create-match', 'app')->whereNumber('facility');
 
@@ -62,6 +65,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/auth/facilities/{facility}', FacilityUpdateController::class)->name('auth.facilities.update');
     Route::get('/auth/facility-players', [FacilityPlayersController::class, 'index'])->name('auth.facility-players');
     Route::get('/auth/game-sessions', [GameSessionIndexController::class, 'index'])->name('auth.game-sessions.index');
+    Route::get('/auth/activity', [UserActivityIndexController::class, 'index'])->name('auth.activity.index');
     Route::get('/auth/game-sessions/{gameSession}', [GameSessionShowController::class, 'show'])->name('auth.game-sessions.show');
     Route::post('/auth/game-sessions/{gameSession}/start-match', GameSessionStartMatchController::class)
         ->name('auth.game-sessions.start-match');

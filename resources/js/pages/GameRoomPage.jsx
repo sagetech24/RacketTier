@@ -525,14 +525,13 @@ export function GameRoomPage() {
                                         Last match result
                                     </h3>
                                     <p className="mt-2 text-sm font-semibold text-[#e4e1e6]">
-                                        Team 1 {sessionDetail.last_match.team1_score} — Team 2{' '}
-                                        {sessionDetail.last_match.team2_score}
-                                        {sessionDetail.last_match.winning_team != null ? (
-                                            <span className="ml-2 font-bold text-[#4ce081]">
-                                                (Winner: Team {sessionDetail.last_match.winning_team})
-                                            </span>
-                                        ) : null}
+                                        Team 1 : {sessionDetail.last_match.team1_score} — Team 2: {sessionDetail.last_match.team2_score}
                                     </p>
+                                    {sessionDetail.last_match.winning_team != null ? (
+                                        <p className="font-bold text-[#4ce081]">
+                                            Winner: Team {sessionDetail.last_match.winning_team}
+                                        </p>
+                                    ) : null}
                                     {sessionDetail.last_match.players?.length ? (
                                         <ul className="mt-3 space-y-2 border-t border-white/5 pt-3 text-xs text-[#c8c5d2]">
                                             {sessionDetail.last_match.players.map((p) => (
@@ -544,13 +543,12 @@ export function GameRoomPage() {
                                                         ) : (
                                                             <span className="ml-1.5 text-[#918f9c]">L</span>
                                                         )}
+                                                        <span className={p.rating_change >= 0 ? 'text-[#4ce081] ml-1' : 'text-[#ffb4ab] ml-1'}>
+                                                            ({p.rating_change >= 0 ? '+' : ''}
+                                                            {p.rating_change} rating)
+                                                        </span>
                                                     </span>
                                                     <span className="shrink-0 text-right tabular-nums">
-                                                        <span className={p.rating_change >= 0 ? 'text-[#4ce081]' : 'text-[#ffb4ab]'}>
-                                                            {p.rating_change >= 0 ? '+' : ''}
-                                                            {p.rating_change} Elo
-                                                        </span>
-                                                        <span className="text-[#918f9c]"> · </span>
                                                         <span className="text-[#c2c1ff]">+{p.session_points_earned} pts</span>
                                                     </span>
                                                 </li>
@@ -642,13 +640,14 @@ export function GameRoomPage() {
                                                 </div>
                                                 <div className="min-w-0 flex-1 pt-0.5">
                                                     <p className="truncate text-sm font-bold text-[#e4e1e6]">
-                                                        {s.sport?.name ?? 'Session'}
-                                                        <span className="ml-1.5 font-mono text-xs font-normal text-[#918f9c]">
+                                                        {/* {s.sport?.name ?? 'Session'} */}
+                                                        {/* <span className="ml-1.5 font-mono text-xs font-normal text-[#918f9c]">
                                                             #{s.id}
-                                                        </span>
+                                                        </span> */}
+                                                        {[s.sport?.name ?? 'Session', matchLabel].filter(Boolean).join(' · ')}
                                                     </p>
                                                     <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
-                                                        {[matchLabel, s.game_type, participantNote].filter(Boolean).join(' · ')}
+                                                        {[s.game_type, participantNote].filter(Boolean).join(' · ')}
                                                         {s.is_host ? (
                                                             <>
                                                                 {' '}
@@ -720,13 +719,15 @@ export function GameRoomPage() {
                                                 </div>
                                                 <div className="min-w-0 flex-1 pt-0.5">
                                                     <p className="truncate text-sm font-bold text-[#e4e1e6]">
-                                                        {s.sport?.name ?? 'Session'}
-                                                        <span className="ml-1.5 font-mono text-xs font-normal text-[#918f9c]">
-                                                            #{s.id}
-                                                        </span>
+                                                        {[s.sport?.name ?? 'Session', matchLabel].filter(Boolean).join(' · ')}
                                                     </p>
                                                     <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
-                                                        {[matchLabel, s.game_type, participantNote, scoreLine]
+                                                        {[s.game_type, participantNote]
+                                                            .filter(Boolean)
+                                                            .join(' · ')}
+                                                    </p>
+                                                    <p className="line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
+                                                        Score: {[scoreLine]
                                                             .filter(Boolean)
                                                             .join(' · ')}
                                                     </p>
@@ -741,11 +742,11 @@ export function GameRoomPage() {
                                                         </p>
                                                     ) : null}
                                                 </div>
-                                                <div className="flex shrink-0 flex-col items-end justify-center gap-1">
+                                                <div className="flex flex-col items-end justify-between gap-1">
                                                     <span className="inline-flex rounded-full border border-red-400/35 bg-red-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-400">
-                                                        Ended
+                                                        Finished
                                                     </span>
-                                                    <span className="text-[10px] font-medium text-[#918f9c]">View →</span>
+                                                    <span className="text-[12px] font-medium text-[#918f9c]">View →</span>
                                                 </div>
                                             </Link>
                                         </li>
