@@ -25,8 +25,8 @@ function filterButtonClass(active) {
         : 'rounded-full bg-[#353438] px-4 py-2 text-xs font-semibold text-[#e4e1e6]';
 }
 
-const PLAYER_LIST_INITIAL_COUNT = 6;
-const PLAYER_LIST_LOAD_STEP = 6;
+const PLAYER_LIST_INITIAL_COUNT = 4;
+const PLAYER_LIST_LOAD_STEP = 4;
 
 function TrophyIcon({ className }) {
     return (
@@ -403,6 +403,7 @@ export function GameRoomPage() {
         [visiblePlayers, visiblePlayerCount],
     );
     const hasMorePlayers = visiblePlayers.length > visiblePlayerCount;
+    const hasPlayersToRender = playersToRender.length > 0;
 
     const sessionHeadline = sessionDetail
         ? `${sessionDetail.sport?.name ?? 'Session'} · ${sessionDetail.match_type === 'doubles' ? 'Doubles' : 'Singles'}`
@@ -701,7 +702,7 @@ export function GameRoomPage() {
                                             : null;
                                     const scoreLine =
                                         s.last_match?.team1_score != null && s.last_match?.team2_score != null
-                                            ? `Team 1 ${s.last_match.team1_score} — Team 2 ${s.last_match.team2_score}`
+                                            ? `Team 1: ${s.last_match.team1_score} / Team 2: ${s.last_match.team2_score}`
                                             : null;
                                     return (
                                         <li key={s.id}>
@@ -727,10 +728,15 @@ export function GameRoomPage() {
                                                             .join(' · ')}
                                                     </p>
                                                     <p className="line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
-                                                        Score: {[scoreLine]
+                                                        {[scoreLine]
                                                             .filter(Boolean)
                                                             .join(' · ')}
                                                     </p>
+                                                    {s.last_match.winning_team != null ? (
+                                                        <p className="font-bold text-[#4ce081]">
+                                                            Winner: Team {s.last_match.winning_team}
+                                                        </p>
+                                                    ) : null}
                                                     {s.last_match?.players?.length ? (
                                                         <p className="mt-1 line-clamp-1 text-[11px] text-[#c8c5d2]">
                                                             {s.last_match.players
@@ -826,47 +832,6 @@ export function GameRoomPage() {
                                     In queue
                                 </button>
                             </div>
-
-                            {/* <p className="mt-4 mb-2 text-xs tracking-wide text-[#c8c5d2]">
-                                Enable AI-integrated matchmaking to find your next match faster. (coming soon)
-                            </p>
-                            <label className="mb-5 flex cursor-pointer items-center justify-between gap-3 rounded-full bg-[#c2c1ff]/10 px-3 py-2 text-[10px] font-bold tracking-widest text-[#c2c1ff] uppercase opacity-70">
-                                <span className="flex min-w-0 items-center gap-2">
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth={1.5}
-                                        stroke="currentColor"
-                                        className="size-5 shrink-0 stroke-[#4ce081]"
-                                        aria-hidden
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
-                                        />
-                                    </svg>
-                                    <span>AI-integrated matchmaking</span>
-                                </span>
-                                <span className="relative inline-flex shrink-0 items-center">
-                                    <input
-                                        type="checkbox"
-                                        disabled
-                                        role="switch"
-                                        checked={fastMatchmaking}
-                                        onChange={(e) => setFastMatchmaking(e.target.checked)}
-                                        className="peer sr-only"
-                                        aria-label="Fast matchmaking"
-                                    />
-                                    <span
-                                        className="relative flex h-7 w-12 items-center rounded-full bg-[#6b696f] p-0.5 transition-colors peer-checked:bg-[#4ce081]/85 peer-checked:[&>.thumb]:translate-x-[22px] peer-focus-visible:ring-2 peer-focus-visible:ring-[#c2c1ff]/50 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[#131316]"
-                                        aria-hidden
-                                    >
-                                        <span className="thumb block h-6 w-6 translate-x-0 rounded-full bg-white shadow transition-transform duration-200 ease-out" />
-                                    </span>
-                                </span>
-                            </label> */}
                         </>
                     ) : null}
 
@@ -876,7 +841,7 @@ export function GameRoomPage() {
                                 <div key={i} className="h-[88px] animate-pulse rounded-2xl bg-[#1b1b1e]" aria-hidden />
                             ))}
                         </div>
-                    ) : !sessionDetail?.players?.length && (!lobbyPlayerRows.length || sessionDetail) ? (
+                    ) : !hasPlayersToRender ? (
                         <p className="rounded-2xl bg-[#1b1b1e] px-4 py-6 text-center text-sm text-[#918f9c]">
                             {sessionIdParam
                                 ? 'No players on this session yet.'
@@ -923,7 +888,7 @@ export function GameRoomPage() {
                             ))}
                         </div>
                     )}
-                    {!loading && !(!sessionDetail?.players?.length && (!lobbyPlayerRows.length || sessionDetail)) && hasMorePlayers ? (
+                    {!loading && hasPlayersToRender && hasMorePlayers ? (
                         <div className="mt-4">
                             <button
                                 type="button"

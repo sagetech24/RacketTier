@@ -80,7 +80,7 @@ export function DashboardPage() {
     const streakPct = Math.min(100, Math.round((played / goalMatches) * 100));
 
     const tierLabel = summary?.tier
-        ? `Tier ${summary.tier.tier_no} ${summary.tier.name}`
+        ? `Tier ${summary.tier.tier_no} - ${summary.tier.name}`
         : summary?.primary_sport
           ? 'Unranked'
           : 'Play a match';
