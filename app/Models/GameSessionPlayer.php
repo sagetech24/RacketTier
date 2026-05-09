@@ -10,6 +10,7 @@ class GameSessionPlayer extends Model
     protected $fillable = [
         'game_session_id',
         'user_id',
+        'guest_name',
         'queue_position',
         'is_waiting',
         'is_playing',
@@ -48,5 +49,19 @@ class GameSessionPlayer extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function isGuest(): bool
+    {
+        return $this->user_id === null;
+    }
+
+    public function displayName(): string
+    {
+        if ($this->isGuest()) {
+            return (string) ($this->guest_name ?? 'Guest');
+        }
+
+        return (string) ($this->user?->name ?? 'Player');
     }
 }

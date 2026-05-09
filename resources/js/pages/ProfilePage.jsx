@@ -70,10 +70,7 @@ export function ProfilePage() {
                 <div className="mt-4 grid grid-cols-2 gap-4">
                     <div className="rounded-xl bg-[#1f1f22] p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">Current Rating</div>
-                        <div className="mt-1 text-2xl font-extrabold">{(stats?.rating / 100)?.toLocaleString?.(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                        }) ?? '0.00'}</div>
+                        <div className="mt-1 text-2xl font-extrabold">{stats?.rating / 100 ?? 1000}</div>
                     </div>
                     <div className="rounded-xl bg-[#1f1f22] p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">Matches</div>

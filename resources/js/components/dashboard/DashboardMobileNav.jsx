@@ -19,6 +19,17 @@ function IconTrophy({ className }) {
     );
 }
 
+function IconQueue({ className }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <path d="M3 7h18M3 12h18M3 17h18" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="6" cy="7" r="1" fill="currentColor" stroke="none" />
+            <circle cx="6" cy="12" r="1" fill="currentColor" stroke="none" />
+            <circle cx="6" cy="17" r="1" fill="currentColor" stroke="none" />
+        </svg>
+    );
+}
+
 function IconBuilding({ className }) {
     return (
         <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -40,6 +51,10 @@ export function DashboardMobileNav() {
     const { pathname } = useLocation();
     const homeActive = pathname === '/dashboard';
     const rankingActive = pathname === '/ranking';
+    const queueActive =
+        pathname === '/queueing-session' ||
+        pathname === '/queueing-session/new' ||
+        /^\/queueing-session\/\d+(\/(players|matches))?\/?$/.test(pathname);
     const facilitiesActive = pathname === '/facility' || pathname === '/facilities' || pathname.startsWith('/facility/');
     const profileActive = pathname === '/profile';
 
@@ -53,6 +68,7 @@ export function DashboardMobileNav() {
                     icon={IconTrophy}
                     active={rankingActive}
                 />
+                <DashboardMobileNavItem to="/queueing-session" label="Queue" icon={IconQueue} active={queueActive} />
                 <DashboardMobileNavItem
                     to="/facilities"
                     label="Facilities"

@@ -40,6 +40,7 @@ class CreateGameSession
         return DB::transaction(function () use ($creator, $facilityId, $sport, $matchType, $gameType, $courtPreference, $byTeamThenUser): array {
             $session = GameSession::query()->create([
                 'facility_id' => $facilityId,
+                'session_context' => 'facility',
                 'sport_id' => $sport->id,
                 'match_type' => $matchType,
                 'created_by' => $creator->id,

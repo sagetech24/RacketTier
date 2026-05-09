@@ -13,6 +13,12 @@ use App\Http\Controllers\GameSessionIndexController;
 use App\Http\Controllers\GameSessionShowController;
 use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
+use App\Http\Controllers\QueueingGameSessionEndController;
+use App\Http\Controllers\QueueingGameSessionStoreController;
+use App\Http\Controllers\QueueingGameSessionSummaryController;
+use App\Http\Controllers\QueueingSessionMatchesIndexController;
+use App\Http\Controllers\QueueingSessionPlayersDestroyController;
+use App\Http\Controllers\QueueingSessionPlayersStoreController;
 use App\Http\Controllers\RankingIndexController;
 use App\Http\Controllers\SportsListController;
 use App\Http\Controllers\UserActivityIndexController;
@@ -55,6 +61,11 @@ Route::middleware('auth')->group(function () {
     Route::view('/profile', 'app');
     Route::view('/facility/{facility}/game-room', 'app')->whereNumber('facility');
     Route::view('/facility/{facility}/create-match', 'app')->whereNumber('facility');
+    Route::view('/queueing-session', 'app');
+    Route::view('/queueing-session/new', 'app');
+    Route::view('/queueing-session/{id}', 'app')->whereNumber('id');
+    Route::view('/queueing-session/{id}/matches', 'app')->whereNumber('id');
+    Route::view('/queueing-session/{id}/players', 'app')->whereNumber('id');
 
     Route::get('/auth/sports', [SportsListController::class, 'index'])->name('auth.sports');
     Route::get('/auth/rankings', [RankingIndexController::class, 'index'])->name('auth.rankings');
@@ -72,6 +83,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/auth/game-sessions/{gameSession}/finish-match', GameSessionFinishMatchController::class)
         ->name('auth.game-sessions.finish-match');
     Route::post('/auth/game-sessions', [GameSessionStoreController::class, 'store'])->name('auth.game-sessions.store');
+
+    Route::post('/auth/queueing-sessions', [QueueingGameSessionStoreController::class, 'store'])->name('auth.queueing-sessions.store');
+    Route::post('/auth/queueing-sessions/{gameSession}/players', [QueueingSessionPlayersStoreController::class, 'store'])
+        ->name('auth.queueing-sessions.players.store');
+    Route::delete('/auth/queueing-sessions/{gameSession}/players/{gameSessionPlayer}', QueueingSessionPlayersDestroyController::class)
+        ->name('auth.queueing-sessions.players.destroy');
+    Route::post('/auth/queueing-sessions/{gameSession}/end', QueueingGameSessionEndController::class)
+        ->name('auth.queueing-sessions.end');
+    Route::get('/auth/queueing-sessions/{gameSession}/summary', QueueingGameSessionSummaryController::class)
+        ->name('auth.queueing-sessions.summary');
+    Route::get('/auth/queueing-sessions/{gameSession}/matches', QueueingSessionMatchesIndexController::class)
+        ->name('auth.queueing-sessions.matches.index');
 });
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

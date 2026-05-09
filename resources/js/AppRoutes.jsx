@@ -11,6 +11,11 @@ import { LoginPage } from './pages/LoginPage.jsx';
 import { ProfilePage } from './pages/ProfilePage.jsx';
 import { RankingPage } from './pages/RankingPage.jsx';
 import { RegisterPage } from './pages/RegisterPage.jsx';
+import { CreateQueueingSessionPage } from './pages/CreateQueueingSessionPage.jsx';
+import { QueueingSessionPage } from './pages/QueueingSessionPage.jsx';
+import { QueueingSessionListPage } from './pages/QueueingSessionListPage.jsx';
+import { QueueingSessionMatchesPage } from './pages/QueueingSessionMatchesPage.jsx';
+import { QueueingSessionPlayersPage } from './pages/QueueingSessionPlayersPage.jsx';
 
 export function AppRoutes() {
     return (
@@ -72,6 +77,46 @@ export function AppRoutes() {
                     element={
                         <ProtectedRoute>
                             <GameRoomPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="queueing-session"
+                    element={
+                        <ProtectedRoute>
+                            <QueueingSessionListPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="queueing-session/new"
+                    element={
+                        <ProtectedRoute>
+                            <CreateQueueingSessionPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="queueing-session/:id"
+                    element={
+                        <ProtectedRoute>
+                            <QueueingSessionPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="queueing-session/:id/players"
+                    element={
+                        <ProtectedRoute>
+                            <QueueingSessionPlayersPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="queueing-session/:id/matches"
+                    element={
+                        <ProtectedRoute>
+                            <QueueingSessionMatchesPage />
                         </ProtectedRoute>
                     }
                 />

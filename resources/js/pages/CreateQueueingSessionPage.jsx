@@ -1,0 +1,163 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import '../../css/dashboard-v2.css';
+import { fetchSports } from '../api/gameSession.js';
+import { postCreateQueueingSession } from '../api/queueingSession.js';
+import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
+import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+
+export function CreateQueueingSessionPage() {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const [sports, setSports] = useState(/** @type {import('../api/gameSession.js').SportRow[]} */ ([]));
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [sportSlug, setSportSlug] = useState('');
+    const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
+    const [winPoints, setWinPoints] = useState('30');
+    const [lossPoints, setLossPoints] = useState('8');
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+        async function load() {
+            setLoadError('');
+            setLoading(true);
+            try {
+                const rows = await fetchSports();
+                if (!cancelled) {
+                    setSports(rows);
+                    if (rows.length > 0) {
+                        setSportSlug((prev) => (rows.some((s) => s.slug === prev) ? prev : rows[0].slug));
+                    }
+                }
+            } catch {
+                if (!cancelled) setLoadError('Could not load sports.');
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        }
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    async function handleSubmit(e) {
+        e.preventDefault();
+        setSubmitError('');
+        const w = Number.parseInt(winPoints, 10);
+        const l = Number.parseInt(lossPoints, 10);
+        if (!Number.isFinite(w) || w < 0 || !Number.isFinite(l) || l < 0) {
+            setSubmitError('Enter valid point numbers.');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            const data = await postCreateQueueingSession({
+                sport_slug: sportSlug,
+                match_type: matchType,
+                win_points: w,
+                loss_points: l,
+            });
+            navigate(`/queueing-session/${data.id}`, { replace: true });
+        } catch (err) {
+            setSubmitError(err instanceof Error ? err.message : 'Could not create session.');
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    return (
+        <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
+            <DashboardV2Header user={user} profileLoading={false} />
+            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-28">
+                <h1 className="mb-2 text-2xl font-extrabold tracking-tight">New queueing session</h1>
+                <p className="mb-8 text-sm text-[#c8c5d2]/80">
+                    You will be the queue master. Add players on the next screen, then start matches when the roster is ready.
+                </p>
+
+                {loadError ? (
+                    <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{loadError}</p>
+                ) : null}
+
+                {loading ? (
+                    <div className="h-40 animate-pulse rounded-xl bg-[#2a2a2d]" />
+                ) : (
+                    <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-5">
+                        <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Sport</label>
+                            <select
+                                value={sportSlug}
+                                onChange={(e) => setSportSlug(e.target.value)}
+                                className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm font-medium text-[#e4e1e6]"
+                            >
+                                {sports.map((s) => (
+                                    <option key={s.slug} value={s.slug}>
+                                        {s.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
+                            <div className="flex gap-2">
+                                {(['singles', 'doubles']).map((t) => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
+                                        className={
+                                            matchType === t
+                                                ? 'flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
+                                                : 'flex-1 rounded-lg border border-[#2a2a2d] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
+                                        }
+                                    >
+                                        {t === 'singles' ? 'Singles' : 'Doubles'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={9999}
+                                    value={winPoints}
+                                    onChange={(e) => setWinPoints(e.target.value)}
+                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Loss points</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={9999}
+                                    value={lossPoints}
+                                    onChange={(e) => setLossPoints(e.target.value)}
+                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                />
+                            </div>
+                        </div>
+                        {submitError ? (
+                            <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{submitError}</p>
+                        ) : null}
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="w-full rounded-xl bg-[#4ce081] py-3 text-sm font-bold text-[#003919] disabled:opacity-50"
+                        >
+                            {submitting ? 'Creating…' : 'Create session'}
+                        </button>
+                    </form>
+                )}
+            </main>
+            <DashboardMobileNav />
+        </div>
+    );
+}

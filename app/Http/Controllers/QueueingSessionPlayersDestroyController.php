@@ -2,32 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\FinishGameSessionMatch;
-use App\Http\Requests\FinishGameSessionMatchRequest;
+use App\Actions\RemoveQueueingSessionPlayer;
+use App\Http\Requests\DestroyQueueingSessionPlayerRequest;
 use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
+use App\Models\GameSessionPlayer;
 use Illuminate\Http\JsonResponse;
 
-class GameSessionFinishMatchController extends Controller
+class QueueingSessionPlayersDestroyController extends Controller
 {
     public function __invoke(
-        FinishGameSessionMatchRequest $request,
+        DestroyQueueingSessionPlayerRequest $request,
         GameSession $gameSession,
-        FinishGameSessionMatch $finishGameSessionMatch,
+        GameSessionPlayer $gameSessionPlayer,
+        RemoveQueueingSessionPlayer $action,
     ): JsonResponse {
-        $validated = $request->validated();
-
-        $finishGameSessionMatch->execute(
-            $gameSession,
-            (int) $validated['team1_score'],
-            (int) $validated['team2_score'],
-            isset($validated['queueing_session_match_id']) ? (int) $validated['queueing_session_match_id'] : null,
-        );
+        $action->execute($gameSession, $gameSessionPlayer);
 
         $gameSession->refresh();
         $gameSession->load([
             'sport',
-            'facility',
             'creator:id,name,email',
             'players' => fn ($q) => $q->orderByDesc('is_playing')->orderBy('queue_position'),
             'players.user:id,name,email',

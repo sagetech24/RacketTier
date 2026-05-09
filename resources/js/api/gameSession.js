@@ -25,12 +25,16 @@ export async function fetchSports() {
 
 /**
  * @param {string} [q]
+ * @param {{ includeMe?: boolean }} [opts]
  * @returns {Promise<FacilityPlayerRow[]>}
  */
-export async function fetchFacilityPlayers(q = '') {
+export async function fetchFacilityPlayers(q = '', opts = {}) {
     const params = new URLSearchParams();
     if (q.trim()) {
         params.set('q', q.trim());
+    }
+    if (opts.includeMe) {
+        params.set('include_me', '1');
     }
     const qs = params.toString();
     const url = qs ? `/auth/facility-players?${qs}` : '/auth/facility-players';
@@ -86,6 +90,10 @@ export function postCreateGameSession(payload) {
  *
  * @typedef {{
  *   id: number,
+ *   session_context?: string,
+ *   win_points?: number | null,
+ *   loss_points?: number | null,
+ *   completed_matches_count?: number,
  *   facility?: { id: number, name: string, address: string | null },
  *   sport: { slug: string, name: string, code: string, icon?: string },
  *   match_type: string,
@@ -107,9 +115,11 @@ export function postCreateGameSession(payload) {
  *     team?: number | null,
  *     wins_count?: number,
  *     losses_count?: number,
- *     session_points?: number,
- *     elo_rating?: number,
- *     user: { id: number, name: string, email: string },
+ *     session_points?: number | null,
+ *     elo_rating?: number | null,
+ *     is_guest?: boolean,
+ *     guest_name?: string | null,
+ *     user: { id: number, name: string, email: string } | null,
  *   }>,
  * }} GameSessionDetail
  */
@@ -182,6 +192,9 @@ export async function postStartGameSessionMatch(id, opts = {}) {
     if (opts.facilityId != null && String(opts.facilityId).trim() !== '') {
         body.facility_id = Number(opts.facilityId);
     }
+    if (Array.isArray(opts.lineup) && opts.lineup.length > 0) {
+        body.lineup = opts.lineup;
+    }
     const res = await postJson(`/auth/game-sessions/${encodeURIComponent(String(id))}/start-match`, body);
     if (res.status === 401) {
         throw new Error('Unauthorized');
@@ -215,7 +228,7 @@ export async function postStartGameSessionMatch(id, opts = {}) {
 
 /**
  * @param {string | number} id
- * @param {{ team1_score: number, team2_score: number, facilityId?: number | string }} body
+ * @param {{ team1_score: number, team2_score: number, facilityId?: number | string, queueingSessionMatchId?: number | string }} body
  * @returns {Promise<GameSessionDetail>}
  */
 export async function postFinishGameSessionMatch(id, body) {
@@ -225,6 +238,9 @@ export async function postFinishGameSessionMatch(id, body) {
     };
     if (body.facilityId != null && String(body.facilityId).trim() !== '') {
         payload.facility_id = Number(body.facilityId);
+    }
+    if (body.queueingSessionMatchId != null && String(body.queueingSessionMatchId).trim() !== '') {
+        payload.queueing_session_match_id = Number(body.queueingSessionMatchId);
     }
     const res = await postJson(`/auth/game-sessions/${encodeURIComponent(String(id))}/finish-match`, payload);
     if (res.status === 401) {

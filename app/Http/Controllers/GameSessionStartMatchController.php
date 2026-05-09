@@ -12,7 +12,12 @@ class GameSessionStartMatchController extends Controller
 {
     public function __invoke(StartGameSessionMatchRequest $request, GameSession $gameSession, StartGameSessionMatch $startGameSessionMatch): JsonResponse
     {
-        $startGameSessionMatch->execute($gameSession);
+        $validated = $request->validated();
+        $lineup = isset($validated['lineup']) && is_array($validated['lineup']) && $validated['lineup'] !== []
+            ? $validated['lineup']
+            : null;
+
+        $startGameSessionMatch->execute($gameSession, $lineup);
 
         $gameSession->refresh();
         $gameSession->load([

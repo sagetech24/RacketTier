@@ -27,6 +27,7 @@ class FinishGameSessionMatchRequest extends FormRequest
     {
         return [
             'facility_id' => ['sometimes', 'integer', 'exists:facilities,id'],
+            'queueing_session_match_id' => ['sometimes', 'integer', 'exists:queueing_session_matches,id'],
             'team1_score' => ['required', 'integer', 'min:0', 'max:999'],
             'team2_score' => ['required', 'integer', 'min:0', 'max:999'],
         ];
@@ -40,7 +41,7 @@ class FinishGameSessionMatchRequest extends FormRequest
                 return;
             }
             $fid = $this->input('facility_id');
-            if ($fid !== null && $fid !== '' && (int) $fid !== (int) $session->facility_id) {
+            if ($fid !== null && $fid !== '' && $session->facility_id !== null && (int) $fid !== (int) $session->facility_id) {
                 $validator->errors()->add('facility_id', 'Session does not belong to this facility.');
             }
         });

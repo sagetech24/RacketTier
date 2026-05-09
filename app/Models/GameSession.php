@@ -11,6 +11,10 @@ class GameSession extends Model
 {
     protected $fillable = [
         'facility_id',
+        'session_context',
+        'win_points',
+        'loss_points',
+        'completed_matches_count',
         'sport_id',
         'match_type',
         'created_by',
@@ -34,6 +38,9 @@ class GameSession extends Model
     {
         return [
             'is_active' => 'boolean',
+            'win_points' => 'integer',
+            'loss_points' => 'integer',
+            'completed_matches_count' => 'integer',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'last_finished_at' => 'datetime',
@@ -74,6 +81,14 @@ class GameSession extends Model
     }
 
     /**
+     * @return HasMany<QueueingSessionMatch, $this>
+     */
+    public function queueingMatches(): HasMany
+    {
+        return $this->hasMany(QueueingSessionMatch::class)->orderBy('match_no');
+    }
+
+    /**
      * @param  Builder<GameSession>  $query
      * @return Builder<GameSession>
      */
@@ -85,5 +100,21 @@ class GameSession extends Model
                     $p->where('user_id', $user->id);
                 });
         });
+    }
+
+    public function isQueueing(): bool
+    {
+        return $this->session_context === 'queueing';
+    }
+
+    public function userCanView(User $user): bool
+    {
+        if ((int) $this->created_by === (int) $user->id) {
+            return true;
+        }
+
+        return $this->players()
+            ->where('user_id', $user->id)
+            ->exists();
     }
 }

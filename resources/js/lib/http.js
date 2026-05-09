@@ -50,6 +50,21 @@ export function patchJson(url, body) {
     });
 }
 
+/**
+ * @param {string} url
+ * @returns {Promise<Response>}
+ */
+export function deleteJson(url) {
+    return fetch(url, {
+        method: 'DELETE',
+        headers: {
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+        },
+        credentials: 'same-origin',
+    });
+}
+
 export function postForm(url, fields) {
     const body = new URLSearchParams();
     for (const [key, value] of Object.entries(fields)) {

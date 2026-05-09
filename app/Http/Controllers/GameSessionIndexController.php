@@ -16,6 +16,7 @@ class GameSessionIndexController extends Controller
 
         $validated = $request->validate([
             'facility_id' => ['sometimes', 'integer', 'exists:facilities,id'],
+            'session_context' => ['sometimes', 'string', 'in:facility,queueing'],
         ]);
 
         $query = GameSession::query()
@@ -24,6 +25,10 @@ class GameSessionIndexController extends Controller
             ->when(
                 isset($validated['facility_id']),
                 fn ($q) => $q->where('facility_id', $validated['facility_id']),
+            )
+            ->when(
+                isset($validated['session_context']),
+                fn ($q) => $q->where('session_context', $validated['session_context']),
             )
             ->with(['sport', 'facility', 'creator:id,name,email'])
             ->withCount('players')

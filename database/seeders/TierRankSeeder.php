@@ -19,7 +19,7 @@ class TierRankSeeder extends Seeder
             ['tier_no' => 2, 'name' => 'Beginner', 'start_point' => 2001, 'end_point' => 4000],
             ['tier_no' => 3, 'name' => 'Intermediate', 'start_point' => 4001, 'end_point' => 6000],
             ['tier_no' => 4, 'name' => 'Sempai', 'start_point' => 6001, 'end_point' => 8000],
-            ['tier_no' => 5, 'name' => 'Sensie', 'start_point' => 8001, 'end_point' => 9_999_999],
+            ['tier_no' => 5, 'name' => 'Sensie', 'start_point' => 8001, 'end_point' => 10000],
         ];
 
         foreach (Sport::query()->orderBy('id')->get() as $sport) {

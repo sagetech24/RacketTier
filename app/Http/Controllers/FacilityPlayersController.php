@@ -15,8 +15,10 @@ class FacilityPlayersController extends Controller
 
         $q = trim((string) $request->query('q', ''));
 
+        $includeMe = $request->boolean('include_me');
+
         $query = User::query()
-            ->whereKeyNot($user->id)
+            ->when(! $includeMe, fn ($q) => $q->whereKeyNot($user->id))
             ->orderBy('name')
             ->limit(60);
 

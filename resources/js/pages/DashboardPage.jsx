@@ -220,6 +220,20 @@ export function DashboardPage() {
                     </Link>
                 </div>
 
+                <Link
+                    to="/queueing-session/new"
+                    className="mb-10 flex items-center justify-between rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] px-5 py-4 transition-transform active:scale-[0.99]"
+                >
+                    <div className="flex items-center gap-3">
+                        <MaterialIcon name="format_list_numbered" className="text-3xl text-[#4ce081]" />
+                        <div>
+                            <h3 className="text-lg font-bold text-[#e4e1e6]">Queueing session</h3>
+                            <p className="text-xs text-[#c8c5d2]/80">Run a multi-match queue as queue master</p>
+                        </div>
+                    </div>
+                    <MaterialIcon name="chevron_right" className="text-[#918f9c]" />
+                </Link>
+
                 <section className="mb-6">
                     <div className="mb-6 flex items-end justify-between">
                         <h2 className="text-xl font-bold tracking-tight text-[#e4e1e6]">Recent Activity</h2>

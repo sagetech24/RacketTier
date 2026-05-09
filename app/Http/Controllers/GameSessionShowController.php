@@ -17,10 +17,26 @@ class GameSessionShowController extends Controller
         $validated = $request->validate([
             'facility_id' => ['sometimes', 'integer', 'exists:facilities,id'],
         ]);
-        if (isset($validated['facility_id']) && (int) $validated['facility_id'] !== (int) $gameSession->facility_id) {
+
+        $qFacility = $validated['facility_id'] ?? null;
+        if ($qFacility !== null && $qFacility !== '' && $gameSession->facility_id !== null) {
+            if ((int) $qFacility !== (int) $gameSession->facility_id) {
+                abort(404);
+            }
+            if ($gameSession->is_active) {
+                return $this->sessionResponse($gameSession);
+            }
+        }
+
+        if (! $gameSession->userCanView($user)) {
             abort(404);
         }
 
+        return $this->sessionResponse($gameSession);
+    }
+
+    private function sessionResponse(GameSession $gameSession): JsonResponse
+    {
         $gameSession->load([
             'sport',
             'facility',

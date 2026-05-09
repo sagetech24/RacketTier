@@ -8,7 +8,18 @@ function isV2DashboardShellPath(pathname) {
     if (V2_SHELL_PATHS.has(pathname)) {
         return true;
     }
-    return /^\/facility\/\d+\/(game-room|create-match)$/.test(pathname);
+    if (/^\/facility\/\d+\/(game-room|create-match)$/.test(pathname)) {
+        return true;
+    }
+    // Queueing session flows use the same full-width shell as dashboard (no outer max-w-5xl padding).
+    if (
+        pathname === '/queueing-session' ||
+        pathname === '/queueing-session/new' ||
+        /^\/queueing-session\/\d+(\/(players|matches))?\/?$/.test(pathname)
+    ) {
+        return true;
+    }
+    return false;
 }
 
 export function RootLayout() {
@@ -20,45 +31,6 @@ export function RootLayout() {
 
     return (
         <div className="flex min-h-screen flex-col">
-            {/* {!isLoginPage && !isRegisterPage && !isV2Shell ? (
-                <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 shadow-sm">
-                    <div className="mx-auto flex max-w-5xl items-center justify-between">
-                        <Link to="/" className="text-lg font-semibold tracking-tight text-white">
-                            {typeof window !== 'undefined' && window.__RT_APP_NAME__
-                                ? window.__RT_APP_NAME__
-                                : 'App'}
-                        </Link>
-                        <nav className="flex items-center gap-4 text-sm font-medium">
-                            {user ? (
-                                <>
-                                    <Link
-                                        to="/dashboard"
-                                        className="text-zinc-400 transition hover:text-white"
-                                    >
-                                        Dashboard
-                                    </Link>
-                                    <LogoutButton className="text-sm text-zinc-400 underline decoration-zinc-600 underline-offset-2 transition hover:text-white" />
-                                </>
-                            ) : (
-                                <>
-                                    <Link
-                                        to="/login"
-                                        className="text-zinc-400 transition hover:text-white"
-                                    >
-                                        Log in
-                                    </Link>
-                                    <Link
-                                        to="/register"
-                                        className="rounded-lg bg-primary px-3 py-2 text-white transition hover:brightness-110"
-                                    >
-                                        Register
-                                    </Link>
-                                </>
-                            )}
-                        </nav>
-                    </div>
-                </header>
-            ) : null} */}
             <main
                 className={
                     isLoginPage || isRegisterPage

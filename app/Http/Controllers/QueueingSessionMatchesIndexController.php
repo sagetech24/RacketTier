@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\ListQueueingSessionMatchesRequest;
+use App\Http\Resources\QueueingSessionMatchResource;
+use App\Models\GameSession;
+use App\Models\QueueingSessionMatch;
+use Illuminate\Http\JsonResponse;
+
+class QueueingSessionMatchesIndexController extends Controller
+{
+    public function __invoke(
+        ListQueueingSessionMatchesRequest $request,
+        GameSession $gameSession,
+    ): JsonResponse {
+        $matches = QueueingSessionMatch::query()
+            ->where('game_session_id', $gameSession->id)
+            ->orderByDesc('match_no')
+            ->get();
+
+        return response()->json([
+            'data' => QueueingSessionMatchResource::collection($matches),
+        ]);
+    }
+}

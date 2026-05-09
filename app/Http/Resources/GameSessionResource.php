@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\GameSession;
+use App\Models\GameSessionPlayer;
 use App\Models\Ranking;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -33,11 +34,18 @@ class GameSessionResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'facility' => $this->whenLoaded('facility', fn (): array => [
-                'id' => $this->facility?->id,
-                'name' => $this->facility?->name,
-                'address' => $this->facility?->address,
-            ]),
+            'session_context' => $this->session_context ?? 'facility',
+            'win_points' => $this->win_points !== null ? (int) $this->win_points : null,
+            'loss_points' => $this->loss_points !== null ? (int) $this->loss_points : null,
+            'completed_matches_count' => (int) ($this->completed_matches_count ?? 0),
+            'facility' => $this->when(
+                $this->relationLoaded('facility') && $this->facility_id !== null,
+                fn (): array => [
+                    'id' => $this->facility?->id,
+                    'name' => $this->facility?->name,
+                    'address' => $this->facility?->address,
+                ],
+            ),
             'sport' => [
                 'slug' => $this->sport?->slug,
                 'name' => $this->sport?->name,
@@ -75,7 +83,9 @@ class GameSessionResource extends JsonResource
                     ['is_playing', 'desc'],
                     ['queue_position', 'asc'],
                 ])->values()->map(function ($p) use ($eloByUser): array {
-                    $uid = (int) ($p->user?->id ?? 0);
+                    /** @var GameSessionPlayer $p */
+                    $uid = $p->user_id !== null ? (int) $p->user_id : null;
+                    $isGuest = $p->isGuest();
 
                     return [
                         'id' => $p->id,
@@ -85,13 +95,17 @@ class GameSessionResource extends JsonResource
                         'team' => $p->team,
                         'wins_count' => (int) ($p->wins_count ?? 0),
                         'losses_count' => (int) ($p->losses_count ?? 0),
-                        'session_points' => (int) ($p->session_points ?? 0),
-                        'elo_rating' => $uid > 0 ? (int) ($eloByUser[$uid] ?? 1000) : 1000,
-                        'user' => [
-                            'id' => $p->user?->id,
-                            'name' => $p->user?->name,
-                            'email' => $p->user?->email,
-                        ],
+                        'session_points' => $isGuest ? null : (int) ($p->session_points ?? 0),
+                        'elo_rating' => $isGuest || $uid === null ? null : (int) ($eloByUser[$uid] ?? 1000),
+                        'is_guest' => $isGuest,
+                        'guest_name' => $p->guest_name,
+                        'user' => $isGuest
+                            ? null
+                            : [
+                                'id' => $p->user?->id,
+                                'name' => $p->user?->name,
+                                'email' => $p->user?->email,
+                            ],
                     ];
                 });
             }),
