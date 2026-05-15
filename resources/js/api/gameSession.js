@@ -2,7 +2,7 @@ import { postJson } from '../lib/http.js';
 
 /**
  * @typedef {{ id: number, slug: string, name: string, code: string, icon: string }} SportRow
- * @typedef {{ id: number, name: string, email: string }} FacilityPlayerRow
+ * @typedef {{ id: number, name: string, email: string, tier?: { id: number, tier_no: number, name: string } | null }} FacilityPlayerRow
  */
 
 /**
@@ -25,7 +25,7 @@ export async function fetchSports() {
 
 /**
  * @param {string} [q]
- * @param {{ includeMe?: boolean }} [opts]
+ * @param {{ includeMe?: boolean, sportId?: number | string }} [opts]
  * @returns {Promise<FacilityPlayerRow[]>}
  */
 export async function fetchFacilityPlayers(q = '', opts = {}) {
@@ -35,6 +35,9 @@ export async function fetchFacilityPlayers(q = '', opts = {}) {
     }
     if (opts.includeMe) {
         params.set('include_me', '1');
+    }
+    if (opts.sportId != null && String(opts.sportId).trim() !== '') {
+        params.set('sport_id', String(opts.sportId));
     }
     const qs = params.toString();
     const url = qs ? `/auth/facility-players?${qs}` : '/auth/facility-players';
@@ -91,11 +94,12 @@ export function postCreateGameSession(payload) {
  * @typedef {{
  *   id: number,
  *   session_context?: string,
+ *   queue_name?: string | null,
  *   win_points?: number | null,
  *   loss_points?: number | null,
  *   completed_matches_count?: number,
  *   facility?: { id: number, name: string, address: string | null },
- *   sport: { slug: string, name: string, code: string, icon?: string },
+ *   sport: { id?: number, slug: string, name: string, code: string, icon?: string },
  *   match_type: string,
  *   game_type: string,
  *   court_preference: string | null,
@@ -120,6 +124,7 @@ export function postCreateGameSession(payload) {
  *     is_guest?: boolean,
  *     guest_name?: string | null,
  *     user: { id: number, name: string, email: string } | null,
+ *     tier?: { id: number, tier_no: number, name: string } | null,
  *   }>,
  * }} GameSessionDetail
  */

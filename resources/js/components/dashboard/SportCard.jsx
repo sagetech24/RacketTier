@@ -18,7 +18,7 @@ export function SportCard({ name, icon, symbol, selected = false, onClick }) {
                 'group relative w-full cursor-pointer overflow-hidden rounded-xl p-6 text-left transition-all',
                 selected
                     ? 'bg-[#c2c1ff]'
-                    : 'border-2 border-transparent bg-[#1f1f22] hover:border-[#c2c1ff]/30',
+                    : 'border-2 border-transparent bg-[#2e2e31] hover:border-[#c2c1ff]/30',
             ].join(' ')}
         >
             <div className="mb-8 flex items-start justify-between">
@@ -36,8 +36,8 @@ export function SportCard({ name, icon, symbol, selected = false, onClick }) {
             <h3
                 className={
                     selected
-                        ? 'text-xl font-extrabold tracking-tight text-[#003919] lg:text-2xl'
-                        : 'text-xl font-extrabold tracking-tight text-[#c8c5d2] group-hover:text-[#c2c1ff] lg:text-2xl'
+                        ? 'text-lg font-extrabold tracking-tight text-[#003919] lg:text-xl'
+                        : 'text-lg font-extrabold tracking-tight text-[#c8c5d2] group-hover:text-[#c2c1ff] lg:text-xl'
                 }
             >
                 {name}

@@ -12,6 +12,7 @@ class GameSession extends Model
     protected $fillable = [
         'facility_id',
         'session_context',
+        'queue_name',
         'win_points',
         'loss_points',
         'completed_matches_count',

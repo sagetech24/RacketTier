@@ -16,6 +16,7 @@ class QueueingGameSessionStoreTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Friday Night Smash',
             'sport_slug' => 'badminton',
             'match_type' => 'singles',
             'win_points' => 30,
@@ -25,6 +26,7 @@ class QueueingGameSessionStoreTest extends TestCase
         $response->assertCreated();
         $response->assertJsonPath('data.session_context', 'queueing');
         $response->assertJsonPath('data.status', 'queueing');
+        $response->assertJsonPath('data.queue_name', 'Friday Night Smash');
         $response->assertJsonPath('data.win_points', 30);
         $response->assertJsonPath('data.loss_points', 8);
 
@@ -33,5 +35,6 @@ class QueueingGameSessionStoreTest extends TestCase
         $session = GameSession::query()->findOrFail($id);
         $this->assertTrue($session->isQueueing());
         $this->assertNull($session->facility_id);
+        $this->assertSame('Friday Night Smash', $session->queue_name);
     }
 }

@@ -4,7 +4,9 @@ namespace App\Http\Resources;
 
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Models\MemberPointWallet;
 use App\Models\Ranking;
+use App\Models\TierRank;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,20 +23,36 @@ class GameSessionResource extends JsonResource
         $user = $request->user();
 
         $eloByUser = [];
+        $walletBalanceByUser = [];
+        $tierRowsForSport = collect();
         if ($this->relationLoaded('players') && $this->sport_id) {
             $uids = $this->players->pluck('user_id')->unique()->filter()->values()->all();
             if ($uids !== []) {
+                $sportId = (int) $this->sport_id;
                 $eloByUser = Ranking::query()
-                    ->where('sport_id', (int) $this->sport_id)
+                    ->where('sport_id', $sportId)
                     ->whereIn('user_id', $uids)
                     ->pluck('rating', 'user_id')
                     ->all();
+
+                $walletBalanceByUser = MemberPointWallet::query()
+                    ->where('sport_id', $sportId)
+                    ->whereIn('user_id', $uids)
+                    ->pluck('balance', 'user_id')
+                    ->all();
+
+                $tierRowsForSport = TierRank::query()
+                    ->where('sport_id', $sportId)
+                    ->where('status', true)
+                    ->orderBy('tier_no')
+                    ->get();
             }
         }
 
         return [
             'id' => $this->id,
             'session_context' => $this->session_context ?? 'facility',
+            'queue_name' => $this->queue_name,
             'win_points' => $this->win_points !== null ? (int) $this->win_points : null,
             'loss_points' => $this->loss_points !== null ? (int) $this->loss_points : null,
             'completed_matches_count' => (int) ($this->completed_matches_count ?? 0),
@@ -47,6 +65,7 @@ class GameSessionResource extends JsonResource
                 ],
             ),
             'sport' => [
+                'id' => $this->sport?->id,
                 'slug' => $this->sport?->slug,
                 'name' => $this->sport?->name,
                 'code' => $this->sport?->code,
@@ -78,14 +97,29 @@ class GameSessionResource extends JsonResource
                 'email' => $this->creator?->email,
             ]),
             'participant_count' => $this->whenCounted('players'),
-            'players' => $this->whenLoaded('players', function () use ($eloByUser) {
+            'players' => $this->whenLoaded('players', function () use ($eloByUser, $walletBalanceByUser, $tierRowsForSport) {
                 return $this->players->sortBy([
                     ['is_playing', 'desc'],
                     ['queue_position', 'asc'],
-                ])->values()->map(function ($p) use ($eloByUser): array {
+                ])->values()->map(function ($p) use ($eloByUser, $walletBalanceByUser, $tierRowsForSport): array {
                     /** @var GameSessionPlayer $p */
                     $uid = $p->user_id !== null ? (int) $p->user_id : null;
                     $isGuest = $p->isGuest();
+
+                    $tier = null;
+                    if (! $isGuest && $uid !== null && $tierRowsForSport->isNotEmpty()) {
+                        $balance = (int) ($walletBalanceByUser[$uid] ?? 0);
+                        $tierRow = $tierRowsForSport->first(
+                            fn (TierRank $row): bool => $row->start_point <= $balance && $row->end_point >= $balance
+                        );
+                        if ($tierRow !== null) {
+                            $tier = [
+                                'id' => (int) $tierRow->id,
+                                'tier_no' => (int) $tierRow->tier_no,
+                                'name' => (string) $tierRow->name,
+                            ];
+                        }
+                    }
 
                     return [
                         'id' => $p->id,
@@ -97,6 +131,7 @@ class GameSessionResource extends JsonResource
                         'losses_count' => (int) ($p->losses_count ?? 0),
                         'session_points' => $isGuest ? null : (int) ($p->session_points ?? 0),
                         'elo_rating' => $isGuest || $uid === null ? null : (int) ($eloByUser[$uid] ?? 1000),
+                        'tier' => $tier,
                         'is_guest' => $isGuest,
                         'guest_name' => $p->guest_name,
                         'user' => $isGuest

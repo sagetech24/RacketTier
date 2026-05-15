@@ -14,6 +14,7 @@ class CreateQueueingGameSession
      */
     public function execute(
         User $creator,
+        string $queueName,
         string $sportSlug,
         string $matchType,
         int $winPoints,
@@ -21,10 +22,11 @@ class CreateQueueingGameSession
     ): array {
         $sport = Sport::query()->where('slug', $sportSlug)->firstOrFail();
 
-        return DB::transaction(function () use ($creator, $sport, $matchType, $winPoints, $lossPoints): array {
+        return DB::transaction(function () use ($creator, $sport, $queueName, $matchType, $winPoints, $lossPoints): array {
             $session = GameSession::query()->create([
                 'facility_id' => null,
                 'session_context' => 'queueing',
+                'queue_name' => $queueName,
                 'win_points' => $winPoints,
                 'loss_points' => $lossPoints,
                 'completed_matches_count' => 0,

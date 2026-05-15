@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchFacilityPlayers, fetchGameSession } from '../api/gameSession.js';
 import { deleteQueueingSessionPlayer, postAddQueueingSessionPlayer } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
 
 function displayName(row) {
     if (row.is_guest) return row.guest_name || 'Guest';
@@ -14,6 +16,7 @@ function displayName(row) {
 
 export function QueueingSessionPlayersPage() {
     const { id: idParam } = useParams();
+    const location = useLocation();
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
 
@@ -55,7 +58,10 @@ export function QueueingSessionPlayersPage() {
         const t = window.setTimeout(() => {
             (async () => {
                 try {
-                    const rows = await fetchFacilityPlayers(playerSearch, { includeMe: true });
+                    const rows = await fetchFacilityPlayers(playerSearch, {
+                        includeMe: true,
+                        sportId: session?.sport?.id,
+                    });
                     if (!cancelled) setSearchRows(rows);
                 } catch {
                     if (!cancelled) setSearchRows([]);
@@ -66,7 +72,7 @@ export function QueueingSessionPlayersPage() {
             cancelled = true;
             window.clearTimeout(t);
         };
-    }, [playerSearch]);
+    }, [playerSearch, session?.sport?.id]);
 
     const isHost = Boolean(session?.is_host);
     const canManagePlayers = isHost && session?.is_active && session?.status === 'queueing';
@@ -128,90 +134,76 @@ export function QueueingSessionPlayersPage() {
         }
     }
 
+    const navPath = normalizedAppPath(location.pathname);
+    const queueingNav = session != null ? queueingSessionNavPaths(session.id) : { dash: '', players: '', matches: '' };
+
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-2xl px-4 pb-32 pt-24">
-                <div className="mb-4 flex items-center justify-between">
-                    <div className="flex gap-4">
-                        <Link to={sessionId == null ? '/queueing-session' : `/queueing-session/${sessionId}`} className="text-sm text-[#918f9c] hover:text-[#4ce081]">
-                            ← Queueing dashboard
-                        </Link>
-                        {sessionId != null ? (
-                            <Link to={`/queueing-session/${sessionId}/matches`} className="text-sm text-[#918f9c] hover:text-[#4ce081]">
-                                Matches
-                            </Link>
-                        ) : null}
-                    </div>
-                    <Link to="/queueing-session" className="text-sm text-[#918f9c] hover:text-[#4ce081]">
-                        All sessions
-                    </Link>
-                </div>
-
-                <h1 className="mb-2 text-2xl font-extrabold tracking-tight">Queue players</h1>
-                <p className="mb-5 text-sm text-[#c8c5d2]/80">
-                    QM can add and remove players while session is queueing. Non-QM users are view-only.
-                </p>
-
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-28">
                 {loading ? <div className="h-32 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
 
                 {session ? (
                     <div className="space-y-4">
-                        <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e]">
-                            <article className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
-                                <div className="mb-2 flex items-center justify-between gap-2">
-                                    <h2 className="flex items-center gap-2 text-base font-bold">
-                                        {/* <SportIcon icon={row.sport?.icon} className="text-[#4ce081]" /> */}
-                                        {session.sport?.name} Queue
-                                    </h2>
-                                    <span
-                                        className={
-                                            session.is_active
-                                                ? 'capitalize rounded-full bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
-                                                : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
-                                        }
-                                    >
-                                        {session.is_active ? session.status : 'finished'}
-                                    </span>
+                        <section>
+                            <article>
+                                <div className="flex items-start gap-2 mb-2">
+                                    <SportIcon icon={session.sport?.icon} className="text-[#4ce081]" />
+                                    <h1 className="mb-4 text-3xl font-extrabold leading-none tracking-tighter md:text-3xl">
+                                        {session.queue_name?.trim() ? (
+                                            session.queue_name.trim()
+                                        ) : (
+                                            <>
+                                                {session.sport?.name}{' '}
+                                                <span className="text-[#c2c1ff]">Queue</span>
+                                            </>
+                                        )}
+                                    </h1>
                                 </div>
                                 <p className="text-sm text-[#c8c5d2]/90 capitalize">
-                                    {session.match_type} · Queue Master: {session.created_by?.name ?? 'Unknown'}
+                                    Game Type: {session.match_type}
+                                </p>
+                                <p className="text-sm text-[#c8c5d2]/90 capitalize">
+                                    Queue Master: {session.created_by?.name ?? 'Unknown'}
                                 </p>
                                 <p className="mt-1 text-xs text-[#918f9c]">
                                     Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}<br />
                                     Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}<br />
-                                    Players: {session.participant_count ?? 0}
+                                    Total Players: {session.participant_count ?? 0}
                                 </p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    <Link
-                                        to={`/queueing-session/${session.id}`}
-                                        className="rounded-lg border border-[#818184] px-3 py-1.5 text-xs font-semibold hover:border-[#4ce081]/60"
-                                    >
-                                        Dashboard
-                                    </Link>
-                                    <Link
-                                        to={`/queueing-session/${session.id}/players`}
-                                        className="rounded-lg border border-[#818184] px-3 py-1.5 text-xs font-semibold hover:border-[#4ce081]/60"
-                                    >
-                                        Players
-                                    </Link>
-                                    <Link
-                                        to={`/queueing-session/${session.id}/matches`}
-                                        className="rounded-lg border border-[#818184] px-3 py-1.5 text-xs font-semibold hover:border-[#4ce081]/60"
-                                    >
-                                        Matches
-                                    </Link>
+                                <div className="mt-3 flex justify-between">
+                                    <div className="flex flex-wrap gap-2">
+                                        <Link to={queueingNav.dash} className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-white/70 border-white/70`}>
+                                            Dashboard
+                                        </Link>
+                                        <Link to={queueingNav.players} className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-white/70 border-white/70`}>
+                                            Players
+                                        </Link>
+                                        <Link to={queueingNav.matches} className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-white/70 border-white/70`}>
+                                            Matches
+                                        </Link>
+                                    </div>
+                                    <div className="mb-2 flex items-center justify-between gap-2">
+                                        <span
+                                            className={
+                                                session.is_active
+                                                    ? 'capitalize rounded-full bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
+                                                    : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
+                                            }
+                                        >
+                                            {session.is_active ? session.status : 'finished'}
+                                        </span>
+                                    </div>
                                 </div>
+                                {!canManagePlayers ? (
+                                    <p className="mt-4 text-sm text-[#918f9c]">
+                                        {isHost
+                                            ? 'Player changes are locked once a match is ongoing or session is ended.'
+                                            : 'View-only access. Only QM can manage this roster.'}
+                                    </p>
+                                ) : null}
                             </article>
-
-                            {!canManagePlayers ? (
-                                <p className="mt-2 text-xs text-[#918f9c]">
-                                    {isHost
-                                        ? 'Player changes are locked once a match is ongoing or session is ended.'
-                                        : 'View-only access. Only QM can manage this roster.'}
-                                </p>
-                            ) : null}
                         </section>
 
                         {actionError ? (
@@ -219,40 +211,51 @@ export function QueueingSessionPlayersPage() {
                         ) : null}
 
                         {canManagePlayers ? (
-                            <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
+                            <section className="rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4">
                                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Add players</h2>
                                 <input
                                     value={playerSearch}
                                     onChange={(e) => setPlayerSearch(e.target.value)}
                                     placeholder="Search members…"
-                                    className="mb-2 w-full rounded-lg border border-[#2a2a2d] bg-[#131316] p-4 text-sm"
+                                    className="mb-2 w-full rounded-lg border border-[#3c3c3e] bg-[#131316] p-3 text-md focus:ring-[#4ce081] focus:ring-1 outline-none"
                                 />
-                                <div className="max-h-44 space-y-1 overflow-y-auto">
+                                <div className="max-h-44 space-y-1.5 overflow-y-auto">
                                     {addablePlayers.map((r) => (
                                         <button
                                             key={r.id}
                                             type="button"
                                             disabled={busy}
                                             onClick={() => onAddMember(r.id)}
-                                            className="flex w-full items-center justify-between rounded-lg border border-[#2a2a2d] px-3 py-2 text-left text-sm hover:border-[#4ce081]/50"
+                                            className="line-clamp-2 flex w-full items-center justify-between rounded-lg bg-white/10 border border-[#514c53] px-3 py-2 text-left text-md hover:border-[#4ce081]/50"
                                         >
-                                            <span>{r.name}</span>
-                                            <span className="text-xs text-[#918f9c]">Add</span>
+                                            <span className="flex min-w-0 flex-1 items-center gap-2">
+                                                <span className="truncate">{r.name}</span>
+                                                {session?.sport?.id != null ? (
+                                                    <span
+                                                        className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
+                                                        title="Tier for this session’s sport (lifetime session points)"
+                                                    >
+                                                        {r.tier?.name ?? '—'}
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                            <span className="text-xs text-[#c2c1ff]/70">ADD</span>
                                         </button>
                                     ))}
                                 </div>
+                                <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide text-[#918f9c] text-center">or Add a Guest Player</h2>
                                 <div className="mt-3 flex gap-2">
                                     <input
                                         value={guestName}
                                         onChange={(e) => setGuestName(e.target.value)}
                                         placeholder="Add Guest Player Name"
-                                        className="min-w-0 flex-1 rounded-lg border border-[#2a2a2d] bg-[#131316] p-3 text-sm"
+                                        className="min-w-0 flex-1 rounded-lg border border-[#3c3c3e] bg-[#131316] p-3 text-md focus:ring-[#4ce081] focus:ring-1 outline-none"
                                     />
                                     <button
                                         type="button"
                                         disabled={busy}
                                         onClick={() => onAddGuest()}
-                                        className="rounded-lg bg-[#353438] px-4 py-2 text-sm font-bold"
+                                        className="rounded bg-[#3c3c3e] px-3 py-2 text-md font-bold"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -263,18 +266,32 @@ export function QueueingSessionPlayersPage() {
                             </section>
                         ) : null}
 
-                        <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
-                            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Current Players</h2>
-                            <ul className="space-y-2">
+                        <section>
+                            <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
+                                Current <span className="text-[#c2c1ff]">Players</span>
+                            </h1>
+                            <ul className="space-y-3">
                                 {(session.players ?? []).map((p) => (
-                                    <li key={p.id} className="flex items-center justify-between rounded-lg border border-[#2a2a2d] px-3 py-2 text-sm">
+                                    <li key={p.id} className="flex items-center justify-between rounded-lg bg-[#2a2a2d] border border-[#2a2a2d] px-3 py-3 text-sm shadow-sm">
                                         <div>
-                                            <span className="font-semibold capitalize">{displayName(p)}</span>
-                                            {p.is_guest ? <span className="ml-2 text-xs text-[#918f9c]">(Guest)</span> : null}
+                                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                                <span className="font-semibold capitalize">{displayName(p)}</span>
+                                                {p.is_guest ?
+                                                    <span
+                                                        className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
+                                                        title="Guest Player"
+                                                    >Guest</span> : null}
+                                                {!p.is_guest && session?.sport?.id != null ? (
+                                                    <span
+                                                        className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
+                                                        title="Tier for this session’s sport (lifetime session points)"
+                                                    >
+                                                        {p.tier?.name ?? '—'}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                             <div className="text-xs text-[#918f9c]">
-                                                {/* show the points earned by the player */}
                                                 {p.session_points ? `Earned: ${p.session_points} points` : null}
-                                                {/* {p.is_playing ? 'Playing' : p.is_waiting ? `Queue #${p.queue_position}` : 'Idle'} */}
                                             </div>
                                         </div>
                                         {canManagePlayers && !p.is_playing ? (

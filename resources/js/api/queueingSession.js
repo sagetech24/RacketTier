@@ -2,6 +2,7 @@ import { deleteJson, postJson } from '../lib/http.js';
 
 /**
  * @param {{
+ *   queue_name: string,
  *   sport_slug: string,
  *   match_type: 'singles' | 'doubles',
  *   win_points: number,
@@ -69,7 +70,13 @@ export async function fetchQueueingSessions(opts = {}) {
         rows = rows.filter((row) => {
             const sport = (row.sport?.name ?? '').toLowerCase();
             const creator = (row.created_by?.name ?? '').toLowerCase();
-            return sport.includes(needle) || creator.includes(needle) || String(row.id).includes(needle);
+            const qName = (row.queue_name ?? '').toLowerCase();
+            return (
+                qName.includes(needle) ||
+                sport.includes(needle) ||
+                creator.includes(needle) ||
+                String(row.id).includes(needle)
+            );
         });
     }
 

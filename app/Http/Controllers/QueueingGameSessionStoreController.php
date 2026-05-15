@@ -16,6 +16,7 @@ class QueueingGameSessionStoreController extends Controller
 
         $result = $action->execute(
             $user,
+            $request->validated('queue_name'),
             $request->validated('sport_slug'),
             $request->validated('match_type'),
             (int) $request->validated('win_points'),

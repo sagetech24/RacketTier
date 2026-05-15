@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchGameSession } from '../api/gameSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
 
 /**
  * @param {import('../api/gameSession.js').GameSessionDetail['players'] extends (infer U)[] | undefined ? U : never} row
@@ -17,6 +18,7 @@ function displayName(row) {
 
 export function QueueingSessionPage() {
     const { id: idParam } = useParams();
+    const location = useLocation();
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
 
@@ -74,6 +76,10 @@ export function QueueingSessionPage() {
         return rows;
     }, [session?.players]);
 
+    const navPath = normalizedAppPath(location.pathname);
+    const queueingNav =
+        session != null ? queueingSessionNavPaths(session.id) : { dash: '', players: '', matches: '' };
+
     if (sessionId == null) {
         return (
             <div className="dashboard-v2-shell bg-[#131316] p-8 text-[#e4e1e6]">
@@ -88,7 +94,7 @@ export function QueueingSessionPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen max-w-lg px-4 pb-32 pt-24">
+            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-28">
                 {loading ? <div className="h-32 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="text-red-300">{error}</p> : null}
 
@@ -99,63 +105,84 @@ export function QueueingSessionPage() {
                                 This session is not a queueing session. Use the facility game room for facility matches.
                             </p>
                         ) : null}
-                        <header className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 mt-1">
-                            <div className="mb-2 flex items-center gap-2">
-                                <SportIcon icon={session.sport?.icon} className="text-2xl text-[#4ce081]" />
-                                <h1 className="text-xl font-extrabold">{session.sport?.name} Queue</h1>
-                            </div>
-                            <p className="text-sm text-[#c8c5d2]/80">
-                                Game Type: {session.match_type}
-                            </p>
-                            <p className="text-sm text-[#c8c5d2]/80">
-                                Queue Master: {session.created_by?.name ?? 'Unknown'}
-                            </p>
-                            <p className="text-sm text-[#c8c5d2]/80">
-                                Win +{session.win_points ?? '—'} / Loss +
-                                {session.loss_points ?? '—'}
-                            </p>
-                            <p className="mt-2 text-xs text-[#918f9c]">
-                                Status: <span className="font-bold text-[#e4e1e6] capitalize">{session.status}</span>
-                            </p>
-                            <div className="mt-3">
-                                <div className="flex flex-wrap gap-2">
-                                    <Link
-                                        to={`/queueing-session/${session.id}/players`}
-                                        className="rounded-lg border border-[#818184] px-3 py-1.5 text-xs font-semibold hover:border-[#4ce081]/60"
-                                    >
-                                        Players
-                                    </Link>
-                                    <Link
-                                        to={`/queueing-session/${session.id}/matches`}
-                                        className="rounded-lg border border-[#818184] px-3 py-1.5 text-xs font-semibold hover:border-[#4ce081]/60"
-                                    >
-                                        Matches
-                                    </Link>
-                                </div>
-                            </div>
-                        </header>
+                        {/* <header className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 mt-1"> */}
 
-                        <h2 className="mb-3 text-lg font-bold uppercase tracking-wide text-[#918f9c]">Leaderboard</h2>
+                        <section>
+                            <article>
+                                <div className="flex items-start gap-2 mb-2">
+                                    <SportIcon icon={session.sport?.icon} className="text-[#4ce081]" />
+                                    <h1 className="mb-4 text-3xl font-extrabold leading-none tracking-tighter md:text-3xl">
+                                        {session.queue_name?.trim() ? (
+                                            session.queue_name.trim()
+                                        ) : (
+                                            <>
+                                                {session.sport?.name}{' '}
+                                                <span className="text-[#c2c1ff]">Queue</span>
+                                            </>
+                                        )}
+                                    </h1>
+                                </div>
+                                <p className="text-sm text-[#c8c5d2]/90 capitalize">
+                                    Game Type: {session.match_type}
+                                </p>
+                                <p className="text-sm text-[#c8c5d2]/90 capitalize">
+                                    Queue Master: {session.created_by?.name ?? 'Unknown'}
+                                </p>
+                                <p className="mt-1 text-xs text-[#918f9c]">
+                                    Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}<br />
+                                    Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}<br />
+                                    Total Players: {session.participant_count ?? 0}
+                                </p>
+                                <div className="mt-3 flex justify-between">
+                                    <div className="flex flex-wrap gap-2">
+                                        <Link to={queueingNav.dash} className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-white/70 border-white/70`}>
+                                            Dashboard
+                                        </Link>
+                                        <Link to={queueingNav.players} className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-white/70 border-white/70`}>
+                                            Players
+                                        </Link>
+                                        <Link to={queueingNav.matches} className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-white/70 border-white/70`}>
+                                            Matches
+                                        </Link>
+                                    </div>
+                                    <div className="mb-2 flex items-center justify-between gap-2">
+                                        <span
+                                            className={
+                                                session.is_active
+                                                    ? 'capitalize rounded-full bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
+                                                    : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
+                                            }
+                                        >
+                                            {session.is_active ? session.status : 'finished'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </article>
+                        </section>
+
+                        <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
+                            Leader<span className="text-[#c2c1ff]">Board</span>
+                        </h1>
                         <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
                                     <thead>
                                         <tr className="text-xs text-[#918f9c]">
-                                            <th className="pb-2 pr-2">Player</th>
-                                            <th className="pb-2 pr-2">W</th>
-                                            <th className="pb-2 pr-2">L</th>
-                                            <th className="pb-2 pr-2">TOTAL</th>
-                                            <th className="pb-2 pr-2">PTS</th>
+                                            <th className="pb-2 text-left">Player</th>
+                                            <th className="pb-2 text-center">W</th>
+                                            <th className="pb-2 text-center">L</th>
+                                            <th className="pb-2 text-center">TOTAL</th>
+                                            <th className="pb-2 text-center">PTS</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {leaderboard.map((p) => (
                                             <tr key={p.id} className="border-t border-[#2a2a2d]">
-                                                <td className="py-2 pr-2 font-medium capitalize">{displayName(p)}</td>
-                                                <td className="py-2 pr-2">{p.wins_count ?? 0}</td>
-                                                <td className="py-2 pr-2">{p.losses_count ?? 0}</td>
-                                                <td className="py-2 pr-2">{(p.wins_count ?? 0) + (p.losses_count ?? 0)}</td>
-                                                <td className="py-2 pr-2">{p.session_points == null ? '—' : p.session_points}</td>
+                                                <td className="py-2 text-left font-medium capitalize">{displayName(p)}</td>
+                                                <td className="py-2 text-center">{p.wins_count ?? 0}</td>
+                                                <td className="py-2 text-center">{p.losses_count ?? 0}</td>
+                                                <td className="py-2 text-center">{(p.wins_count ?? 0) + (p.losses_count ?? 0)}</td>
+                                                <td className="py-2 text-center">{p.session_points == null ? '—' : p.session_points}</td>
                                             </tr>
                                         ))}
                                     </tbody>

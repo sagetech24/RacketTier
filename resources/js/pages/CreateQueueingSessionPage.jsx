@@ -4,6 +4,7 @@ import '../../css/dashboard-v2.css';
 import { fetchSports } from '../api/gameSession.js';
 import { postCreateQueueingSession } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
+import { SportCard } from '../components/dashboard/SportCard.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -13,6 +14,7 @@ export function CreateQueueingSessionPage() {
     const [sports, setSports] = useState(/** @type {import('../api/gameSession.js').SportRow[]} */ ([]));
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
+    const [queueName, setQueueName] = useState('');
     const [sportSlug, setSportSlug] = useState('');
     const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
     const [winPoints, setWinPoints] = useState('30');
@@ -54,9 +56,15 @@ export function CreateQueueingSessionPage() {
             setSubmitError('Enter valid point numbers.');
             return;
         }
+        const name = queueName.trim();
+        if (!name) {
+            setSubmitError('Enter a name for this queue.');
+            return;
+        }
         setSubmitting(true);
         try {
             const data = await postCreateQueueingSession({
+                queue_name: name,
                 sport_slug: sportSlug,
                 match_type: matchType,
                 win_points: w,
@@ -74,7 +82,9 @@ export function CreateQueueingSessionPage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
             <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-28">
-                <h1 className="mb-2 text-2xl font-extrabold tracking-tight">New queueing session</h1>
+                <h1 className="mb-2 text-2xl font-extrabold tracking-tight">
+                    Create <span className="text-[#c2c1ff]">New Queue</span>
+                </h1>
                 <p className="mb-8 text-sm text-[#c8c5d2]/80">
                     You will be the queue master. Add players on the next screen, then start matches when the roster is ready.
                 </p>
@@ -84,22 +94,50 @@ export function CreateQueueingSessionPage() {
                 ) : null}
 
                 {loading ? (
-                    <div className="h-40 animate-pulse rounded-xl bg-[#2a2a2d]" />
+                    <div className="grid grid-cols-2 gap-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div
+                                key={i}
+                                className="h-[120px] animate-pulse rounded-xl bg-[#1b1b1e]"
+                                aria-hidden
+                            />
+                        ))}
+                    </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-5">
                         <div>
-                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Sport</label>
-                            <select
-                                value={sportSlug}
-                                onChange={(e) => setSportSlug(e.target.value)}
-                                className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm font-medium text-[#e4e1e6]"
-                            >
-                                {sports.map((s) => (
-                                    <option key={s.slug} value={s.slug}>
-                                        {s.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <label htmlFor="queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
+                                Name of the queue
+                            </label>
+                            <input
+                                id="queue-name"
+                                type="text"
+                                value={queueName}
+                                onChange={(e) => setQueueName(e.target.value)}
+                                maxLength={120}
+                                placeholder="e.g. Friday night doubles"
+                                autoComplete="off"
+                                className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60"
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-4 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Sport</label>
+                            {sports.length === 0 ? (
+                                <p className="text-sm text-[#918f9c]">No sports configured. Run database migrations.</p>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {sports.map((s) => (
+                                        <SportCard
+                                            key={s.id}
+                                            name={s.name}
+                                            icon={s.icon}
+                                            symbol={s.code}
+                                            selected={sportSlug === s.slug}
+                                            onClick={() => setSportSlug(s.slug)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
@@ -152,7 +190,7 @@ export function CreateQueueingSessionPage() {
                             disabled={submitting}
                             className="w-full rounded-xl bg-[#4ce081] py-3 text-sm font-bold text-[#003919] disabled:opacity-50"
                         >
-                            {submitting ? 'Creating…' : 'Create session'}
+                            {submitting ? 'Creating…' : 'Create Queue'}
                         </button>
                     </form>
                 )}

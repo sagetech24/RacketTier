@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchGameSession, postFinishGameSessionMatch, postStartGameSessionMatch } from '../api/gameSession.js';
 import { fetchQueueingSessionMatches } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
 
 function formatTime(iso) {
     if (!iso) return '—';
@@ -22,6 +24,7 @@ function statusClass(status) {
 
 export function QueueingSessionMatchesPage() {
     const { id: idParam } = useParams();
+    const location = useLocation();
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
     const [session, setSession] = useState(null);
@@ -138,26 +141,70 @@ export function QueueingSessionMatchesPage() {
         Boolean(session?.is_host) &&
         Boolean(session?.is_active);
 
+    const navPath = normalizedAppPath(location.pathname);
+    const queueingNav = session != null ? queueingSessionNavPaths(session.id) : { dash: '', players: '', matches: '' };
+
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-3xl px-4 pb-32 pt-24">
-                {/* <div className="mb-4 flex items-center justify-between">
-                    <Link to={sessionId == null ? '/queueing-session' : `/queueing-session/${sessionId}`} className="text-sm text-[#918f9c] hover:text-[#4ce081]">
-                        ← Queueing dDashboard
-                    </Link>
-                    <Link to="/queueing-session" className="text-sm text-[#918f9c] hover:text-[#4ce081]">
-                        All sessions
-                    </Link>
-                </div> */}
-
-                {/* <h1 className="text-2xl font-extrabold tracking-tight">Session matches</h1>
-                <p className="mb-5 text-sm text-[#c8c5d2]/80">
-                    {session ? `Session #${session.id} · ${session.sport?.name} · ${session.match_type}` : 'Queueing session match history'}
-                </p> */}
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-28">
                 {loading ? <div className="h-36 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
                 {actionError ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p> : null}
+
+                {session ? (
+                    <article>
+                        <div className="flex items-start gap-2 mb-2">
+                            <SportIcon icon={session.sport?.icon} className="text-[#4ce081]" />
+                            <h1 className="mb-4 text-3xl font-extrabold leading-none tracking-tighter md:text-3xl">
+                                {session.queue_name?.trim() ? (
+                                    session.queue_name.trim()
+                                ) : (
+                                    <>
+                                        {session.sport?.name}{' '}
+                                        <span className="text-[#c2c1ff]">Queue</span>
+                                    </>
+                                )}
+                            </h1>
+                        </div>
+                        <p className="text-sm text-[#c8c5d2]/90 capitalize">
+                            Game Type: {session.match_type}
+                        </p>
+                        <p className="text-sm text-[#c8c5d2]/90 capitalize">
+                            Queue Master: {session.created_by?.name ?? 'Unknown'}
+                        </p>
+                        <p className="mt-1 text-xs text-[#918f9c]">
+                            Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}<br />
+                            Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}<br />
+                            Total Players: {session.participant_count ?? 0}
+                        </p>
+                    
+                        <div className="mt-3 mb-6 flex justify-between">
+                            <div className="flex flex-wrap gap-2">
+                                <Link to={queueingNav.dash} className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-white/70 border-white/70`}>
+                                    Dashboard
+                                </Link>
+                                <Link to={queueingNav.players} className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-white/70 border-white/70`}>
+                                    Players
+                                </Link>
+                                <Link to={queueingNav.matches} className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-white/70 border-white/70`}>
+                                    Matches
+                                </Link>
+                            </div>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <span
+                                    className={
+                                        session.is_active
+                                            ? 'capitalize rounded-full bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
+                                            : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
+                                    }
+                                >
+                                    {session.is_active ? session.status : 'finished'}
+                                </span>
+                            </div>
+                        </div>
+                    </article>    
+                ) : null}
 
                 {!loading && !error ? (
                     <div className="space-y-5">
