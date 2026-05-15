@@ -6,6 +6,7 @@ use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class GameSessionIndexController extends Controller
 {
@@ -37,8 +38,30 @@ class GameSessionIndexController extends Controller
 
         $sessions = $query->get();
 
-        return response()->json([
+        $payload = [
             'data' => GameSessionResource::collection($sessions),
-        ]);
+        ];
+
+        if (($validated['session_context'] ?? null) === 'queueing') {
+            $tz = (string) config('app.timezone');
+            $startOfToday = Carbon::now($tz)->startOfDay();
+            $endOfToday = Carbon::now($tz)->endOfDay();
+
+            $finishedToday = GameSession::query()
+                ->where('session_context', 'queueing')
+                ->where('is_active', false)
+                ->whereUserIsParticipant($user)
+                ->whereBetween('ended_at', [$startOfToday, $endOfToday])
+                ->with(['sport', 'facility', 'creator:id,name,email'])
+                ->withCount('players')
+                ->orderByDesc('ended_at')
+                ->orderByDesc('updated_at')
+                ->limit(25)
+                ->get();
+
+            $payload['finished_today'] = GameSessionResource::collection($finishedToday);
+        }
+
+        return response()->json($payload);
     }
 }

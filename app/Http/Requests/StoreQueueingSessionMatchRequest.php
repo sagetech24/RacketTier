@@ -7,7 +7,7 @@ use App\Models\GameSessionPlayer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
-class StartGameSessionMatchRequest extends FormRequest
+class StoreQueueingSessionMatchRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -18,7 +18,8 @@ class StartGameSessionMatchRequest extends FormRequest
             return false;
         }
 
-        return (int) $session->created_by === (int) $user->id;
+        return $session->isQueueing()
+            && (int) $session->created_by === (int) $user->id;
     }
 
     /**
@@ -27,9 +28,8 @@ class StartGameSessionMatchRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'facility_id' => ['sometimes', 'integer', 'exists:facilities,id'],
-            'lineup' => ['sometimes', 'array'],
-            'lineup.*.id' => ['required_with:lineup', 'integer', 'exists:game_session_players,id'],
+            'lineup' => ['required', 'array'],
+            'lineup.*.id' => ['required', 'integer', 'exists:game_session_players,id'],
             'lineup.*.team' => ['nullable', 'integer', 'in:1,2'],
         ];
     }
@@ -41,19 +41,9 @@ class StartGameSessionMatchRequest extends FormRequest
             if (! $session instanceof GameSession) {
                 return;
             }
-            $fid = $this->input('facility_id');
-            if ($fid !== null && $fid !== '' && $session->facility_id !== null && (int) $fid !== (int) $session->facility_id) {
-                $validator->errors()->add('facility_id', 'Session does not belong to this facility.');
-            }
 
             $lineup = $this->input('lineup');
-            if (! is_array($lineup) || $lineup === []) {
-                return;
-            }
-
-            if ($session->isQueueing()) {
-                $validator->errors()->add('lineup', 'Use the create match endpoint for queueing session lineups.');
-
+            if (! is_array($lineup)) {
                 return;
             }
 

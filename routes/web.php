@@ -16,7 +16,10 @@ use App\Http\Controllers\GameSessionStoreController;
 use App\Http\Controllers\QueueingGameSessionEndController;
 use App\Http\Controllers\QueueingGameSessionStoreController;
 use App\Http\Controllers\QueueingGameSessionSummaryController;
+use App\Http\Controllers\QueueingSessionMatchDestroyController;
 use App\Http\Controllers\QueueingSessionMatchesIndexController;
+use App\Http\Controllers\QueueingSessionMatchesStoreController;
+use App\Http\Controllers\QueueingSessionMatchStartController;
 use App\Http\Controllers\QueueingSessionPlayersDestroyController;
 use App\Http\Controllers\QueueingSessionPlayersStoreController;
 use App\Http\Controllers\RankingIndexController;
@@ -95,6 +98,12 @@ Route::middleware('auth')->group(function () {
         ->name('auth.queueing-sessions.summary');
     Route::get('/auth/queueing-sessions/{gameSession}/matches', QueueingSessionMatchesIndexController::class)
         ->name('auth.queueing-sessions.matches.index');
+    Route::post('/auth/queueing-sessions/{gameSession}/matches', QueueingSessionMatchesStoreController::class)
+        ->name('auth.queueing-sessions.matches.store');
+    Route::post('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}/start', QueueingSessionMatchStartController::class)
+        ->name('auth.queueing-sessions.matches.start');
+    Route::delete('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}', QueueingSessionMatchDestroyController::class)
+        ->name('auth.queueing-sessions.matches.destroy');
 });
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

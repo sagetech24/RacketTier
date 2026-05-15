@@ -1,0 +1,185 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\GameSession;
+use App\Models\GameSessionPlayer;
+use App\Models\QueueingSessionMatch;
+use App\Models\Sport;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class QueueingSessionMatchTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function seedQueueingDoublesSession(User $host): GameSession
+    {
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Test Queue',
+            'match_type' => 'doubles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $users = [$host, User::factory()->create(), User::factory()->create(), User::factory()->create()];
+        $pos = 1;
+        foreach ($users as $u) {
+            GameSessionPlayer::query()->create([
+                'game_session_id' => $session->id,
+                'user_id' => $u->id,
+                'queue_position' => $pos++,
+                'is_waiting' => true,
+                'is_playing' => false,
+            ]);
+        }
+
+        return $session;
+    }
+
+    /**
+     * @return list<GameSessionPlayer>
+     */
+    private function players(GameSession $session): array
+    {
+        return GameSessionPlayer::query()
+            ->where('game_session_id', $session->id)
+            ->orderBy('queue_position')
+            ->get()
+            ->all();
+    }
+
+    public function test_host_can_create_queued_match_without_putting_players_on_court(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedQueueingDoublesSession($host);
+        $players = $this->players($session);
+
+        $lineup = [
+            ['id' => $players[0]->id, 'team' => 1],
+            ['id' => $players[1]->id, 'team' => 1],
+            ['id' => $players[2]->id, 'team' => 2],
+            ['id' => $players[3]->id, 'team' => 2],
+        ];
+
+        $response = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            ['lineup' => $lineup],
+        );
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.status', 'queueing');
+        $response->assertJsonPath('data.started_at', null);
+
+        $this->assertDatabaseHas('queueing_session_matches', [
+            'game_session_id' => $session->id,
+            'status' => 'queueing',
+        ]);
+
+        foreach ($players as $p) {
+            $p->refresh();
+            $this->assertTrue($p->is_waiting);
+            $this->assertFalse($p->is_playing);
+        }
+
+        $session->refresh();
+        $this->assertSame('queueing', $session->status);
+    }
+
+    public function test_host_can_start_queued_match_and_delete_queued_match(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedQueueingDoublesSession($host);
+        $players = $this->players($session);
+
+        $create = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $players[0]->id, 'team' => 1],
+                    ['id' => $players[1]->id, 'team' => 1],
+                    ['id' => $players[2]->id, 'team' => 2],
+                    ['id' => $players[3]->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $matchId = (int) $create->json('data.id');
+
+        $start = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId.'/start',
+        );
+
+        $start->assertOk();
+        $start->assertJsonPath('data.status', 'ongoing');
+
+        $match = QueueingSessionMatch::query()->findOrFail($matchId);
+        $this->assertSame('ongoing', $match->status);
+        $this->assertNotNull($match->started_at);
+
+        foreach (array_slice($players, 0, 4) as $p) {
+            $p->refresh();
+            $this->assertTrue($p->is_playing);
+            $this->assertFalse($p->is_waiting);
+        }
+
+        $session2 = $this->seedQueueingDoublesSession($host);
+        $players2 = $this->players($session2);
+        $queued = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session2->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $players2[0]->id, 'team' => 1],
+                    ['id' => $players2[1]->id, 'team' => 1],
+                    ['id' => $players2[2]->id, 'team' => 2],
+                    ['id' => $players2[3]->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $queuedId = (int) $queued->json('data.id');
+
+        $this->actingAs($host)->deleteJson(
+            '/auth/queueing-sessions/'.$session2->id.'/matches/'.$queuedId,
+        )->assertOk();
+
+        $this->assertDatabaseMissing('queueing_session_matches', ['id' => $queuedId]);
+    }
+
+    public function test_cannot_assign_player_already_in_another_queued_match(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedQueueingDoublesSession($host);
+        $players = $this->players($session);
+
+        $lineup = [
+            ['id' => $players[0]->id, 'team' => 1],
+            ['id' => $players[1]->id, 'team' => 1],
+            ['id' => $players[2]->id, 'team' => 2],
+            ['id' => $players[3]->id, 'team' => 2],
+        ];
+
+        $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            ['lineup' => $lineup],
+        )->assertCreated();
+
+        $response = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            ['lineup' => $lineup],
+        );
+
+        $response->assertUnprocessable();
+    }
+}

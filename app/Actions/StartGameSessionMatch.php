@@ -36,6 +36,9 @@ class StartGameSessionMatch
                 ->get();
 
             if ($manualLineup !== null && $manualLineup !== []) {
+                if ($locked->isQueueing()) {
+                    abort(422, 'Create a queued match first, then start it from the matches list.');
+                }
                 $picked = $this->resolveManualLineup($locked, $players, $manualLineup, $required);
             } else {
                 $eligible = $players
@@ -49,7 +52,13 @@ class StartGameSessionMatch
                     );
                 }
 
-                $picked = $eligible->take($required);
+                $picked = $eligible->take($required)->values();
+
+                if ($locked->match_type === 'doubles' && $picked->count() === 4) {
+                    $picked->each(function (GameSessionPlayer $p, int $i): void {
+                        $p->team = $i < 2 ? 1 : 2;
+                    });
+                }
             }
 
             $slot = 1000;

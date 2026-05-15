@@ -63,3 +63,51 @@
 .rt-kinetic-gradient {
     background: linear-gradient(135deg, #c2c1ff 0%, #8a89d9 100%);
 }
+
+/* End-match modal: backdrop fade + sheet slide-up (backdrop uses background only so sheet motion isn’t masked) */
+@keyframes rt-end-match-overlay-in {
+    from {
+        background-color: rgb(0 0 0 / 0);
+    }
+    to {
+        background-color: rgb(0 0 0 / 0.6);
+    }
+}
+
+@keyframes rt-end-match-sheet-in-mobile {
+    from {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes rt-end-match-sheet-in-desktop {
+    from {
+        opacity: 0;
+        transform: translateY(1rem) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.rt-end-match-modal-overlay {
+    animation: rt-end-match-overlay-in 0.22s ease-out forwards;
+    background-color: rgb(0 0 0 / 0.6);
+}
+
+.rt-end-match-modal-sheet {
+    animation: rt-end-match-sheet-in-mobile 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (min-width: 640px) {
+    .rt-end-match-modal-sheet {
+        animation-name: rt-end-match-sheet-in-desktop;
+        animation-duration: 0.3s;
+    }
+}

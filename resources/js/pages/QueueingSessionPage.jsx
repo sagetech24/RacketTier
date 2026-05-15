@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchGameSession } from '../api/gameSession.js';
+import { fetchQueueingSessionSummary } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
@@ -23,8 +24,12 @@ export function QueueingSessionPage() {
     const { user } = useAuth();
 
     const [session, setSession] = useState(/** @type {import('../api/gameSession.js').GameSessionDetail | null} */ (null));
+    const [summary, setSummary] = useState(/** @type {Record<string, unknown> | null} */ (null));
     const [loading, setLoading] = useState(true);
+    const [summaryLoading, setSummaryLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const isViewOnly = Boolean(session && !session.is_active);
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
@@ -57,6 +62,28 @@ export function QueueingSessionPage() {
     }, [sessionId]);
 
     useEffect(() => {
+        if (!session || session.is_active) {
+            setSummary(null);
+            return undefined;
+        }
+        let cancelled = false;
+        (async () => {
+            setSummaryLoading(true);
+            try {
+                const data = await fetchQueueingSessionSummary(sessionId);
+                if (!cancelled) setSummary(data);
+            } catch {
+                if (!cancelled) setSummary(null);
+            } finally {
+                if (!cancelled) setSummaryLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [session, sessionId]);
+
+    useEffect(() => {
         if (!session?.is_active) return undefined;
         const t = window.setInterval(() => {
             reload().catch(() => {});
@@ -65,6 +92,10 @@ export function QueueingSessionPage() {
     }, [session?.is_active, reload]);
 
     const leaderboard = useMemo(() => {
+        const summaryPlayers = summary?.players;
+        if (Array.isArray(summaryPlayers) && summaryPlayers.length > 0) {
+            return summaryPlayers;
+        }
         if (!session?.players) return [];
         const rows = [...session.players];
         rows.sort((a, b) => {
@@ -73,12 +104,33 @@ export function QueueingSessionPage() {
             if (pb !== pa) return pb - pa;
             return (b.wins_count ?? 0) - (a.wins_count ?? 0);
         });
-        return rows;
-    }, [session?.players]);
+        return rows.map((p, idx) => ({
+            rank: idx + 1,
+            name: displayName(p),
+            wins: p.wins_count ?? 0,
+            losses: p.losses_count ?? 0,
+            total_matches: (p.wins_count ?? 0) + (p.losses_count ?? 0),
+            earned_points: p.session_points == null ? null : p.session_points,
+            is_guest: Boolean(p.is_guest),
+        }));
+    }, [session?.players, summary?.players]);
 
+    const totals = summary?.totals;
     const navPath = normalizedAppPath(location.pathname);
     const queueingNav =
         session != null ? queueingSessionNavPaths(session.id) : { dash: '', players: '', matches: '' };
+    const tabSuffix = isViewOnly ? ' (view)' : '';
+
+    const summaryItems = totals
+        ? [
+              { label: 'Matches', value: totals.matches ?? 0 },
+              { label: 'Players', value: totals.players ?? 0 },
+              { label: 'Member points', value: totals.points_awarded_members ?? 0 },
+              { label: 'ELO Δ (sum)', value: totals.elo_rating_change_sum ?? 0, signed: true },
+              { label: 'Wins', value: totals.wins_recorded ?? 0 },
+              { label: 'Losses', value: totals.losses_recorded ?? 0 },
+          ]
+        : [];
 
     if (sessionId == null) {
         return (
@@ -105,7 +157,6 @@ export function QueueingSessionPage() {
                                 This session is not a queueing session. Use the facility game room for facility matches.
                             </p>
                         ) : null}
-                        {/* <header className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 mt-1"> */}
 
                         <section>
                             <article>
@@ -122,27 +173,50 @@ export function QueueingSessionPage() {
                                         )}
                                     </h1>
                                 </div>
+                                {isViewOnly ? (
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#c2c1ff]">
+                                        View only — session ended
+                                    </p>
+                                ) : null}
                                 <p className="text-sm text-[#c8c5d2]/90 capitalize">
                                     Game Type: {session.match_type}
                                 </p>
                                 <p className="text-sm text-[#c8c5d2]/90 capitalize">
                                     Queue Master: {session.created_by?.name ?? 'Unknown'}
                                 </p>
+                                {session.win_points != null || session.loss_points != null ? (
+                                    <p className="text-sm text-[#c8c5d2]/90">
+                                        Points: +{session.win_points ?? 0} win / +{session.loss_points ?? 0} loss
+                                    </p>
+                                ) : null}
                                 <p className="mt-1 text-xs text-[#918f9c]">
-                                    Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}<br />
-                                    Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}<br />
+                                    Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}
+                                    <br />
+                                    Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}
+                                    <br />
                                     Total Players: {session.participant_count ?? 0}
+                                    <br />
+                                    Matches played: {session.completed_matches_count ?? 0}
                                 </p>
                                 <div className="mt-3 flex justify-between">
                                     <div className="flex flex-wrap gap-2">
-                                        <Link to={queueingNav.dash} className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-white/70 border-white/70`}>
+                                        <Link
+                                            to={queueingNav.dash}
+                                            className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-white/70 border-white/70`}
+                                        >
                                             Dashboard
                                         </Link>
-                                        <Link to={queueingNav.players} className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-white/70 border-white/70`}>
-                                            Players
+                                        <Link
+                                            to={queueingNav.players}
+                                            className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-white/70 border-white/70`}
+                                        >
+                                            Players{tabSuffix}
                                         </Link>
-                                        <Link to={queueingNav.matches} className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-white/70 border-white/70`}>
-                                            Matches
+                                        <Link
+                                            to={queueingNav.matches}
+                                            className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-white/70 border-white/70`}
+                                        >
+                                            Matches{tabSuffix}
                                         </Link>
                                     </div>
                                     <div className="mb-2 flex items-center justify-between gap-2">
@@ -160,14 +234,54 @@ export function QueueingSessionPage() {
                             </article>
                         </section>
 
+                        {isViewOnly ? (
+                            <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
+                                <h2 className="mb-3 text-lg font-bold">
+                                    Session <span className="text-[#c2c1ff]">Summary</span>
+                                </h2>
+                                {summaryLoading ? (
+                                    <div className="h-16 animate-pulse rounded-xl bg-[#2a2a2d]" />
+                                ) : null}
+                                {!summaryLoading && totals ? (
+                                    <dl className="grid grid-cols-2 gap-3 text-sm">
+                                        {summaryItems.map((item) => (
+                                            <div
+                                                key={item.label}
+                                                className="rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2"
+                                            >
+                                                <dt className="text-xs text-[#918f9c]">{item.label}</dt>
+                                                <dd className="mt-0.5 font-bold tabular-nums">
+                                                    {item.signed && Number(item.value) > 0 ? '+' : ''}
+                                                    {item.value}
+                                                </dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+                                ) : null}
+                                {!summaryLoading && !totals ? (
+                                    <p className="text-sm text-[#918f9c]">
+                                        {session.completed_matches_count
+                                            ? 'Summary stats are unavailable.'
+                                            : 'No matches were recorded in this session.'}
+                                    </p>
+                                ) : null}
+                            </section>
+                        ) : null}
+
                         <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
                             Leader<span className="text-[#c2c1ff]">Board</span>
                         </h1>
+                        {isViewOnly ? (
+                            <p className="-mt-2 mb-3 text-xs text-[#918f9c]">
+                                Final standings — guests show no earned points.
+                            </p>
+                        ) : null}
                         <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
                                     <thead>
                                         <tr className="text-xs text-[#918f9c]">
+                                            <th className="pb-2 text-center w-8">#</th>
                                             <th className="pb-2 text-left">Player</th>
                                             <th className="pb-2 text-center">W</th>
                                             <th className="pb-2 text-center">L</th>
@@ -176,15 +290,35 @@ export function QueueingSessionPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {leaderboard.map((p) => (
-                                            <tr key={p.id} className="border-t border-[#2a2a2d]">
-                                                <td className="py-2 text-left font-medium capitalize">{displayName(p)}</td>
-                                                <td className="py-2 text-center">{p.wins_count ?? 0}</td>
-                                                <td className="py-2 text-center">{p.losses_count ?? 0}</td>
-                                                <td className="py-2 text-center">{(p.wins_count ?? 0) + (p.losses_count ?? 0)}</td>
-                                                <td className="py-2 text-center">{p.session_points == null ? '—' : p.session_points}</td>
+                                        {leaderboard.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="py-4 text-center text-[#918f9c]">
+                                                    No players in this session.
+                                                </td>
                                             </tr>
-                                        ))}
+                                        ) : (
+                                            leaderboard.map((p, idx) => (
+                                                <tr key={p.rank ?? idx} className="border-t border-[#2a2a2d]">
+                                                    <td className="py-2 text-center text-[#918f9c]">{p.rank ?? idx + 1}</td>
+                                                    <td className="py-2 text-left font-medium capitalize">
+                                                        {p.name ?? 'Player'}
+                                                        {p.is_guest ? (
+                                                            <span className="ml-1 text-xs font-normal text-[#918f9c]">
+                                                                (guest)
+                                                            </span>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="py-2 text-center">{p.wins ?? 0}</td>
+                                                    <td className="py-2 text-center">{p.losses ?? 0}</td>
+                                                    <td className="py-2 text-center">
+                                                        {p.total_matches ?? (p.wins ?? 0) + (p.losses ?? 0)}
+                                                    </td>
+                                                    <td className="py-2 text-center">
+                                                        {p.earned_points == null ? '—' : p.earned_points}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

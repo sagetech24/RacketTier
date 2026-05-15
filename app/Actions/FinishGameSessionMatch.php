@@ -193,7 +193,14 @@ class FinishGameSessionMatch
         if ($session->match_type === 'doubles') {
             $missing = $playing->contains(fn (GameSessionPlayer $p): bool => ! in_array($lineupTeams[$p->id] ?? null, [1, 2], true));
             if ($missing) {
-                abort(422, 'Doubles match lineup is missing team assignments.');
+                $allTeamsUnset = $playing->every(fn (GameSessionPlayer $p): bool => ! in_array($lineupTeams[$p->id] ?? null, [1, 2], true));
+                if ($playing->count() === 4 && $allTeamsUnset) {
+                    foreach ($playing as $index => $p) {
+                        $lineupTeams[$p->id] = $index < 2 ? 1 : 2;
+                    }
+                } else {
+                    abort(422, 'Doubles match lineup is missing team assignments.');
+                }
             }
             $grouped = $playing->groupBy(fn (GameSessionPlayer $p): int => (int) ($lineupTeams[$p->id] ?? 0));
             if ($grouped->get(1)?->count() !== 2 || $grouped->get(2)?->count() !== 2) {

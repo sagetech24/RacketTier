@@ -55,7 +55,14 @@ export async function fetchQueueingSessions(opts = {}) {
     }
     const json = await res.json();
     /** @type {Array<import('./gameSession.js').GameSessionDetail>} */
-    let rows = json.data ?? [];
+    let activeRows = json.data ?? [];
+    /** @type {Array<import('./gameSession.js').GameSessionDetail>} */
+    const finishedTodayRows = json.finished_today ?? [];
+    const activeIds = new Set(activeRows.map((row) => row.id));
+    let rows = [
+        ...activeRows,
+        ...finishedTodayRows.filter((row) => !activeIds.has(row.id)),
+    ];
 
     if (opts.mineOnly) {
         rows = rows.filter((row) => row.is_host);
@@ -116,6 +123,79 @@ export async function fetchQueueingSessionMatches(sessionId) {
     }
     const json = await res.json();
     return json.data ?? [];
+}
+
+/**
+ * @param {number|string} sessionId
+ * @param {{ lineup: Array<{ id: number, team?: number }> }} body
+ */
+export async function postCreateQueueingSessionMatch(sessionId, body) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches`,
+        body,
+    );
+    if (!res.ok) {
+        let msg = 'Could not create match.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+            else if (j.errors && typeof j.errors === 'object') {
+                const first = Object.values(j.errors)[0];
+                if (Array.isArray(first) && first[0]) msg = String(first[0]);
+            }
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
+ * @param {number|string} sessionId
+ * @param {number|string} matchId
+ */
+export async function postStartQueueingSessionMatch(sessionId, matchId) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/${encodeURIComponent(String(matchId))}/start`,
+        {},
+    );
+    if (!res.ok) {
+        let msg = 'Could not start match.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    if (!json.data) {
+        throw new Error('Invalid session response');
+    }
+    return json.data;
+}
+
+/**
+ * @param {number|string} sessionId
+ * @param {number|string} matchId
+ */
+export async function deleteQueueingSessionMatch(sessionId, matchId) {
+    const res = await deleteJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/${encodeURIComponent(String(matchId))}`,
+    );
+    if (!res.ok) {
+        let msg = 'Could not delete match.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
 }
 
 /**
