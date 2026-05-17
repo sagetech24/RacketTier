@@ -72,7 +72,7 @@ function formatLineupSide(names, multiSeparator) {
 
 /** @param {'finished' | 'ongoing' | 'queueing' | string | undefined} status @param {number | null | undefined} winningTeam @param {1 | 2} teamNo */
 function lineupTeamSideClass(status, winningTeam, teamNo) {
-    const base = 'text-lg font-semibold capitalize';
+    const base = 'text-sm font-semibold capitalize';
     if (status !== 'finished' || (winningTeam !== 1 && winningTeam !== 2)) {
         return `${base} text-[#918f9c]`;
     }
@@ -86,8 +86,8 @@ function lineupTeamSideClass(status, winningTeam, teamNo) {
 /** @param {{ lineup: unknown, status?: string, winningTeam?: number | null }} props */
 function LineupDisplay({ lineup, status, winningTeam }) {
     const { team1, team2 } = lineupDisplayNamesByTeam(lineup);
-    const left = formatLineupSide(team1, ', ');
-    const right = formatLineupSide(team2, ' / ');
+    const left = formatLineupSide(team1, '/');
+    const right = formatLineupSide(team2, '/');
     if (!left && !right) return '—';
     if (!left) return right ?? '—';
     if (!right) return left;
@@ -95,7 +95,7 @@ function LineupDisplay({ lineup, status, winningTeam }) {
         <>
             <span className={lineupTeamSideClass(status, winningTeam, 1)}>{left}</span>
             {' '}
-            <span className="text-[13px] bg-[#918f9c] p-1.5 rounded-full text-[#e4e1e6] mx-1.5">VS</span>
+            <span className="text-[15px] text-[#e4e1e6] mx-1.5">VS</span>
             {' '}
             <span className={lineupTeamSideClass(status, winningTeam, 2)}>{right}</span>
         </>
@@ -486,7 +486,7 @@ export function QueueingSessionMatchesPage() {
                                                         Score: {row.team1_score == null ? '—' : row.team1_score} - {row.team2_score == null ? '—' : row.team2_score}
                                                         {row.winning_team ? ` · Winner: Team ${row.winning_team}` : ''}
                                                     </p>
-                                                    <p className="mt-2 mb-4 text-xs text-[#c8c5d2]">
+                                                    <p className="mt-2 mb-4 text-xs text-[#c8c5d2] line-clamp-1">
                                                         <LineupDisplay
                                                             lineup={row.lineup}
                                                             status={row.status}

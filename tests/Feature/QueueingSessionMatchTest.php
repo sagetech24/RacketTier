@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Models\MemberPointWallet;
 use App\Models\QueueingSessionMatch;
+use App\Models\RatingHistory;
 use App\Models\Sport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -181,5 +183,93 @@ class QueueingSessionMatchTest extends TestCase
         );
 
         $response->assertUnprocessable();
+    }
+
+    public function test_guest_earns_session_points_on_finish_without_wallet_or_elo(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Guest Points Queue',
+            'match_type' => 'singles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $hostPlayer = GameSessionPlayer::query()->create([
+            'game_session_id' => $session->id,
+            'user_id' => $host->id,
+            'queue_position' => 1,
+            'is_waiting' => true,
+            'is_playing' => false,
+        ]);
+
+        $guestPlayer = GameSessionPlayer::query()->create([
+            'game_session_id' => $session->id,
+            'guest_name' => 'Ace Guest',
+            'queue_position' => 2,
+            'is_waiting' => true,
+            'is_playing' => false,
+        ]);
+
+        $create = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $hostPlayer->id, 'team' => 1],
+                    ['id' => $guestPlayer->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $matchId = (int) $create->json('data.id');
+
+        $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId.'/start',
+        )->assertOk();
+
+        $session->refresh();
+        $this->assertSame('ongoing', $session->status);
+
+        $finish = $this->actingAs($host)->postJson('/auth/game-sessions/'.$session->id.'/finish-match', [
+            'team1_score' => 21,
+            'team2_score' => 15,
+            'queueing_session_match_id' => $matchId,
+        ]);
+
+        $finish->assertOk();
+
+        $hostPlayer->refresh();
+        $guestPlayer->refresh();
+
+        $this->assertSame(30, (int) $hostPlayer->session_points);
+        $this->assertSame(8, (int) $guestPlayer->session_points);
+        $this->assertSame(1, (int) $hostPlayer->wins_count);
+        $this->assertSame(1, (int) $guestPlayer->losses_count);
+
+        $this->assertSame(30, (int) MemberPointWallet::query()
+            ->where('user_id', $host->id)
+            ->where('sport_id', $sport->id)
+            ->value('balance'));
+        $this->assertDatabaseCount('member_point_wallets', 1);
+
+        $this->assertSame(1, RatingHistory::query()->where('game_session_id', $session->id)->count());
+
+        $match = QueueingSessionMatch::query()->findOrFail($matchId);
+        $breakdown = is_array($match->result_breakdown) ? $match->result_breakdown : [];
+        $players = collect($breakdown['players'] ?? []);
+        $guestRow = $players->firstWhere('guest_name', 'Ace Guest');
+        $this->assertNotNull($guestRow);
+        $this->assertSame(8, (int) ($guestRow['session_points_earned'] ?? -1));
+        $this->assertNull($guestRow['rating_change'] ?? null);
     }
 }

@@ -60,7 +60,7 @@ export function DashboardMobileNav() {
 
     return (
         <nav className="fixed bottom-0 left-0 z-50 w-full md:hidden" aria-label="Primary">
-            <div className="flex items-center justify-around bg-[#131316]/70 shadow-[0_-4px_40px_-5px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+            <div className="flex items-center justify-around bg-slate-900/20 shadow-[0_-4px_40px_-5px_rgba(0,0,0,0.3)] backdrop-blur-xl">
                 <DashboardMobileNavItem to="/dashboard" label="Home" icon={IconHome} active={homeActive} />
                 <DashboardMobileNavItem
                     to="/ranking"

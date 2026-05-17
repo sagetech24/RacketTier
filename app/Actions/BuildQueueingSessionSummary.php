@@ -27,7 +27,7 @@ class BuildQueueingSessionSummary
 
         $totalWins = (int) $players->sum('wins_count');
         $totalLosses = (int) $players->sum('losses_count');
-        $memberPointsSum = (int) $players->filter(fn (GameSessionPlayer $p): bool => ! $p->isGuest())->sum('session_points');
+        $pointsAwardedSum = (int) $players->sum('session_points');
 
         $eloDeltaSum = (int) RatingHistory::query()
             ->where('game_session_id', $session->id)
@@ -42,7 +42,7 @@ class BuildQueueingSessionSummary
                 'wins' => (int) $p->wins_count,
                 'losses' => (int) $p->losses_count,
                 'total_matches' => (int) $p->wins_count + (int) $p->losses_count,
-                'earned_points' => $isGuest ? null : (int) $p->session_points,
+                'earned_points' => (int) $p->session_points,
                 'is_guest' => $isGuest,
             ];
         });
@@ -52,7 +52,7 @@ class BuildQueueingSessionSummary
             'totals' => [
                 'matches' => (int) ($session->completed_matches_count ?? 0),
                 'players' => $players->count(),
-                'points_awarded_members' => $memberPointsSum,
+                'points_awarded' => $pointsAwardedSum,
                 'elo_rating_change_sum' => $eloDeltaSum,
                 'wins_recorded' => $totalWins,
                 'losses_recorded' => $totalLosses,

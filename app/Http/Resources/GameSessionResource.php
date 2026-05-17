@@ -129,7 +129,7 @@ class GameSessionResource extends JsonResource
                         'team' => $p->team,
                         'wins_count' => (int) ($p->wins_count ?? 0),
                         'losses_count' => (int) ($p->losses_count ?? 0),
-                        'session_points' => $isGuest ? null : (int) ($p->session_points ?? 0),
+                        'session_points' => (int) ($p->session_points ?? 0),
                         'elo_rating' => $isGuest || $uid === null ? null : (int) ($eloByUser[$uid] ?? 1000),
                         'tier' => $tier,
                         'is_guest' => $isGuest,

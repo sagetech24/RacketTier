@@ -119,7 +119,7 @@ export function postCreateGameSession(payload) {
  *     team?: number | null,
  *     wins_count?: number,
  *     losses_count?: number,
- *     session_points?: number | null,
+ *     session_points?: number,
  *     elo_rating?: number | null,
  *     is_guest?: boolean,
  *     guest_name?: string | null,

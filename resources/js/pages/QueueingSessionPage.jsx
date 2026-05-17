@@ -17,6 +17,24 @@ function displayName(row) {
     return row.user?.name || 'Player';
 }
 
+/** @param {number} [wins] @param {number} [losses] */
+function winRateLabel(wins, losses) {
+    const w = wins ?? 0;
+    const l = losses ?? 0;
+    const total = w + l;
+    if (total === 0) return '—';
+    return `${Math.round((w / total) * 100)}%`;
+}
+
+/** @param {number} rank */
+function formatRankLabel(rank) {
+    if(rank === 1) return <span className="text-[#c2c1ff] font-bold text-lg">1<sup className="font-normal italic">st</sup></span>;
+    if(rank === 2) return <span className="text-[#c2c1ff] font-bold text-lg">2<sup className="font-normal italic">nd</sup></span>;
+    if(rank === 3) return <span className="text-[#c2c1ff] font-bold text-lg">3<sup className="font-normal italic">rd</sup></span>;
+    if(rank === 4) return <span className="text-[#c2c1ff] font-bold text-lg">4<sup className="font-normal italic">th</sup></span>;
+    return String(rank);
+}
+
 export function QueueingSessionPage() {
     const { id: idParam } = useParams();
     const location = useLocation();
@@ -110,7 +128,7 @@ export function QueueingSessionPage() {
             wins: p.wins_count ?? 0,
             losses: p.losses_count ?? 0,
             total_matches: (p.wins_count ?? 0) + (p.losses_count ?? 0),
-            earned_points: p.session_points == null ? null : p.session_points,
+            earned_points: p.session_points ?? 0,
             is_guest: Boolean(p.is_guest),
         }));
     }, [session?.players, summary?.players]);
@@ -119,16 +137,16 @@ export function QueueingSessionPage() {
     const navPath = normalizedAppPath(location.pathname);
     const queueingNav =
         session != null ? queueingSessionNavPaths(session.id) : { dash: '', players: '', matches: '' };
-    const tabSuffix = isViewOnly ? ' (view)' : '';
+    const tabSuffix = isViewOnly ? '' : '';
 
     const summaryItems = totals
         ? [
               { label: 'Matches', value: totals.matches ?? 0 },
               { label: 'Players', value: totals.players ?? 0 },
-              { label: 'Member points', value: totals.points_awarded_members ?? 0 },
-              { label: 'ELO Δ (sum)', value: totals.elo_rating_change_sum ?? 0, signed: true },
-              { label: 'Wins', value: totals.wins_recorded ?? 0 },
-              { label: 'Losses', value: totals.losses_recorded ?? 0 },
+              { label: 'Points awarded', value: totals.points_awarded ?? totals.points_awarded_members ?? 0 },
+            //   { label: 'ELO Δ (sum)', value: totals.elo_rating_change_sum ?? 0, signed: true },
+            //   { label: 'Wins', value: totals.wins_recorded ?? 0 },
+            //   { label: 'Losses', value: totals.losses_recorded ?? 0 },
           ]
         : [];
 
@@ -173,11 +191,7 @@ export function QueueingSessionPage() {
                                         )}
                                     </h1>
                                 </div>
-                                {isViewOnly ? (
-                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#c2c1ff]">
-                                        View only — session ended
-                                    </p>
-                                ) : null}
+
                                 <p className="text-sm text-[#c8c5d2]/90 capitalize">
                                     Game Type: {session.match_type}
                                 </p>
@@ -196,7 +210,7 @@ export function QueueingSessionPage() {
                                     <br />
                                     Total Players: {session.participant_count ?? 0}
                                     <br />
-                                    Matches played: {session.completed_matches_count ?? 0}
+                                    Matches Played: {session.completed_matches_count ?? 0}
                                 </p>
                                 <div className="mt-3 flex justify-between">
                                     <div className="flex flex-wrap gap-2">
@@ -224,10 +238,10 @@ export function QueueingSessionPage() {
                                             className={
                                                 session.is_active
                                                     ? 'capitalize rounded-full bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
-                                                    : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
+                                                    : 'capitalize rounded-full bg-[#353438] py-0.5 text-xs font-bold text-[#c8c5d2]'
                                             }
                                         >
-                                            {session.is_active ? session.status : 'finished'}
+                                            {session.is_active ? session.status : <span className="text-[#1f753d] bg-[#4ce081] px-2 py-1 rounded-full text-sm font-bold">finished</span>}
                                         </span>
                                     </div>
                                 </div>
@@ -235,22 +249,22 @@ export function QueueingSessionPage() {
                         </section>
 
                         {isViewOnly ? (
-                            <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
-                                <h2 className="mb-3 text-lg font-bold">
+                            <section>
+                                <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
                                     Session <span className="text-[#c2c1ff]">Summary</span>
-                                </h2>
+                                </h1>
                                 {summaryLoading ? (
                                     <div className="h-16 animate-pulse rounded-xl bg-[#2a2a2d]" />
                                 ) : null}
                                 {!summaryLoading && totals ? (
-                                    <dl className="grid grid-cols-2 gap-3 text-sm">
+                                    <dl className="grid grid-cols-3 gap-3 text-sm">
                                         {summaryItems.map((item) => (
                                             <div
                                                 key={item.label}
-                                                className="rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2"
+                                                className="rounded-lg border border-[#313137] bg-[#1e1e22] px-3 py-2"
                                             >
                                                 <dt className="text-xs text-[#918f9c]">{item.label}</dt>
-                                                <dd className="mt-0.5 font-bold tabular-nums">
+                                                <dd className="mt-0.5 font-bold tabular-nums text-xl">
                                                     {item.signed && Number(item.value) > 0 ? '+' : ''}
                                                     {item.value}
                                                 </dd>
@@ -273,7 +287,7 @@ export function QueueingSessionPage() {
                         </h1>
                         {isViewOnly ? (
                             <p className="-mt-2 mb-3 text-xs text-[#918f9c]">
-                                Final standings — guests show no earned points.
+                                Final Standings after the session ended.
                             </p>
                         ) : null}
                         <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
@@ -281,29 +295,32 @@ export function QueueingSessionPage() {
                                 <table className="w-full text-left text-sm">
                                     <thead>
                                         <tr className="text-xs text-[#918f9c]">
-                                            <th className="pb-2 text-center w-8">#</th>
+                                            <th className="pb-2 px-2 text-left w-12">#</th>
                                             <th className="pb-2 text-left">Player</th>
-                                            <th className="pb-2 text-center">W</th>
+                                            <th className="pb-2 px-2 text-center">W</th>
                                             <th className="pb-2 text-center">L</th>
                                             <th className="pb-2 text-center">TOTAL</th>
                                             <th className="pb-2 text-center">PTS</th>
+                                            <th className="pb-2 text-right"> Win%</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {leaderboard.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="py-4 text-center text-[#918f9c]">
+                                                <td colSpan={7} className="py-4 text-center text-[#918f9c]">
                                                     No players in this session.
                                                 </td>
                                             </tr>
                                         ) : (
                                             leaderboard.map((p, idx) => (
-                                                <tr key={p.rank ?? idx} className="border-t border-[#2a2a2d]">
-                                                    <td className="py-2 text-center text-[#918f9c]">{p.rank ?? idx + 1}</td>
-                                                    <td className="py-2 text-left font-medium capitalize">
-                                                        {p.name ?? 'Player'}
+                                                <tr key={p.rank ?? idx} className={`border-t border-[#2a2a2d] ${idx < 4 ? 'text-[#c2c1ff] text-md font-bold' : 'text-[#b2acc5]'}`}>
+                                                    <td className="py-2 text-left">
+                                                        {formatRankLabel(p.rank ?? idx + 1)}
+                                                    </td>
+                                                    <td className="py-2 text-left font-medium capitalize flex flex-col justify-start items-start">
+                                                        <span className="line-clamp-1 text-md leading-none">{p.name ?? 'Player'}</span>
                                                         {p.is_guest ? (
-                                                            <span className="ml-1 text-xs font-normal text-[#918f9c]">
+                                                            <span className="text-[9px] font-normal">
                                                                 (guest)
                                                             </span>
                                                         ) : null}
@@ -314,7 +331,10 @@ export function QueueingSessionPage() {
                                                         {p.total_matches ?? (p.wins ?? 0) + (p.losses ?? 0)}
                                                     </td>
                                                     <td className="py-2 text-center">
-                                                        {p.earned_points == null ? '—' : p.earned_points}
+                                                        {p.earned_points ?? 0}
+                                                    </td>
+                                                    <td className="py-2 text-right">
+                                                        {winRateLabel(p.wins, p.losses)}
                                                     </td>
                                                 </tr>
                                             ))

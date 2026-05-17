@@ -311,11 +311,15 @@ class FinishGameSessionMatch
             $isGuest = $player->isGuest();
 
             if ($isGuest) {
+                $sessionPointsEarned = $this->resolveSessionPointsEarned($session, $won, $margin);
+
                 if ($won) {
                     GameSessionPlayer::query()->whereKey($pk)->increment('wins_count');
                 } else {
                     GameSessionPlayer::query()->whereKey($pk)->increment('losses_count');
                 }
+
+                GameSessionPlayer::query()->whereKey($pk)->increment('session_points', $sessionPointsEarned);
 
                 $rows[] = [
                     'user_id' => null,
@@ -326,7 +330,7 @@ class FinishGameSessionMatch
                     'rating_before' => null,
                     'rating_after' => null,
                     'rating_change' => null,
-                    'session_points_earned' => 0,
+                    'session_points_earned' => $sessionPointsEarned,
                 ];
 
                 continue;

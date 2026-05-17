@@ -291,7 +291,9 @@ export function QueueingSessionPlayersPage() {
                                                 ) : null}
                                             </div>
                                             <div className="text-xs text-[#918f9c]">
-                                                {p.session_points ? `Earned: ${p.session_points} points` : null}
+                                                {(p.session_points ?? 0) > 0
+                                                    ? `Earned: ${p.session_points} points`
+                                                    : null}
                                             </div>
                                         </div>
                                         {canManagePlayers && !p.is_playing ? (
