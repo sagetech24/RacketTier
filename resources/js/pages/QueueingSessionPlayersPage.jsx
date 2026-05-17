@@ -167,10 +167,16 @@ export function QueueingSessionPlayersPage() {
                                 <p className="text-sm text-[#c8c5d2]/90 capitalize">
                                     Queue Master: {session.created_by?.name ?? 'Unknown'}
                                 </p>
+                                {session.win_points != null || session.loss_points != null ? (
+                                    <p className="text-sm text-[#c8c5d2]/90">
+                                        Points: +{session.win_points ?? 0} win / +{session.loss_points ?? 0} loss
+                                    </p>
+                                ) : null}
                                 <p className="mt-1 text-xs text-[#918f9c]">
                                     Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}<br />
                                     Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}<br />
-                                    Total Players: {session.participant_count ?? 0}
+                                    Total Players: {session.participant_count ?? 0}<br />
+                                    Matches Played: {session.completed_matches_count ?? 0}
                                 </p>
                                 <div className="mt-3 flex justify-between">
                                     <div className="flex flex-wrap gap-2">
@@ -192,7 +198,7 @@ export function QueueingSessionPlayersPage() {
                                                     : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
                                             }
                                         >
-                                            {session.is_active ? session.status : 'finished'}
+                                            {session.is_active ? session.status : <span className="text-[#1f753d] bg-[#4ce081] px-2 py-1 rounded-full text-sm font-bold">finished</span>}
                                         </span>
                                     </div>
                                 </div>

@@ -2,35 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\GameSessionResource;
-use App\Models\GameSession;
+use App\Actions\GetUserActivity;
+use App\Http\Resources\UserActivityItemResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserActivityIndexController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, GetUserActivity $getUserActivity): JsonResponse
     {
         $user = $request->user();
         abort_if(! $user, 401);
 
         $validated = $request->validate([
-            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'cursor' => ['nullable', 'string', 'max:512'],
         ]);
-        $limit = (int) ($validated['limit'] ?? 25);
 
-        $sessions = GameSession::query()
-            ->where('status', 'finished')
-            ->whereNotNull('last_finished_at')
-            ->whereUserIsParticipant($user)
-            ->with(['sport', 'facility', 'creator:id,name,email'])
-            ->withCount('players')
-            ->orderByDesc('last_finished_at')
-            ->limit($limit)
-            ->get();
+        $result = $getUserActivity->execute(
+            $user,
+            isset($validated['cursor']) ? (string) $validated['cursor'] : null,
+            (int) ($validated['limit'] ?? 15),
+        );
 
         return response()->json([
-            'data' => GameSessionResource::collection($sessions),
+            'data' => UserActivityItemResource::collection($result['items']),
+            'meta' => [
+                'next_cursor' => $result['next_cursor'],
+                'has_more' => $result['has_more'],
+            ],
         ]);
     }
 }

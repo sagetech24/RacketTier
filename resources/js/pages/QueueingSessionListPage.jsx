@@ -62,13 +62,13 @@ function QueueingSessionCard({ row, navPath, viewOnly }) {
                     to={paths.players}
                     className={`${queueingSessionTabClass(navPath === paths.players)} text-white/70 border-white/70`}
                 >
-                    Players{viewOnly ? ' (view)' : ''}
+                    Players
                 </Link>
                 <Link
                     to={paths.matches}
                     className={`${queueingSessionTabClass(navPath === paths.matches)} text-white/70 border-white/70`}
                 >
-                    Matches{viewOnly ? ' (view)' : ''}
+                    Matches
                 </Link>
             </div>
         </article>
@@ -78,11 +78,6 @@ function QueueingSessionCard({ row, navPath, viewOnly }) {
 function QueueSessionCardBadges({ row, viewOnly }) {
     return (
         <div className="flex flex-col items-end gap-1">
-            {viewOnly ? (
-                <span className="rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase text-[#c2c1ff]">
-                    View only
-                </span>
-            ) : null}
             <span
                 className={
                     row.is_active

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
+import { fetchMyActivity } from '../api/activity.js';
 import { fetchDashboardSummary } from '../api/dashboard.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
@@ -27,6 +28,13 @@ function formatRelativeTime(iso) {
     return `${day}d ago`;
 }
 
+function activityIcon(kind) {
+    if (kind === 'queueing_match') {
+        return { name: 'groups', wrap: 'bg-[#c2c1ff]/10', color: 'text-[#c2c1ff]' };
+    }
+    return { name: 'history', wrap: 'bg-[#4ce081]/10', color: 'text-[#4ce081]' };
+}
+
 /**
  * @param {{ name?: string; email?: string } | null } user
  */
@@ -39,10 +47,73 @@ function greetingFirstName(user) {
     return 'there';
 }
 
+/** @param {import('../api/activity.js').UserActivityItem} row */
+function ActivityItemMeta({ row }) {
+    const details = [
+        row.session_points_earned != null
+            ? { label: 'Points', value: `+${row.session_points_earned}`, accent: 'points' }
+            : null,
+        row.rating_change != null
+            ? {
+                  label: 'Rating %',
+                  value: `${row.rating_change >= 0 ? '+' : ''}${row.rating_change}`,
+                  accent: row.rating_change >= 0 ? 'elo-up' : 'elo-down',
+              }
+            : null,
+    ].filter(Boolean);
+
+    if (details.length === 0) {
+        return null;
+    }
+
+    return (
+        <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1">
+            {details.map((item) => (
+                <div key={item.label} className="flex min-w-0 items-baseline gap-1.5">
+                    <dt className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-[#c8c5d2]/55">
+                        {item.label}
+                    </dt>
+                    <dd
+                        className={[
+                            'truncate text-xs font-semibold leading-tight',
+                            item.accent === 'points'
+                                ? 'text-[#4ce081]'
+                                : item.accent === 'elo-up'
+                                  ? 'text-[#c2c1ff]'
+                                  : item.accent === 'elo-down'
+                                    ? 'text-red-300/90'
+                                    : 'text-[#e4e1e6]',
+                        ].join(' ')}
+                    >
+                        {item.value}
+                    </dd>
+                </div>
+            ))}
+            {row.won != null ? (
+                <div className="col-span-2 flex items-center gap-1.5">
+                    <dt className="text-[10px] font-medium uppercase tracking-wide text-[#c8c5d2]/55">Result</dt>
+                    <dd>
+                        <span
+                            className={[
+                                'inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
+                                row.won ? 'bg-[#4ce081]/15 text-[#4ce081]' : 'bg-red-400/15 text-red-300/90',
+                            ].join(' ')}
+                        >
+                            {row.won ? 'Win' : 'Loss'}
+                        </span>
+                    </dd>
+                </div>
+            ) : null}
+        </dl>
+    );
+}
+
 export function DashboardPage() {
     const { user: authUser } = useAuth();
     const gameRoomHref = useDefaultGameRoomHref();
     const [summary, setSummary] = useState(null);
+    const [activityItems, setActivityItems] = useState([]);
+    const [activityLoading, setActivityLoading] = useState(true);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
 
@@ -68,6 +139,27 @@ export function DashboardPage() {
         };
     }, []);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadActivity() {
+            setActivityLoading(true);
+            try {
+                const { data } = await fetchMyActivity({ limit: 5 });
+                if (!cancelled) setActivityItems(data);
+            } catch {
+                if (!cancelled) setActivityItems([]);
+            } finally {
+                if (!cancelled) setActivityLoading(false);
+            }
+        }
+
+        loadActivity();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     const user = summary?.user ?? authUser;
     const displayName = greetingFirstName(user);
     const profileLoading = loading && !summary;
@@ -86,19 +178,6 @@ export function DashboardPage() {
           : 'Play a match';
 
     const totalPointBalance = summary?.total_point_balance;
-
-    const activityRows =
-        summary?.highlights?.length > 0
-            ? summary.highlights.map((h, idx) => ({
-                  key: `highlight-${idx}`,
-                  icon: 'military_tech',
-                  iconWrap: 'bg-[#4ce081]/10',
-                  iconColor: 'text-[#4ce081]',
-                  title: h.title,
-                  subtitle: h.meta,
-                  time: formatRelativeTime(h.finished_at),
-              }))
-            : [];
 
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
@@ -132,13 +211,10 @@ export function DashboardPage() {
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">
                                     My Rank
                                 </p>
-                                    <p className="mt-1 text-lg font-bold leading-snug text-[#e4e1e6] flex items-center gap-1.5">
-                                        <svg fill="#a6a5ed" height="18px" width="18px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 246.001 246.001" xml:space="preserve"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z"></path> </g></svg>
-                                        {tierLabel}
-                                    </p>
-                                {/* {summary?.primary_sport?.name ? (
-                                    <p className="mt-1 text-xs text-[#c8c5d2]/70">{summary.primary_sport.name}</p>
-                                ) : null} */}
+                                <p className="mt-1 text-lg font-bold leading-snug text-[#e4e1e6] flex items-center gap-1.5">
+                                    <svg fill="#a6a5ed" height="18px" width="18px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 246.001 246.001" xml:space="preserve"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z"></path> </g></svg>
+                                    {tierLabel}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">
@@ -220,20 +296,6 @@ export function DashboardPage() {
                     </Link>
                 </div>
 
-                <Link
-                    to="/queueing-session/new"
-                    className="mb-10 flex items-center justify-between rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] px-5 py-4 transition-transform active:scale-[0.99]"
-                >
-                    <div className="flex items-center gap-3">
-                        <MaterialIcon name="format_list_numbered" className="text-3xl text-[#4ce081]" />
-                        <div>
-                            <h3 className="text-lg font-bold text-[#e4e1e6]">Queueing session</h3>
-                            <p className="text-xs text-[#c8c5d2]/80">Run a multi-match queue as queue master</p>
-                        </div>
-                    </div>
-                    <MaterialIcon name="chevron_right" className="text-[#918f9c]" />
-                </Link>
-
                 <section className="mb-6">
                     <div className="mb-6 flex items-end justify-between">
                         <h2 className="text-xl font-bold tracking-tight text-[#e4e1e6]">Recent Activity</h2>
@@ -246,32 +308,49 @@ export function DashboardPage() {
                     </div>
 
                     <div className="space-y-4">
-                        {activityRows.length === 0 ? (
+                        {activityLoading ? (
+                            <>
+                                <div className="h-16 animate-pulse rounded-xl bg-[#1b1b1e]" />
+                                <div className="h-16 animate-pulse rounded-xl bg-[#1b1b1e]" />
+                            </>
+                        ) : activityItems.length === 0 ? (
                             <div className="rounded-xl bg-[#1b1b1e] p-4 text-sm text-[#c8c5d2]">
-                                No activity yet. Finish a match to see it here.
+                                No activity in the last 7 days. Play a facility match or join a queue session to see
+                                results here.
                             </div>
                         ) : (
-                            activityRows.map((row) => (
-                                <div
-                                    key={row.key}
-                                    className="flex items-center gap-4 rounded-xl bg-[#1b1b1e] p-4 transition-colors hover:bg-[#1f1f22]"
-                                >
-                                    <div
-                                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${row.iconWrap}`}
+                            activityItems.map((row) => {
+                                const icon = activityIcon(row.kind);
+                                return (
+                                    <Link
+                                        key={row.id}
+                                        to={row.href}
+                                        className="flex items-start gap-4 rounded-xl bg-[#1b1b1e] p-4 transition-colors hover:bg-[#1f1f22]"
                                     >
-                                        <MaterialIcon name={row.icon} className={row.iconColor} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <h4 className="truncate font-semibold text-[#e4e1e6]">{row.title}</h4>
-                                        <p className="text-xs text-[#c8c5d2]">{row.subtitle}</p>
-                                    </div>
-                                    {row.time ? (
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-medium text-[#c8c5d2]/60">{row.time}</p>
+                                        <div
+                                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${icon.wrap}`}
+                                        >
+                                            <MaterialIcon name={icon.name} className={icon.color} />
                                         </div>
-                                    ) : null}
-                                </div>
-                            ))
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="font-semibold text-[#e4e1e6] text-lg leading-tight">{row.title}</h4>
+                                            {/* {row.subtitle ? (
+                                                <p className="text-xs text-[#c8c5d2] leading-tight">{row.subtitle}</p>
+                                            ) : null}
+                                             */}
+                                            <ActivityItemMeta className="mt-1.5" row={row} />
+
+                                        </div>
+                                        {row.finished_at ? (
+                                            <div className="shrink-0 text-right">
+                                                <p className="text-[10px] font-medium text-[#c8c5d2]/60">
+                                                    {formatRelativeTime(row.finished_at)}
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                    </Link>
+                                );
+                            })
                         )}
                     </div>
                 </section>
@@ -330,7 +409,7 @@ export function DashboardPage() {
                 </section>
 
                 <div className="mt-10 flex justify-center">
-                    <LogoutButton className="text-xs font-medium uppercase tracking-wider text-[#c8c5d2]/80 underline-offset-4 transition hover:text-[#e4e1e6]" />
+                    <LogoutButton className="text-xs border border-[#c8c5d2]/80 rounded-full px-4 py-2 font-medium uppercase tracking-wider text-[#c8c5d2]/80 underline-offset-4 transition" />
                 </div>
             </main>
 
