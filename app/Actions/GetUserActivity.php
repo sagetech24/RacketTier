@@ -318,7 +318,7 @@ class GetUserActivity
 
     private function matchTitle(?bool $won, string $sportName, string $placeName, bool $isQueueing): string
     {
-        $verb = $won === true ? 'Won' : ($won === false ? 'Lost' : 'Played');
+        $verb = $won === true ? '' : ($won === false ? '' : '');
         $at = $isQueueing ? 'in' : 'at';
 
         return $verb.' '.$sportName.' match '.$at.' '.$placeName;
@@ -338,7 +338,7 @@ class GetUserActivity
             $parts[] = '+'.$stats['session_points_earned'].' pts';
         }
         if ($stats['rating_change'] !== null) {
-            $parts[] = 'ELO '.($stats['rating_change'] >= 0 ? '+' : '').$stats['rating_change'];
+            $parts[] = 'Rating Chg '.($stats['rating_change'] >= 0 ? '+' : '').$stats['rating_change'];
         }
 
         return implode(' • ', $parts);

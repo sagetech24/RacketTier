@@ -10,7 +10,7 @@ class UpdateFacilityRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user();
+        return $this->user()?->isAdmin() ?? false;
     }
 
     /**

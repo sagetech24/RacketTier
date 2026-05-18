@@ -434,7 +434,7 @@ export function QueueingSessionMatchesPage() {
                                             : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
                                     }
                                 >
-                                                                                {session.is_active ? session.status : <span className="text-[#1f753d] bg-[#4ce081] px-2 py-1 rounded-full text-sm font-bold">finished</span>}
+                                    {session.is_active ? session.status : <span className="text-[#1f753d] bg-[#4ce081] px-2 py-1 rounded-full text-sm font-bold">Finished</span>}
                                 </span>
                             </div>
                         </div>
@@ -462,7 +462,7 @@ export function QueueingSessionMatchesPage() {
                 {!loading && !error ? (
                     <div className="space-y-5">
                         {(['ongoing', 'queueing', 'finished']).map((status) => (
-                            <section key={status} className={`${status !== 'finished' ? 'hidden' : ''}`}>
+                            <section key={status} className={`${!session?.is_active && status !== 'finished' ? 'hidden' : ''}`}>
                                 <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
                                     {sectionTitle(status)} <span className="text-[#c2c1ff]">Matches</span>
                                 </h1>
@@ -547,7 +547,6 @@ export function QueueingSessionMatchesPage() {
                                 type="button"
                                 disabled={busy}
                                 onClick={() => openCreateMatchModal()}
-                                // className="w-full rounded-xl bg-[#4ce081] py-3 text-sm font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-70"
                                 className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
                             >
                                 Create Match

@@ -20,7 +20,7 @@
     <div id="root"></div>
     <script>
         window.__RT_APP_NAME__ = @json(config('app.name'));
-        window.__RT_USER__ = @json(auth()->user());
+        window.__RT_USER__ = @json(auth()->user() ? (new \App\Http\Resources\UserResource(auth()->user()))->resolve() : null);
     </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
-/** @typedef {{ id: number, name: string, email: string } | null} User */
+/** @typedef {{ id: number, name: string, email: string, is_admin: boolean } | null} User */
 
 const AuthContext = createContext(null);
 

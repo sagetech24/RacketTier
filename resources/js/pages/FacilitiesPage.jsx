@@ -26,6 +26,7 @@ function initialsFromName(name) {
 
 export function FacilitiesPage() {
     const { user } = useAuth();
+    const canManageFacilities = Boolean(user?.is_admin);
     const [searchInput, setSearchInput] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -184,18 +185,20 @@ export function FacilitiesPage() {
                             RacketTier partner facilities. Open a game room or start a new match for any facility.
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setAddOpen(true);
-                            setAddError('');
-                            setAddFieldErrors({});
-                        }}
-                        className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-[#4ce081] px-5 py-3 text-sm font-bold text-[#003919] transition-transform active:scale-[0.98] md:self-auto"
-                    >
-                        <MaterialIcon name="add" className="text-lg" />
-                        Add facility
-                    </button>
+                    {canManageFacilities ? (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setAddOpen(true);
+                                setAddError('');
+                                setAddFieldErrors({});
+                            }}
+                            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-[#4ce081] px-5 py-3 text-sm font-bold text-[#003919] transition-transform active:scale-[0.98] md:self-auto"
+                        >
+                            <MaterialIcon name="add" className="text-lg" />
+                            Add facility
+                        </button>
+                    ) : null}
                 </div>
 
                 <div className="mb-8">
@@ -257,19 +260,23 @@ export function FacilitiesPage() {
                     <div className="rounded-xl border border-[#353438] bg-[#1f1f22] px-6 py-12 text-center">
                         <p className="mb-2 text-lg font-bold text-[#e4e1e6]">No facilities yet</p>
                         <p className="mb-6 text-sm text-[#918f9c]">
-                            Add your first venue to use the game room and create matches.
+                            {canManageFacilities
+                                ? 'Add your first venue to use the game room and create matches.'
+                                : 'Facilities will appear here once an administrator adds a venue.'}
                         </p>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setAddOpen(true);
-                                setAddError('');
-                                setAddFieldErrors({});
-                            }}
-                            className="rounded-xl bg-[#c2c1ff] px-5 py-3 text-sm font-bold text-[#282671]"
-                        >
-                            Add your first facility
-                        </button>
+                        {canManageFacilities ? (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setAddOpen(true);
+                                    setAddError('');
+                                    setAddFieldErrors({});
+                                }}
+                                className="rounded-xl bg-[#c2c1ff] px-5 py-3 text-sm font-bold text-[#282671]"
+                            >
+                                Add your first facility
+                            </button>
+                        ) : null}
                     </div>
                 ) : null}
 
@@ -346,13 +353,15 @@ export function FacilitiesPage() {
 
                                         <div className="mt-8 flex flex-wrap items-center justify-end gap-2">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openEditModal(f)}
-                                                    className="rounded-xl border border-gray-500/30 bg-gray-500/20 px-3.5 py-2 text-xs font-bold tracking-tight text-gray-200 transition-colors hover:border-gray-400/40 hover:text-gray-100"
-                                                >
-                                                    Edit
-                                                </button>
+                                                {canManageFacilities ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openEditModal(f)}
+                                                        className="rounded-xl border border-gray-500/30 bg-gray-500/20 px-3.5 py-2 text-xs font-bold tracking-tight text-gray-200 transition-colors hover:border-gray-400/40 hover:text-gray-100"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                ) : null}
                                                 <Link
                                                     to={`/facility/${f.id}/create-match`}
                                                     className="rounded-xl bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] px-3.5 py-2 text-xs font-bold tracking-tight text-[#131316] transition-transform active:scale-95"

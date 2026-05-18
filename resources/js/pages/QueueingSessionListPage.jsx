@@ -184,24 +184,24 @@ export function QueueingSessionListPage() {
                             onChange={(e) => setSort(e.target.value)}
                             className="col-span-2 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm"
                         >
-                            <option value="updated_desc">Recently updated</option>
-                            <option value="updated_asc">Least recently updated</option>
-                            <option value="created_desc">Newest id first</option>
-                            <option value="created_asc">Oldest id first</option>
+                            <option value="updated_desc">Recently Updated</option>
+                            <option value="updated_asc">Least Recently Updated</option>
+                            <option value="created_desc">Newest</option>
+                            <option value="created_asc">Oldest</option>
                         </select>
                         <select
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
                             className="col-span-2 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm"
                         >
-                            <option value="all">All statuses</option>
-                            <option value="active">Active only</option>
-                            <option value="finished">Finished today</option>
+                            <option value="all">All Statuses</option>
+                            <option value="active">Active Only</option>
+                            <option value="finished">Finished Today</option>
                         </select>
                     </div>
                     <label className="flex items-center gap-2 mt-1 px-3 py-3 text-sm checked:bg-[#4ce081]/20">
                         <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
-                        My Queues only
+                        My Queues Only
                     </label>
                 </section>
 

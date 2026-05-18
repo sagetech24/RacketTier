@@ -25,6 +25,7 @@ use App\Http\Controllers\QueueingSessionPlayersStoreController;
 use App\Http\Controllers\RankingIndexController;
 use App\Http\Controllers\SportsListController;
 use App\Http\Controllers\UserActivityIndexController;
+use App\Http\Resources\UserResource;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -41,7 +42,11 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'app')->name('home');
 
 Route::get('/auth/user', function () {
-    return response()->json(['user' => auth()->user()]);
+    $user = auth()->user();
+
+    return response()->json([
+        'user' => $user ? new UserResource($user) : null,
+    ]);
 })->name('auth.user');
 
 Route::get('/auth/dashboard-summary', [DashboardSummaryController::class, 'show'])

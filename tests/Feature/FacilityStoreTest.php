@@ -15,9 +15,9 @@ class FacilityStoreTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_user_can_create_facility(): void
+    public function test_admin_can_create_facility(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->admin()->create();
 
         $response = $this->actingAs($user)->postJson('/auth/facilities', [
             'name' => 'Riverside Courts',
@@ -34,9 +34,25 @@ class FacilityStoreTest extends TestCase
         ]);
     }
 
-    public function test_cannot_create_duplicate_facility_by_name_and_address(): void
+    public function test_non_admin_cannot_create_facility(): void
     {
         $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/auth/facilities', [
+            'name' => 'Riverside Courts',
+            'address' => '123 River Rd, Cebu City',
+        ]);
+
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('facilities', [
+            'name' => 'Riverside Courts',
+            'address' => '123 River Rd, Cebu City',
+        ]);
+    }
+
+    public function test_cannot_create_duplicate_facility_by_name_and_address(): void
+    {
+        $user = User::factory()->admin()->create();
 
         Facility::query()->create([
             'name' => 'Riverside Courts',
@@ -81,9 +97,9 @@ class FacilityStoreTest extends TestCase
         $response->assertJsonPath('data.0.name', 'Alpha Dome');
     }
 
-    public function test_authenticated_user_can_update_facility(): void
+    public function test_admin_can_update_facility(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->admin()->create();
         $facility = Facility::query()->create([
             'name' => 'Old Courts',
             'address' => 'Old address',
@@ -106,9 +122,31 @@ class FacilityStoreTest extends TestCase
         ]);
     }
 
-    public function test_cannot_update_facility_to_duplicate_name_and_address(): void
+    public function test_non_admin_cannot_update_facility(): void
     {
         $user = User::factory()->create();
+        $facility = Facility::query()->create([
+            'name' => 'Old Courts',
+            'address' => 'Old address',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->patchJson('/auth/facilities/'.$facility->id, [
+            'name' => 'Updated Courts',
+            'address' => 'Updated address',
+        ]);
+
+        $response->assertForbidden();
+        $this->assertDatabaseHas('facilities', [
+            'id' => $facility->id,
+            'name' => 'Old Courts',
+            'address' => 'Old address',
+        ]);
+    }
+
+    public function test_cannot_update_facility_to_duplicate_name_and_address(): void
+    {
+        $user = User::factory()->admin()->create();
         $existing = Facility::query()->create([
             'name' => 'Riverside Courts',
             'address' => '123 River Rd, Cebu City',

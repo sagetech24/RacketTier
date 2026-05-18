@@ -75,7 +75,7 @@ function ActivityItemMeta({ row }) {
                     </dt>
                     <dd
                         className={[
-                            'truncate text-xs font-semibold leading-tight',
+                            'text-xs font-semibold leading-tight',
                             item.accent === 'points'
                                 ? 'text-[#4ce081]'
                                 : item.accent === 'elo-up'
@@ -90,12 +90,12 @@ function ActivityItemMeta({ row }) {
                 </div>
             ))}
             {row.won != null ? (
-                <div className="col-span-2 flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 col-span-2">
                     <dt className="text-[10px] font-medium uppercase tracking-wide text-[#c8c5d2]/55">Result</dt>
                     <dd>
                         <span
                             className={[
-                                'inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
+                                'inline-block items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
                                 row.won ? 'bg-[#4ce081]/15 text-[#4ce081]' : 'bg-red-400/15 text-red-300/90',
                             ].join(' ')}
                         >
@@ -334,12 +334,7 @@ export function DashboardPage() {
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <h4 className="font-semibold text-[#e4e1e6] text-lg leading-tight">{row.title}</h4>
-                                            {/* {row.subtitle ? (
-                                                <p className="text-xs text-[#c8c5d2] leading-tight">{row.subtitle}</p>
-                                            ) : null}
-                                             */}
                                             <ActivityItemMeta className="mt-1.5" row={row} />
-
                                         </div>
                                         {row.finished_at ? (
                                             <div className="shrink-0 text-right">

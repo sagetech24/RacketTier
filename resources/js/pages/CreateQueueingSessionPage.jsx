@@ -104,91 +104,94 @@ export function CreateQueueingSessionPage() {
                         ))}
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-5">
-                        <div>
-                            <label htmlFor="queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                Name of the queue
-                            </label>
-                            <input
-                                id="queue-name"
-                                type="text"
-                                value={queueName}
-                                onChange={(e) => setQueueName(e.target.value)}
-                                maxLength={120}
-                                placeholder="e.g. Friday night doubles"
-                                autoComplete="off"
-                                className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60"
-                            />
-                        </div>
-                        <div>
-                            <label className="mb-4 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Sport</label>
-                            {sports.length === 0 ? (
-                                <p className="text-sm text-[#918f9c]">No sports configured. Run database migrations.</p>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-4">
-                                    {sports.map((s) => (
-                                        <SportCard
-                                            key={s.id}
-                                            name={s.name}
-                                            icon={s.icon}
-                                            symbol={s.code}
-                                            selected={sportSlug === s.slug}
-                                            onClick={() => setSportSlug(s.slug)}
-                                        />
+                    <form onSubmit={handleSubmit}>
+                        <div className="space-y-6 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 mb-4">
+                            <div>
+                                <label htmlFor="queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
+                                    Name of the queue
+                                </label>
+                                <input
+                                    id="queue-name"
+                                    type="text"
+                                    value={queueName}
+                                    onChange={(e) => setQueueName(e.target.value)}
+                                    maxLength={120}
+                                    placeholder="e.g. Friday night doubles"
+                                    autoComplete="off"
+                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-4 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Sport</label>
+                                {sports.length === 0 ? (
+                                    <p className="text-sm text-[#918f9c]">No sports configured. Run database migrations.</p>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {sports.map((s) => (
+                                            <SportCard
+                                                key={s.id}
+                                                name={s.name}
+                                                icon={s.icon}
+                                                symbol={s.code}
+                                                selected={sportSlug === s.slug}
+                                                onClick={() => setSportSlug(s.slug)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
+                                <div className="flex gap-2">
+                                    {(['singles', 'doubles']).map((t) => (
+                                        <button
+                                            key={t}
+                                            type="button"
+                                            onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
+                                            className={
+                                                matchType === t
+                                                    ? 'flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
+                                                    : 'flex-1 rounded-lg border border-[#2a2a2d] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
+                                            }
+                                        >
+                                            {t === 'singles' ? 'Singles' : 'Doubles'}
+                                        </button>
                                     ))}
                                 </div>
-                            )}
-                        </div>
-                        <div>
-                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
-                            <div className="flex gap-2">
-                                {(['singles', 'doubles']).map((t) => (
-                                    <button
-                                        key={t}
-                                        type="button"
-                                        onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
-                                        className={
-                                            matchType === t
-                                                ? 'flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
-                                                : 'flex-1 rounded-lg border border-[#2a2a2d] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
-                                        }
-                                    >
-                                        {t === 'singles' ? 'Singles' : 'Doubles'}
-                                    </button>
-                                ))}
                             </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    max={9999}
-                                    value={winPoints}
-                                    onChange={(e) => setWinPoints(e.target.value)}
-                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
-                                />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={9999}
+                                        value={winPoints}
+                                        onChange={(e) => setWinPoints(e.target.value)}
+                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Loss points</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={9999}
+                                        value={lossPoints}
+                                        onChange={(e) => setLossPoints(e.target.value)}
+                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Loss points</label>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    max={9999}
-                                    value={lossPoints}
-                                    onChange={(e) => setLossPoints(e.target.value)}
-                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
-                                />
-                            </div>
+                            {submitError ? (
+                                <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{submitError}</p>
+                            ) : null}
                         </div>
-                        {submitError ? (
-                            <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{submitError}</p>
-                        ) : null}
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="w-full rounded-xl bg-[#4ce081] py-3 text-sm font-bold text-[#003919] disabled:opacity-50"
+                            // className="w-full rounded-xl bg-[#4ce081] py-3 text-sm font-bold text-[#003919] disabled:opacity-50"
+                            className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
                         >
                             {submitting ? 'Creating…' : 'Create Queue'}
                         </button>
