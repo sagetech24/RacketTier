@@ -465,7 +465,7 @@ export function GameRoomPage() {
         <div className="min-h-screen bg-[#131316] text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
 
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-28">
+            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
                 <section className="mb-8">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#4ce081]">
                         {facilityEyebrow}

@@ -86,7 +86,7 @@ export function RankingPage() {
         <div className="min-h-[max(884px,100dvh)] bg-[#131316] pb-24 text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
 
-            <main className="mx-auto max-w-md px-6 pt-20">
+            <main className="mx-auto max-w-md px-6 pt-36">
                 <section className="mb-10 mt-8">
                     <h2 className="text-4xl font-extrabold tracking-tighter text-[#e4e1e6]">Rankings</h2>
                     <p className="mt-4 max-w-[80%] text-sm leading-relaxed text-[#c8c5d2]">

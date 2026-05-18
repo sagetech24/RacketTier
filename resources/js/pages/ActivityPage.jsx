@@ -177,7 +177,7 @@ export function ActivityPage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} />
 
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-28">
+            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
                 <div className="mb-6 flex items-center justify-between">
                     <h2 className="text-2xl font-extrabold tracking-tight text-[#e4e1e6]">Activity</h2>
                     <p className="text-xs font-medium text-[#c8c5d2]/60">Past 7 days</p>

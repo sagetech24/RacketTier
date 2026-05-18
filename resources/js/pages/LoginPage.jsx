@@ -60,7 +60,7 @@ export function LoginPage() {
     }
 
     return (
-        <div className="relative flex min-h-[max(850px,100dvh)] flex-col overflow-hidden bg-[#121216] text-[#e4e1e6]">
+        <div className="pt-10 relative flex min-h-[max(850px,100dvh)] flex-col overflow-hidden bg-[#121216] text-[#e4e1e6]">
             <main className="flex grow items-center justify-center px-6 py-8 tab:py-12">
                 <div className="w-full max-w-md space-y-12">
                     <AuthBrandHeader />
@@ -98,12 +98,12 @@ export function LoginPage() {
                                     >
                                         Password
                                     </label>
-                                    <a
+                                    {/* <a
                                         className="text-[10px] uppercase tracking-widest text-[#c2c1ff] transition-opacity hover:opacity-80"
                                         href="#"
                                     >
                                         Forgot?
-                                    </a>
+                                    </a> */}
                                 </div>
                                 <input
                                     id="v2-login-password"
@@ -135,37 +135,6 @@ export function LoginPage() {
                                 {submitting ? 'Signing in...' : 'Sign In'}
                             </button>
                         </form>
-
-                        {/* <div className="relative flex items-center justify-center py-2">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-[#474651]/15" />
-                            </div>
-                            <span className="relative bg-[#1b1b1e] px-4 text-[10px] uppercase tracking-[0.2em] text-[#918f9c]">
-                                Or continue with
-                            </span>
-                        </div>
-
-                        <div>
-                            <div className="mb-2 flex items-center justify-center text-xs text-[#918f9c]/70">coming soon...</div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    disabled
-                                    className="flex cursor-not-allowed items-center justify-center gap-3 rounded-xl bg-[#5f5e60] py-3.5 opacity-50 transition-colors duration-200 hover:bg-[#39393c] active:scale-95"
-                                >
-                                    <img alt="Google" className="h-5 w-5" src={GOOGLE_ICON} />
-                                    <span className="text-xs font-semibold uppercase tracking-wider">Google</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled
-                                    className="flex cursor-not-allowed items-center justify-center gap-3 rounded-xl bg-[#5f5e60] py-3.5 opacity-50 transition-colors duration-200 hover:bg-[#39393c] active:scale-95"
-                                >
-                                    <img src={APPLE_ICON} alt="Apple" className="h-5 w-5" />
-                                    <span className="text-xs font-semibold uppercase tracking-wider">Apple</span>
-                                </button>
-                            </div>
-                        </div> */}
                     </div>
 
                     <p className="text-center text-sm text-[#c8c5d2]">
@@ -180,7 +149,7 @@ export function LoginPage() {
             <div className="pointer-events-none fixed -left-20 top-[10%] h-64 w-64 rounded-full bg-[#c2c1ff]/5 blur-[100px]" />
             <div className="pointer-events-none fixed -right-20 bottom-[10%] h-80 w-80 rounded-full bg-[#4ce081]/5 blur-[120px]" />
 
-            <footer className="p-8 text-center">
+            {/* <footer className="p-8 text-center">
                 <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs uppercase tracking-[0.2em] text-[#918f9c]">
                     <a className="transition-colors hover:text-[#e4e1e6]" href="#">
                         Privacy Policy
@@ -192,7 +161,7 @@ export function LoginPage() {
                         Help Center
                     </a>
                 </div>
-            </footer>
+            </footer> */}
         </div>
     );
 }

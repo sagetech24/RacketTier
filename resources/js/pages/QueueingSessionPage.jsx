@@ -164,7 +164,7 @@ export function QueueingSessionPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-28">
+            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
                 {loading ? <div className="h-32 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="text-red-300">{error}</p> : null}
 

@@ -395,7 +395,7 @@ export function CreateMatchPage() {
         <div className="min-h-screen bg-[#131316] pb-32 text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
 
-            <main className="mx-auto max-w-4xl px-6 pt-24">
+            <main className="mx-auto max-w-4xl px-6 pt-36">
                 <header className="mb-12">
                     <div className="mb-2 flex items-center gap-2">
                         <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#4ce081]">New Session</span>

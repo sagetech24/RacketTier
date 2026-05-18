@@ -143,10 +143,10 @@ export function QueueingSessionListPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-28">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36">
                 <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-extrabold tracking-tight">
+                        <h1 className="text-3xl font-extrabold tracking-tight">
                             Queueing <span className="text-[#c2c1ff]">Sessions</span>
                         </h1>
                         <p className="text-sm text-[#c8c5d2]/80 mt-2">
