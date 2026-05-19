@@ -17,6 +17,7 @@ class FacilityUpdateController extends Controller
         $facility->fill([
             'name' => $request->validated('name'),
             'address' => $request->validated('address'),
+            'cover_photo' => $request->validated('cover_photo'),
         ])->save();
 
         $facility->loadCount('gameSessions');

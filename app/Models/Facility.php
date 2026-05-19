@@ -11,6 +11,7 @@ class Facility extends Model
     protected $fillable = [
         'name',
         'address',
+        'cover_photo',
         'created_by',
     ];
 

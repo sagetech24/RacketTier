@@ -473,7 +473,7 @@ export function GameRoomPage() {
                     <div className="flex items-start gap-3 sm:gap-4">
                         {sessionDetail ? (
                             <SportIcon
-                                icon={sessionDetail.sport?.icon ?? 'sports_tennis'}
+                                icon={sessionDetail.sport?.icon ?? 'tennis.png'}
                                 imgClassName="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
                                 materialClassName="text-5xl text-[#c2c1ff]"
                                 className="mt-1 shrink-0"
@@ -634,7 +634,7 @@ export function GameRoomPage() {
                                             >
                                                 <div className="shrink-0 pt-0.5">
                                                     <SportIcon
-                                                        icon={s.sport?.icon ?? 'sports_tennis'}
+                                                        icon={s.sport?.icon ?? 'tennis.png'}
                                                         imgClassName="h-9 w-9 object-contain"
                                                         materialClassName="text-3xl text-[#c2c1ff]"
                                                     />
@@ -713,7 +713,7 @@ export function GameRoomPage() {
                                             >
                                                 <div className="shrink-0 pt-0.5">
                                                     <SportIcon
-                                                        icon={s.sport?.icon ?? 'sports_tennis'}
+                                                        icon={s.sport?.icon ?? 'tennis.png'}
                                                         imgClassName="h-9 w-9 object-contain"
                                                         materialClassName="text-3xl text-[#c2c1ff]"
                                                     />

@@ -20,6 +20,7 @@ class FacilityResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'address' => $this->address,
+            'cover_photo' => $this->cover_photo,
             'game_sessions_count' => (int) ($this->game_sessions_count ?? 0),
             'today_matches_count' => (int) ($this->today_matches_count ?? 0),
             'today_checked_in_players_count' => (int) ($this->today_checked_in_players_count ?? 0),

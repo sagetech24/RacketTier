@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchFacilities, patchFacility, postFacility } from '../api/facilities.js';
+import { facilityCoverSrc } from '../lib/facilityCover.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
@@ -37,6 +38,7 @@ export function FacilitiesPage() {
     const [addOpen, setAddOpen] = useState(false);
     const [newName, setNewName] = useState('');
     const [newAddress, setNewAddress] = useState('');
+    const [newCoverPhoto, setNewCoverPhoto] = useState('');
     const [addSubmitting, setAddSubmitting] = useState(false);
     const [addError, setAddError] = useState('');
     const [addFieldErrors, setAddFieldErrors] = useState(/** @type {Record<string, string[]>} */ ({}));
@@ -44,6 +46,7 @@ export function FacilitiesPage() {
     const [editingFacilityId, setEditingFacilityId] = useState(/** @type {number | null} */ (null));
     const [editName, setEditName] = useState('');
     const [editAddress, setEditAddress] = useState('');
+    const [editCoverPhoto, setEditCoverPhoto] = useState('');
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [editError, setEditError] = useState('');
     const [editFieldErrors, setEditFieldErrors] = useState(/** @type {Record<string, string[]>} */ ({}));
@@ -90,6 +93,7 @@ export function FacilitiesPage() {
             const created = await postFacility({
                 name: newName.trim(),
                 address: newAddress.trim(),
+                cover_photo: newCoverPhoto.trim() || null,
             });
             setFacilities((prev) => {
                 const rest = prev.filter((f) => f.id !== created.id);
@@ -103,6 +107,7 @@ export function FacilitiesPage() {
             setAddOpen(false);
             setNewName('');
             setNewAddress('');
+            setNewCoverPhoto('');
         } catch (err) {
             if (err && typeof err === 'object' && 'errors' in err && err.errors) {
                 setAddFieldErrors(/** @type {Record<string, string[]>} */ (err.errors));
@@ -120,6 +125,7 @@ export function FacilitiesPage() {
         setEditingFacilityId(facility.id);
         setEditName(facility.name ?? '');
         setEditAddress(facility.address ?? '');
+        setEditCoverPhoto(facility.cover_photo ?? '');
         setEditError('');
         setEditFieldErrors({});
         setEditOpen(true);
@@ -131,6 +137,7 @@ export function FacilitiesPage() {
         setEditingFacilityId(null);
         setEditName('');
         setEditAddress('');
+        setEditCoverPhoto('');
         setEditError('');
         setEditFieldErrors({});
     }
@@ -147,6 +154,7 @@ export function FacilitiesPage() {
             const updated = await patchFacility(editingFacilityId, {
                 name: editName.trim(),
                 address: editAddress.trim(),
+                cover_photo: editCoverPhoto.trim() || null,
             });
 
             setFacilities((prev) => prev.map((f) => (f.id === editingFacilityId
@@ -297,6 +305,7 @@ export function FacilitiesPage() {
                 <div className="space-y-6">
                     {facilities.map((f) => {
                         const hue = cardGradientHue(f.id);
+                        const coverSrc = facilityCoverSrc(f.cover_photo);
                         const checkedInTodayCount = f.today_checked_in_players_count ?? 0;
                         return (
                             <div
@@ -305,17 +314,25 @@ export function FacilitiesPage() {
                             >
                                 <div className="flex h-full flex-col md:flex-row">
                                     <div
-                                        className="relative flex h-38 shrink-0 items-center justify-center overflow-hidden md:h-auto md:w-1/3 md:min-h-[200px]"
+                                        className="relative flex h-42 shrink-0 items-center justify-center overflow-hidden md:h-auto md:w-1/3 md:min-h-[200px]"
                                         style={{
                                             background: `linear-gradient(145deg, hsl(${hue}, 42%, 22%), hsl(${(hue + 55) % 360}, 38%, 14%))`,
                                         }}
                                     >
-                                        <div
-                                            className="flex h-48 w-48 items-center justify-center text-4xl font-black text-zinc-400/60"
-                                            aria-hidden
-                                        >
-                                            {initialsFromName(f.name)}
-                                        </div>
+                                        {coverSrc ? (
+                                            <img
+                                                src={coverSrc}
+                                                alt=""
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <div
+                                                className="flex h-48 w-48 items-center justify-center text-4xl font-black text-zinc-400/60"
+                                                aria-hidden
+                                            >
+                                                {initialsFromName(f.name)}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex min-w-0 grow flex-col justify-between p-6 md:p-8">
@@ -439,6 +456,23 @@ export function FacilitiesPage() {
                                     <p className="text-xs text-[#ffb4ab]">{addFieldErrors.address[0]}</p>
                                 ) : null}
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
+                                    Cover photo path
+                                </label>
+                                <input
+                                    value={newCoverPhoto}
+                                    onChange={(e) => setNewCoverPhoto(e.target.value)}
+                                    className="w-full rounded-lg border-none bg-[#0e0e11] py-3 px-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                    placeholder="/images/venue-cover.jpg or https://…"
+                                />
+                                <p className="text-xs text-[#918f9c]">
+                                    Optional. Paste a public path or full image URL. Leave blank for initials placeholder.
+                                </p>
+                                {addFieldErrors.cover_photo?.[0] ? (
+                                    <p className="text-xs text-[#ffb4ab]">{addFieldErrors.cover_photo[0]}</p>
+                                ) : null}
+                            </div>
                             <div className="flex flex-wrap justify-end gap-3 pt-2">
                                 <button
                                     type="button"
@@ -515,6 +549,23 @@ export function FacilitiesPage() {
                                 />
                                 {editFieldErrors.address?.[0] ? (
                                     <p className="text-xs text-[#ffb4ab]">{editFieldErrors.address[0]}</p>
+                                ) : null}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
+                                    Cover photo path
+                                </label>
+                                <input
+                                    value={editCoverPhoto}
+                                    onChange={(e) => setEditCoverPhoto(e.target.value)}
+                                    className="w-full rounded-lg border-none bg-[#0e0e11] py-3 px-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                    placeholder="/images/venue-cover.jpg or https://…"
+                                />
+                                <p className="text-xs text-[#918f9c]">
+                                    Optional. Paste a public path or full image URL. Leave blank for initials placeholder.
+                                </p>
+                                {editFieldErrors.cover_photo?.[0] ? (
+                                    <p className="text-xs text-[#ffb4ab]">{editFieldErrors.cover_photo[0]}</p>
                                 ) : null}
                             </div>
                             <div className="flex flex-wrap justify-end gap-3 pt-2">

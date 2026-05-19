@@ -15,6 +15,10 @@ export function publicSportImageSrc(icon) {
     if (t === '') {
         return null;
     }
+    // Legacy Material Symbols names (e.g. sports_tennis) — not image files.
+    if (/^sports_/i.test(t)) {
+        return null;
+    }
     // Filename only — no paths
     if (!/^[a-zA-Z0-9._-]+$/.test(t)) {
         return null;

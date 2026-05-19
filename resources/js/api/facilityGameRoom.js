@@ -1,5 +1,5 @@
 /**
- * @typedef {{ id: number, name: string, address: string | null }} FacilitySummary
+ * @typedef {{ id: number, name: string, address: string | null, cover_photo?: string | null }} FacilitySummary
  * @typedef {import('./gameSession.js').GameSessionDetail} GameSessionSummary
  * @typedef {{
  *   id: number,

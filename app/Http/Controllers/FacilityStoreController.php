@@ -17,6 +17,7 @@ class FacilityStoreController extends Controller
         $facility = Facility::query()->create([
             'name' => $request->validated('name'),
             'address' => $request->validated('address'),
+            'cover_photo' => $request->validated('cover_photo'),
             'created_by' => $user->id,
         ]);
 

@@ -5,6 +5,7 @@ import { patchJson, postJson } from '../lib/http.js';
  *   id: number,
  *   name: string,
  *   address: string | null,
+ *   cover_photo?: string | null,
  *   game_sessions_count?: number,
  *   today_matches_count?: number,
  *   today_checked_in_players_count?: number
@@ -37,7 +38,7 @@ export async function fetchFacilities(q = '') {
 }
 
 /**
- * @param {{ name: string, address: string }} payload
+ * @param {{ name: string, address: string, cover_photo?: string | null }} payload
  * @returns {Promise<FacilityRow>}
  */
 export async function postFacility(payload) {
@@ -61,7 +62,7 @@ export async function postFacility(payload) {
 
 /**
  * @param {number} facilityId
- * @param {{ name: string, address: string }} payload
+ * @param {{ name: string, address: string, cover_photo?: string | null }} payload
  * @returns {Promise<FacilityRow>}
  */
 export async function patchFacility(facilityId, payload) {

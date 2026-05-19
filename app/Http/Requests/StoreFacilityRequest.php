@@ -21,6 +21,7 @@ class StoreFacilityRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:160'],
             'address' => ['required', 'string', 'max:512'],
+            'cover_photo' => ['nullable', 'string', 'max:2048'],
         ];
     }
 
@@ -28,10 +29,12 @@ class StoreFacilityRequest extends FormRequest
     {
         $name = trim((string) $this->input('name', ''));
         $address = trim((string) $this->input('address', ''));
+        $coverPhoto = trim((string) $this->input('cover_photo', ''));
 
         $this->merge([
             'name' => preg_replace('/\s+/', ' ', $name) ?? $name,
             'address' => preg_replace('/\s+/', ' ', $address) ?? $address,
+            'cover_photo' => $coverPhoto === '' ? null : $coverPhoto,
         ]);
     }
 

@@ -22,14 +22,17 @@ class FacilityStoreTest extends TestCase
         $response = $this->actingAs($user)->postJson('/auth/facilities', [
             'name' => 'Riverside Courts',
             'address' => '123 River Rd, Cebu City',
+            'cover_photo' => '/images/riverside-cover.jpg',
         ]);
 
         $response->assertCreated();
         $response->assertJsonPath('data.name', 'Riverside Courts');
+        $response->assertJsonPath('data.cover_photo', '/images/riverside-cover.jpg');
 
         $this->assertDatabaseHas('facilities', [
             'name' => 'Riverside Courts',
             'address' => '123 River Rd, Cebu City',
+            'cover_photo' => '/images/riverside-cover.jpg',
             'created_by' => $user->id,
         ]);
     }
@@ -109,16 +112,19 @@ class FacilityStoreTest extends TestCase
         $response = $this->actingAs($user)->patchJson('/auth/facilities/'.$facility->id, [
             'name' => 'Updated Courts',
             'address' => 'Updated address',
+            'cover_photo' => 'https://cdn.example.com/venue.jpg',
         ]);
 
         $response->assertOk();
         $response->assertJsonPath('data.name', 'Updated Courts');
         $response->assertJsonPath('data.address', 'Updated address');
+        $response->assertJsonPath('data.cover_photo', 'https://cdn.example.com/venue.jpg');
 
         $this->assertDatabaseHas('facilities', [
             'id' => $facility->id,
             'name' => 'Updated Courts',
             'address' => 'Updated address',
+            'cover_photo' => 'https://cdn.example.com/venue.jpg',
         ]);
     }
 
@@ -179,6 +185,31 @@ class FacilityStoreTest extends TestCase
             'id' => $editing->id,
             'name' => 'Metro Sports Club',
             'address' => 'Lahug, Cebu City',
+        ]);
+    }
+
+    public function test_admin_can_clear_facility_cover_photo(): void
+    {
+        $user = User::factory()->admin()->create();
+        $facility = Facility::query()->create([
+            'name' => 'Photo Courts',
+            'address' => 'Photo address',
+            'cover_photo' => '/images/old.jpg',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->patchJson('/auth/facilities/'.$facility->id, [
+            'name' => 'Photo Courts',
+            'address' => 'Photo address',
+            'cover_photo' => '',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.cover_photo', null);
+
+        $this->assertDatabaseHas('facilities', [
+            'id' => $facility->id,
+            'cover_photo' => null,
         ]);
     }
 

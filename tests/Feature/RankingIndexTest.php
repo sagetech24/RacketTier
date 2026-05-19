@@ -28,7 +28,7 @@ class RankingIndexTest extends TestCase
         ], [
             'name' => 'Pickleball',
             'code' => 'PB',
-            'icon' => 'sports_tennis',
+            'icon' => 'pickleball.png',
         ]);
 
         $first = User::factory()->create(['name' => 'Alpha Player']);
