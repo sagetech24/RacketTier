@@ -21,7 +21,7 @@ export function DashboardMobileNavItem({ to, label, icon: Icon, active = false, 
         return (
             <div className={[base, idleCls, disabledCls].join(' ')} title="Coming soon">
                 <Icon className="size-6 shrink-0" />
-                <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wider">{label}</span>
+                <span className="mt-0.5 pb-3 text-[10px] font-medium uppercase tracking-wider">{label}</span>
             </div>
         );
     }
@@ -33,7 +33,7 @@ export function DashboardMobileNavItem({ to, label, icon: Icon, active = false, 
             aria-current={active ? 'page' : undefined}
         >
             <Icon className="size-6 shrink-0" />
-            <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wider">{label}</span>
+            <span className="mt-1.5 pb-3 text-[10px] font-medium uppercase tracking-wider">{label}</span>
         </Link>
     );
 }
