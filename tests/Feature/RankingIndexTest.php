@@ -87,5 +87,41 @@ class RankingIndexTest extends TestCase
         $response->assertJsonPath('data.1.user.name', 'Alpha Player');
         $response->assertJsonPath('data.1.rank', 2);
         $response->assertJsonPath('data.1.tier.name', 'Starter');
+        $response->assertJsonPath('viewer_ranking', null);
+    }
+
+    public function test_rankings_endpoint_returns_viewer_ranking_when_outside_limit(): void
+    {
+        $sport = Sport::query()->firstOrCreate([
+            'slug' => 'pickleball',
+        ], [
+            'name' => 'Pickleball',
+            'code' => 'PB',
+            'icon' => 'pickleball.png',
+        ]);
+
+        $viewer = User::factory()->create(['name' => 'Viewer Player']);
+        $topPlayer = User::factory()->create(['name' => 'Top Player']);
+
+        Ranking::query()->create([
+            'user_id' => $topPlayer->id,
+            'sport_id' => $sport->id,
+            'rating' => 1500,
+        ]);
+
+        Ranking::query()->create([
+            'user_id' => $viewer->id,
+            'sport_id' => $sport->id,
+            'rating' => 900,
+        ]);
+
+        $response = $this->actingAs($viewer)->getJson('/auth/rankings?sport_id='.$sport->id.'&limit=1');
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.user.name', 'Top Player');
+        $response->assertJsonPath('viewer_ranking.user.name', 'Viewer Player');
+        $response->assertJsonPath('viewer_ranking.rank', 2);
+        $response->assertJsonPath('viewer_ranking.rating', 900);
     }
 }

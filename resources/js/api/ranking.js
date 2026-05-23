@@ -16,8 +16,15 @@
  */
 
 /**
+ * @typedef {{
+ *   data: RankingRow[],
+ *   viewerRanking: RankingRow | null,
+ * }} RankingsResponse
+ */
+
+/**
  * @param {{ sportId?: number | null, search?: string, limit?: number }} [opts]
- * @returns {Promise<RankingRow[]>}
+ * @returns {Promise<RankingsResponse>}
  */
 export async function fetchRankings(opts = {}) {
     const params = new URLSearchParams();
@@ -46,5 +53,8 @@ export async function fetchRankings(opts = {}) {
     }
 
     const json = await res.json();
-    return json.data ?? [];
+    return {
+        data: json.data ?? [],
+        viewerRanking: json.viewer_ranking ?? null,
+    };
 }

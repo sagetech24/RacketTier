@@ -21,8 +21,8 @@ class AddQueueingSessionPlayer
 
         return DB::transaction(function () use ($session, $userId): array {
             $locked = GameSession::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
-            if (! $locked->is_active || $locked->status === 'ongoing') {
-                abort(422, 'Cannot modify the roster while a match is in progress or the session is closed.');
+            if (! $locked->is_active) {
+                abort(422, 'Cannot modify the roster after the session has ended.');
             }
 
             User::query()->whereKey($userId)->firstOrFail();
@@ -69,8 +69,8 @@ class AddQueueingSessionPlayer
 
         return DB::transaction(function () use ($session, $guestName): array {
             $locked = GameSession::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
-            if (! $locked->is_active || $locked->status === 'ongoing') {
-                abort(422, 'Cannot modify the roster while a match is in progress or the session is closed.');
+            if (! $locked->is_active) {
+                abort(422, 'Cannot modify the roster after the session has ended.');
             }
 
             $dup = GameSessionPlayer::query()

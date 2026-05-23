@@ -6,24 +6,35 @@ import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.j
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const GLOBAL_FILTER_ID = 'all';
+const DEFAULT_SPORT_SLUG = 'pickleball';
+const REST_VISIBLE_COUNT = 10;
+
+function formatRating(rating) {
+    return (rating / 100)?.toLocaleString?.(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }) ?? '0.00';
+}
+
+function isCurrentUserRow(row, userId) {
+    return userId != null && row.user?.id === userId;
+}
 
 export function RankingPage() {
     const { user } = useAuth();
     const [sports, setSports] = useState([]);
-    const [activeFilter, setActiveFilter] = useState(GLOBAL_FILTER_ID);
+    const [activeFilter, setActiveFilter] = useState(null);
     const [search, setSearch] = useState('');
     const [rankings, setRankings] = useState([]);
+    const [viewerRanking, setViewerRanking] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     const filterOptions = useMemo(() => {
-        return [{ id: GLOBAL_FILTER_ID, label: 'Global' }].concat(
-            sports.map((sport) => ({
-                id: String(sport.id),
-                label: sport.name,
-            }))
-        );
+        return sports.map((sport) => ({
+            id: String(sport.id),
+            label: sport.name,
+        }));
     }, [sports]);
 
     useEffect(() => {
@@ -34,6 +45,11 @@ export function RankingPage() {
                 const rows = await fetchSports();
                 if (!cancelled) {
                     setSports(rows);
+                    const defaultSport =
+                        rows.find((sport) => sport.slug === DEFAULT_SPORT_SLUG) ?? rows[0];
+                    if (defaultSport) {
+                        setActiveFilter((current) => current ?? String(defaultSport.id));
+                    }
                 }
             } catch {
                 // Ranking page still works without sports filter options.
@@ -47,24 +63,30 @@ export function RankingPage() {
     }, []);
 
     useEffect(() => {
+        if (!activeFilter) {
+            return undefined;
+        }
+
         let cancelled = false;
 
         async function loadRankings() {
             setLoading(true);
             setError('');
             try {
-                const data = await fetchRankings({
-                    sportId: activeFilter === GLOBAL_FILTER_ID ? null : Number(activeFilter),
+                const { data, viewerRanking: viewerRow } = await fetchRankings({
+                    sportId: Number(activeFilter),
                     search,
                     limit: 100,
                 });
                 if (!cancelled) {
                     setRankings(data);
+                    setViewerRanking(viewerRow);
                 }
             } catch {
                 if (!cancelled) {
                     setError('Could not load ranking data right now.');
                     setRankings([]);
+                    setViewerRanking(null);
                 }
             } finally {
                 if (!cancelled) {
@@ -79,14 +101,42 @@ export function RankingPage() {
         };
     }, [activeFilter, search]);
 
-    const topThree = rankings.slice(0, 3);
-    const rest = rankings.slice(3);
+    const topThree = useMemo(() => rankings.slice(0, 3), [rankings]);
+    const restTopTen = useMemo(() => rankings.slice(3, 3 + REST_VISIBLE_COUNT), [rankings]);
+
+    const displayedUserIds = useMemo(() => {
+        const ids = new Set();
+        for (const row of topThree) {
+            ids.add(row.user.id);
+        }
+        for (const row of restTopTen) {
+            ids.add(row.user.id);
+        }
+        return ids;
+    }, [topThree, restTopTen]);
+
+    const appendCurrentUser = useMemo(() => {
+        if (!user?.id || search.trim() !== '') {
+            return null;
+        }
+
+        const fromList = rankings.find((row) => row.user.id === user.id);
+        const candidate = fromList ?? viewerRanking;
+        if (!candidate || displayedUserIds.has(candidate.user.id)) {
+            return null;
+        }
+
+        return candidate;
+    }, [user?.id, search, rankings, viewerRanking, displayedUserIds]);
+
+    const currentUserHighlight =
+        'ring-2 ring-[#c2c1ff]/60 bg-linear-to-br from-[#c2c1ff]/30 to-[#c2c1ff]/10';
 
     return (
-        <div className="min-h-[max(884px,100dvh)] bg-[#131316] pb-24 text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
+        <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
 
-            <main className="mx-auto max-w-md px-6 pt-36">
+            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
                 <section className="mb-10 mt-8">
                     <h2 className="text-4xl font-extrabold tracking-tighter text-[#e4e1e6]">Rankings</h2>
                     <p className="mt-4 max-w-[80%] text-sm leading-relaxed text-[#c8c5d2]">
@@ -128,8 +178,8 @@ export function RankingPage() {
                                     onClick={() => setActiveFilter(filter.id)}
                                     className={
                                         isActive
-                                            ? 'shrink-0 rounded-full bg-[#4ce081] px-5 py-2 text-xs font-bold whitespace-nowrap text-[#003919]'
-                                            : 'shrink-0 cursor-pointer rounded-full bg-[#353438] px-5 py-2 text-xs font-medium whitespace-nowrap text-[#e4e1e6] transition-colors hover:bg-[#1f1f22]'
+                                            ? 'shrink-0 rounded-full bg-[#4ce081] px-4 py-2 text-xs font-bold whitespace-nowrap text-[#003919]'
+                                            : 'shrink-0 cursor-pointer rounded-full bg-[#353438] px-4 py-2 text-xs font-medium whitespace-nowrap text-[#e4e1e6] transition-colors hover:bg-[#1f1f22]'
                                     }
                                 >
                                     {filter.label}
@@ -160,7 +210,9 @@ export function RankingPage() {
                         </div>
                     ) : null}
 
-                    {!loading && topThree.map((row, idx) => (
+                    {!loading && topThree.map((row, idx) => {
+                        const isYou = isCurrentUserRow(row, user?.id);
+                        return (
                         <div
                             key={`${row.user.id}-${row.sport.id}-${row.rank}`}
                             className={
@@ -168,66 +220,71 @@ export function RankingPage() {
                                     ? 'overflow-hidden rounded-xl bg-linear-to-br from-[#c2c1ff]/10 to-transparent p-px'
                                     : idx === 1
                                       ? 'overflow-hidden rounded-xl bg-linear-to-br from-[#4ce081]/5 to-transparent p-px'
-                                      : ''
+                                      : isYou
+                                        ? 'overflow-hidden rounded-xl bg-linear-to-br from-[#c2c1ff]/20 to-transparent p-px'
+                                        : ''
                             }
                         >
-                            <div className="relative flex items-center gap-4 rounded-xl bg-[#1f1f22] p-4">
+                            <div
+                                className={`relative flex items-center gap-4 rounded-xl bg-[#1f1f22] p-4${isYou ? ` ${currentUserHighlight}` : ''}`}
+                            >
                                 <div className="flex flex-col items-start">
-                                    <p className="text-[10px] font-medium text-[#c8c5d2]">Ratings:</p>
-                                    <div
-                                        className={
-                                            idx === 0
-                                                ? 'min-w-12 text-2xl font-extrabold italic text-[#c2c1ff]/40'
-                                                : idx === 1
-                                                ? 'min-w-12 text-2xl font-extrabold italic text-[#c8c5d2]/20'
-                                                : 'min-w-12 text-xl font-extrabold italic text-[#c8c5d2]/20'
-                                        }
-                                    >
-                                        {(row.rating / 100)?.toLocaleString?.(undefined, {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        }) ?? '0.00'}
+                                    <div className='min-w-6 text-2xl font-extrabold'>
+                                        <svg className="opacity-70" fill={idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : '#cd7f32'} height="20px" width="20px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 246.001 246.001" xml:space="preserve"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z"></path> </g></svg>
                                     </div>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="font-bold text-[#e4e1e6]">{row.user.name}</h3>
+                                    <h3 className="font-bold text-[#e4e1e6]">
+                                        {row.user.name}
+                                        {isYou ? (
+                                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#c2c1ff]">
+                                                You
+                                            </span>
+                                        ) : null}
+                                    </h3>
                                     <p className="text-[10px] uppercase tracking-widest text-[#c8c5d2]">
-                                        {row.sport.name ?? 'Unknown Sport'}
+                                        {`${row.tier?.name ?? 'Zero'} Level`}
                                     </p>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-sm font-extrabold text-[#c2c1ff] italic">
-                                        {`Tier ${row.tier?.tier_no ?? '0'}`}
+                                    <div className="text-xl font-extrabold text-[#c2c1ff] italic">
+                                        {formatRating(row.rating)}
                                     </div>
-                                    <div className="text-[10px] font-medium text-[#c8c5d2]">
-                                        {`${row.tier?.name ?? 'Zero'} Level`}
+                                    <div className="text-sm font-bold text-[#c8c5d2]">
+                                        {`Tier ${row.tier?.tier_no ?? '0'}`}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
 
-                    <div className="mt-4 flex flex-col">
-                        {!loading && rest.map((row) => (
+                    <div className="flex flex-col gap-2">
+                        {!loading && restTopTen.map((row) => {
+                            const isYou = isCurrentUserRow(row, user?.id);
+                            return (
                             <div
                                 key={`${row.user.id}-${row.sport.id}-${row.rank}`}
-                                className="group flex items-center gap-4 rounded-xl px-2 py-4 transition-colors hover:bg-[#1b1b1e]"
+                                className={`group flex items-center gap-4 rounded-xl p-4 transition-colors hover:bg-[#1b1b1e]${isYou ? ` ${currentUserHighlight}` : ''}`}
                             >
-                                <div className="w-14 shrink-0 text-center font-bold text-[#c8c5d2] transition-colors group-hover:text-[#c2c1ff]">
-                                    <span className="font-extrabold italic text-[#c8c5d2]/20 text-xl">
-                                        {/* {row.rank} */}
-                                        {(row.rating / 100)?.toLocaleString?.(undefined, {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        }) ?? '0.00'}
+                                <div className="w-6 shrink-0 text-center font-bold text-[#c8c5d2] transition-colors group-hover:text-[#c2c1ff]">
+                                    <span className="font-extrabold italic text-[#c8c5d2] text-2xl">
+                                        {row.rank}
                                     </span>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h4 className="text-sm font-semibold text-[#e4e1e6]">{row.user.name}</h4>
+                                    <h4 className="text-sm font-semibold text-[#e4e1e6]">
+                                        {row.user.name}
+                                        {isYou ? (
+                                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#c2c1ff]">
+                                                You
+                                            </span>
+                                        ) : null}
+                                    </h4>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[10px] text-[#c8c5d2]">{row.sport.name ?? 'Unknown Sport'}</span>
-                                        <span className="h-1 w-1 shrink-0 rounded-full bg-[#474651]" />
-                                        <span className="text-[10px] text-[#c8c5d2]">{row.sport.code ?? '--'}</span>
+                                         <span className="text-[10px] uppercase tracking-widest text-[#c8c5d2]">
+                                            {`${row.tier?.name ?? 'Zero'} Level`}
+                                        </span>
                                     </div>
                                 </div>
                                 {/* <div className="pr-2 text-right">
@@ -235,24 +292,64 @@ export function RankingPage() {
                                     <div className="text-[10px] text-[#c8c5d2]">{row.wallet_balance.toLocaleString()} pts</div>
                                 </div> */}
                                 <div className="text-right">
-                                    <div className="text-sm font-extrabold text-[#c2c1ff] italic">
-                                        {`Tier ${row.tier?.tier_no ?? '0'}`}
+                                    <div className="text-xl font-extrabold text-[#c2c1ff] italic">
+                                        {formatRating(row.rating)}
                                     </div>
-                                    <div className="text-[10px] font-medium text-[#c8c5d2]">
-                                        {`${row.tier?.name ?? 'Zero'} Level`}
+                                    <div className="text-sm font-bold text-[#c8c5d2]">
+                                        {`Tier ${row.tier?.tier_no ?? '0'}`}
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                            );
+                        })}
 
-                    <button
-                        type="button"
-                        className="mt-8 mb-12 w-full rounded-xl bg-[#353438] py-4 text-xs font-bold tracking-widest text-[#e4e1e6] uppercase transition-all hover:bg-[#353438]/90"
-                        onClick={() => setSearch('')}
-                    >
-                        Reset Search
-                    </button>
+                        {!loading && appendCurrentUser ? (
+                            <>
+                                <div className="my-2 flex items-center gap-3 px-1">
+                                    <div className="h-px flex-1 bg-[#353438]" />
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#918f9c]">
+                                        Your rank
+                                    </span>
+                                    <div className="h-px flex-1 bg-[#353438]" />
+                                </div>
+                                <div
+                                    key={`${appendCurrentUser.user.id}-${appendCurrentUser.sport.id}-${appendCurrentUser.rank}-you`}
+                                    className={`group flex items-center gap-4 rounded-xl p-4 ${currentUserHighlight}`}
+                                >
+                                    <div className="w-6 shrink-0 text-center font-bold text-[#c2c1ff]">
+                                        <span className="text-2xl font-extrabold italic">
+                                            {appendCurrentUser.rank}
+                                        </span>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="text-sm font-semibold text-[#e4e1e6]">
+                                            {appendCurrentUser.user.name}
+                                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#c2c1ff]">
+                                                You
+                                            </span>
+                                        </h4>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-[#c8c5d2]">
+                                                {appendCurrentUser.sport.name ?? 'Unknown Sport'}
+                                            </span>
+                                            <span className="h-1 w-1 shrink-0 rounded-full bg-[#474651]" />
+                                            <span className="text-[10px] text-[#c8c5d2]">
+                                                {appendCurrentUser.sport.code ?? '--'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-xl font-extrabold text-[#c2c1ff] italic">
+                                            {formatRating(appendCurrentUser.rating)}
+                                        </div>
+                                        <div className="text-sm font-bold text-[#c8c5d2]">
+                                            {`Tier ${appendCurrentUser.tier?.tier_no ?? '0'}`}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : null}
+                    </div>
                 </div>
             </main>
 

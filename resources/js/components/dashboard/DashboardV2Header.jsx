@@ -36,7 +36,7 @@ export function DashboardV2Header({ user, profileLoading = false }) {
     const label = user?.name?.trim() || user?.email?.trim() || 'User';
 
     return (
-        <nav className="fixed top-0 z-50 w-full bg-[#131316]/70 backdrop-blur-xl pt-10">
+        <nav className="fixed top-0 z-50 w-full bg-[#131316]/70 backdrop-blur-xl pt-6">
             <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
                 <div className="flex items-center gap-4">
                     <RacketTierWordmark textSize="text-3xl" />

@@ -57,40 +57,124 @@ class RankingIndexController extends Controller
             ->get()
             ->groupBy('sport_id');
 
-        $data = $rankings->values()->map(function (Ranking $ranking, int $index) use ($tiersBySport, $walletsByKey): array {
-            $walletKey = $ranking->user_id.'-'.$ranking->sport_id;
-            /** @var MemberPointWallet|null $wallet */
-            $wallet = $walletsByKey->get($walletKey);
-            $walletBalance = (int) ($wallet?->balance ?? 0);
-            $tier = $tiersBySport
-                ->get($ranking->sport_id)
-                ?->first(fn (TierRank $tierRow): bool => $tierRow->start_point <= $walletBalance && $tierRow->end_point >= $walletBalance);
+        $data = $rankings->values()->map(
+            fn (Ranking $ranking, int $index): array => $this->formatRankingRow(
+                $ranking,
+                $index + 1,
+                $tiersBySport,
+                $walletsByKey
+            )
+        );
 
-            return [
-                'rank' => $index + 1,
-                'rating' => (int) $ranking->rating,
-                'wallet_balance' => $walletBalance,
-                'user' => [
-                    'id' => (int) $ranking->user_id,
-                    'name' => $ranking->user?->name ?? 'Player',
-                    'email' => $ranking->user?->email,
-                ],
-                'sport' => [
-                    'id' => (int) $ranking->sport_id,
-                    'name' => $ranking->sport?->name,
-                    'slug' => $ranking->sport?->slug,
-                    'code' => $ranking->sport?->code,
-                ],
-                'tier' => $tier ? [
-                    'id' => (int) $tier->id,
-                    'tier_no' => (int) $tier->tier_no,
-                    'name' => (string) $tier->name,
-                    'start_point' => (int) $tier->start_point,
-                    'end_point' => (int) $tier->end_point,
-                ] : null,
-            ];
-        });
+        $viewerRanking = null;
+        $authUser = $request->user();
+        $sportId = isset($validated['sport_id']) ? (int) $validated['sport_id'] : null;
 
-        return response()->json(['data' => $data]);
+        if (
+            $authUser
+            && $sportId !== null
+            && $search === ''
+            && ! collect($data)->contains(fn (array $row): bool => $row['user']['id'] === (int) $authUser->id)
+        ) {
+            $viewerModel = Ranking::query()
+                ->with([
+                    'user:id,name,email',
+                    'sport:id,name,slug,code',
+                ])
+                ->where('user_id', $authUser->id)
+                ->where('sport_id', $sportId)
+                ->first();
+
+            if ($viewerModel) {
+                $globalRank = (int) Ranking::query()
+                    ->where('sport_id', $sportId)
+                    ->where(function ($query) use ($viewerModel): void {
+                        $query->where('rating', '>', $viewerModel->rating)
+                            ->orWhere(function ($tieQuery) use ($viewerModel): void {
+                                $tieQuery->where('rating', $viewerModel->rating)
+                                    ->where('id', '<', $viewerModel->id);
+                            });
+                    })
+                    ->count() + 1;
+
+                $viewerWalletKey = $viewerModel->user_id.'-'.$viewerModel->sport_id;
+                if (! $walletsByKey->has($viewerWalletKey)) {
+                    $wallet = MemberPointWallet::query()
+                        ->where('user_id', $viewerModel->user_id)
+                        ->where('sport_id', $viewerModel->sport_id)
+                        ->first();
+                    if ($wallet) {
+                        $walletsByKey->put($viewerWalletKey, $wallet);
+                    }
+                }
+
+                if (! $tiersBySport->has($viewerModel->sport_id)) {
+                    $tiersBySport->put(
+                        $viewerModel->sport_id,
+                        TierRank::query()
+                            ->where('sport_id', $viewerModel->sport_id)
+                            ->where('status', true)
+                            ->orderBy('tier_no')
+                            ->get()
+                    );
+                }
+
+                $viewerRanking = $this->formatRankingRow(
+                    $viewerModel,
+                    $globalRank,
+                    $tiersBySport,
+                    $walletsByKey
+                );
+            }
+        }
+
+        return response()->json([
+            'data' => $data,
+            'viewer_ranking' => $viewerRanking,
+        ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \Illuminate\Support\Collection<int, TierRank>>  $tiersBySport
+     * @param  \Illuminate\Support\Collection<string, MemberPointWallet>  $walletsByKey
+     * @return array<string, mixed>
+     */
+    private function formatRankingRow(
+        Ranking $ranking,
+        int $rank,
+        $tiersBySport,
+        $walletsByKey
+    ): array {
+        $walletKey = $ranking->user_id.'-'.$ranking->sport_id;
+        /** @var MemberPointWallet|null $wallet */
+        $wallet = $walletsByKey->get($walletKey);
+        $walletBalance = (int) ($wallet?->balance ?? 0);
+        $tier = $tiersBySport
+            ->get($ranking->sport_id)
+            ?->first(fn (TierRank $tierRow): bool => $tierRow->start_point <= $walletBalance && $tierRow->end_point >= $walletBalance);
+
+        return [
+            'rank' => $rank,
+            'rating' => (int) $ranking->rating,
+            'wallet_balance' => $walletBalance,
+            'user' => [
+                'id' => (int) $ranking->user_id,
+                'name' => $ranking->user?->name ?? 'Player',
+                'email' => $ranking->user?->email,
+            ],
+            'sport' => [
+                'id' => (int) $ranking->sport_id,
+                'name' => $ranking->sport?->name,
+                'slug' => $ranking->sport?->slug,
+                'code' => $ranking->sport?->code,
+            ],
+            'tier' => $tier ? [
+                'id' => (int) $tier->id,
+                'tier_no' => (int) $tier->tier_no,
+                'name' => (string) $tier->name,
+                'start_point' => (int) $tier->start_point,
+                'end_point' => (int) $tier->end_point,
+            ] : null,
+        ];
     }
 }

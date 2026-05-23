@@ -20,8 +20,8 @@ class RemoveQueueingSessionPlayer
 
         DB::transaction(function () use ($session, $player): void {
             $locked = GameSession::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
-            if (! $locked->is_active || $locked->status === 'ongoing') {
-                abort(422, 'Cannot modify the roster while a match is in progress or the session is closed.');
+            if (! $locked->is_active) {
+                abort(422, 'Cannot modify the roster after the session has ended.');
             }
 
             $p = GameSessionPlayer::query()
