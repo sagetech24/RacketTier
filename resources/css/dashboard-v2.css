@@ -61,7 +61,7 @@
 }
 
 .rt-kinetic-gradient {
-    background: linear-gradient(135deg, #c2c1ff 0%, #8a89d9 100%);
+    background: linear-gradient(135deg, #59588b 0%, #8a89d9 100%);
 }
 
 /* End-match modal: backdrop fade + sheet slide-up (backdrop uses background only so sheet motion isn’t masked) */

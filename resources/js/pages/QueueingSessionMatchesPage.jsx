@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchGameSession, postFinishGameSessionMatch } from '../api/gameSession.js';
 import {
@@ -11,9 +11,9 @@ import {
 } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
-import { SportIcon } from '../components/dashboard/SportIcon.jsx';
+import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
+import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
 
 function formatTime(iso) {
     if (!iso) return '—';
@@ -49,6 +49,68 @@ function rosterPlayerLabel(p) {
     if (!p) return 'Player';
     const n = (p.user?.name ?? p.guest_name ?? '').trim();
     return n || 'Player';
+}
+
+/**
+ * @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p
+ * @param {Set<number>} reservedPlayerIds
+ * @param {boolean} sessionActive
+ */
+function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
+    if (!sessionActive) {
+        return null;
+    }
+    if (p.is_playing) {
+        return { label: 'Playing', className: 'bg-orange-400/20 text-orange-200' };
+    }
+    if (reservedPlayerIds.has(p.id)) {
+        return { label: 'Queueing', className: 'bg-[#c2c1ff]/20 text-[#c2c1ff]' };
+    }
+    if (p.is_waiting && !p.is_playing) {
+        return { label: 'Waiting', className: 'bg-[#4ce081]/20 text-[#4ce081]' };
+    }
+    return { label: 'Waiting', className: 'bg-[#353438] text-[#918f9c]' };
+}
+
+/** @param {{ status: { label: string, className: string } | null }} props */
+function PlayerStatusBadge({ status }) {
+    if (!status) return null;
+    return (
+        <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide ${status.className}`}
+        >
+            {status.label}
+        </span>
+    );
+}
+
+/** @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p */
+function CreateMatchPlayerSessionStats({ p }) {
+    const wins = p.wins_count ?? 0;
+    const losses = p.losses_count ?? 0;
+    const total = wins + losses;
+    const earnedLabel = p.is_guest ? 'N/A' : String(p.session_points ?? 0);
+
+    return (
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-[#918f9c]">
+            <span className="inline-flex items-center gap-0.5" title="Wins">
+                <MaterialIcon name="arrow_upward" className="text-[14px]! text-[#4ce081]" />
+                <span className="tabular-nums font-medium text-[#e4e1e6]">{wins}</span>
+            </span>
+            <span className="inline-flex items-center gap-0.5" title="Losses">
+                <MaterialIcon name="arrow_downward" className="text-[14px]! text-red-300/90" />
+                <span className="tabular-nums font-medium text-[#e4e1e6]">{losses}</span>
+            </span>
+            {/* <span className="inline-flex items-center gap-0.5" title="Matches played">
+                <MaterialIcon name="sports_tennis" className="text-[14px]! text-[#c8c5d2]" />
+                <span className="tabular-nums font-medium text-[#e4e1e6]">{total}</span>
+            </span> */}
+            <span className="inline-flex items-center gap-0.5" title="Points earned">
+                <MaterialIcon name="award_star" className="text-[14px]! text-[#c2c1ff]" />
+                <span className="tabular-nums font-medium text-[#e4e1e6]">{earnedLabel}</span>
+            </span>
+        </div>
+    );
 }
 
 /** @param {unknown} lineup */
@@ -104,7 +166,6 @@ function LineupDisplay({ lineup, status, winningTeam }) {
 
 export function QueueingSessionMatchesPage() {
     const { id: idParam } = useParams();
-    const location = useLocation();
     const navigate = useNavigate();
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
@@ -370,9 +431,6 @@ export function QueueingSessionMatchesPage() {
     const canEndMatch = canManageMatches && session?.status === 'ongoing';
     const hasOngoingMatch = session?.status === 'ongoing';
 
-    const navPath = normalizedAppPath(location.pathname);
-    const queueingNav = session != null ? queueingSessionNavPaths(session.id) : { dash: '', players: '', matches: '' };
-
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
@@ -382,81 +440,15 @@ export function QueueingSessionMatchesPage() {
                 {actionError ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p> : null}
 
                 {session ? (
-                    <article className="mb-8">
-                        <div className="flex items-start gap-2 mb-2">
-                            <SportIcon icon={session.sport?.icon} className="text-[#4ce081]" />
-                            <h1 className="mb-4 text-3xl font-extrabold leading-none tracking-tighter md:text-3xl">
-                                {session.queue_name?.trim() ? (
-                                    session.queue_name.trim()
-                                ) : (
-                                    <>
-                                        {session.sport?.name}{' '}
-                                        <span className="text-[#c2c1ff]">Queue</span>
-                                    </>
-                                )}
-                            </h1>
-                        </div>
-                        <p className="text-sm text-[#c8c5d2]/90 capitalize">
-                            Game Type: {session.match_type}
-                        </p>
-                        <p className="text-sm text-[#c8c5d2]/90 capitalize">
-                            Queue Master: {session.created_by?.name ?? 'Unknown'}
-                        </p>
-                        {session.win_points != null || session.loss_points != null ? (
-                            <p className="text-sm text-[#c8c5d2]/90">
-                                Points: +{session.win_points ?? 0} win / +{session.loss_points ?? 0} loss
-                            </p>
-                        ) : null}
-                        <p className="mt-1 text-xs text-[#918f9c]">
-                            Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}<br />
-                            Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}<br />
-                            Total Players: {session.participant_count ?? 0}<br />
-                            Matches Played: {session.completed_matches_count ?? 0}
-                        </p>
-                    
-                        <div className="mt-3 mb-6 flex justify-between">
-                            <div className="flex flex-wrap gap-2">
-                                <Link to={queueingNav.dash} className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-white/70 border-white/70`}>
-                                    Dashboard
-                                </Link>
-                                <Link to={queueingNav.players} className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-white/70 border-white/70`}>
-                                    Players
-                                </Link>
-                                <Link to={queueingNav.matches} className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-white/70 border-white/70`}>
-                                    Matches
-                                </Link>
-                            </div>
-                            <div className="mb-2 flex items-center justify-between gap-2">
-                                <span
-                                    className={
-                                        session.is_active
-                                            ? 'capitalize rounded-full bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
-                                            : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
-                                    }
-                                >
-                                    {session.is_active ? session.status : <span className="text-[#1f753d] bg-[#4ce081] px-2 py-1 rounded-full text-sm font-bold">Finished</span>}
-                                </span>
-                            </div>
-                        </div>
-                        {canStopSession ? (
-                            <div className="mt-2">
-                                <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        setActionError('');
-                                        setStopSessionOpen(true);
-                                    }}
-                                    className="w-full rounded-xl border-2 border-red-400/50 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-300 transition-transform enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    Stop Queue Session
-                                </button>
-                                <p className="mt-2 text-center text-xs text-[#918f9c]">
-                                    Ends the queue for everyone. Only you (QM) can do this.
-                                </p>
-                            </div>
-                        ) : null}
-                    </article>    
+                    <QueueingSessionHeader
+                        session={session}
+                        canStopSession={canStopSession}
+                        endSessionBusy={busy}
+                        onEndSessionClick={() => {
+                            setActionError('');
+                            setStopSessionOpen(true);
+                        }}
+                    />
                 ) : null}
 
                 {!loading && !error ? (
@@ -542,23 +534,25 @@ export function QueueingSessionMatchesPage() {
                                     )}
                             </section>
                         ))}
-                        {canManageMatches ? (
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => openCreateMatchModal()}
-                                className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
-                            >
-                                Create Match
-                            </button>
-
-
-                            
-                            
-                        ) : null}
                     </div>
                 ) : null}
             </main>
+
+            {canManageMatches ? (
+                <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => openCreateMatchModal()}
+                    className="rt-kinetic-gradient border border[#c2c1ff] fixed bottom-24 right-5 z-40 flex h-16 w-16 items-center justify-center rounded-full transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 md:bottom-8 md:right-8"
+                    aria-label="Create match"
+                    title="Create match"
+                >
+                    <img src="/images/rt-logo.png" alt="" className="h-9 w-9" aria-hidden />
+                    <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#131316] bg-[#c2c1ff] text-[#131316] shadow-md">
+                        <MaterialIcon name="add" className="text-base! font-bold" />
+                    </span>
+                </button>
+            ) : null}
 
             {createMatchOpen && session ? (
                 <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center pt-10 sm:items-center">
@@ -587,7 +581,7 @@ export function QueueingSessionMatchesPage() {
                                         onChange={(e) => setCreateMatchSearch(e.target.value)}
                                         className="w-full rounded-xl border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-md text-[#e4e1e6] outline-none placeholder:text-[#918f9c] focus:border-[#4ce081]/50"
                                     />
-                                    <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-[#2a2a2d] bg-[#131316]">
+                                    <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[#2a2a2d] bg-[#131316]">
                                         {assignableSessionPlayers.length === 0 ? (
                                             <p className="px-3 py-3 text-xs text-[#918f9c]">
                                                 No eligible players (must be waiting in queue and not in a match). Add players on the Players tab or wait until a match ends.
@@ -603,15 +597,24 @@ export function QueueingSessionMatchesPage() {
                                                 {createMatchSearchResults.map((p) => {
                                                     const t1Full = createMatchTeams.team1.length >= createMatchMaxPerTeam;
                                                     const t2Full = createMatchTeams.team2.length >= createMatchMaxPerTeam;
+                                                    const rosterStatus = playerRosterStatus(
+                                                        p,
+                                                        reservedPlayerIds,
+                                                        Boolean(session.is_active),
+                                                    );
                                                     return (
-                                                        <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
-                                                            <div className="min-w-0">
+                                                        <li key={p.id} className="flex items-start justify-between gap-2 px-3 py-2.5">
+                                                            <div className="min-w-0 flex-1">
                                                                 <p className="truncate text-sm font-medium text-[#e4e1e6]">{rosterPlayerLabel(p)}</p>
                                                                 {p.user?.email ? (
                                                                     <p className="truncate text-xs text-[#918f9c]">{p.user.email}</p>
                                                                 ) : null}
+                                                                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                                    <CreateMatchPlayerSessionStats p={p} />
+                                                                    <PlayerStatusBadge status={rosterStatus} />
+                                                                </div>
                                                             </div>
-                                                            <div className="flex shrink-0 gap-2">
+                                                            <div className="flex shrink-0 gap-2 pt-0.5">
                                                                 <button
                                                                     type="button"
                                                                     disabled={busy || t1Full}
