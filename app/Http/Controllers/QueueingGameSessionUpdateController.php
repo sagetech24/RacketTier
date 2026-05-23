@@ -2,29 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\CreateQueueingGameSession;
-use App\Http\Requests\StoreQueueingGameSessionRequest;
+use App\Actions\UpdateQueueingGameSession;
+use App\Http\Requests\UpdateQueueingGameSessionRequest;
 use App\Http\Resources\GameSessionResource;
+use App\Models\GameSession;
 use Illuminate\Http\JsonResponse;
 
-class QueueingGameSessionStoreController extends Controller
+class QueueingGameSessionUpdateController extends Controller
 {
-    public function store(StoreQueueingGameSessionRequest $request, CreateQueueingGameSession $action): JsonResponse
-    {
+    public function __invoke(
+        UpdateQueueingGameSessionRequest $request,
+        GameSession $gameSession,
+        UpdateQueueingGameSession $action,
+    ): JsonResponse {
         $user = $request->user();
         abort_if(! $user, 401);
 
-        $result = $action->execute(
+        $session = $action->execute(
             $user,
+            $gameSession,
             $request->validated('queue_name'),
-            $request->validated('sport_slug'),
-            $request->validated('match_type'),
             (int) $request->validated('win_points'),
             (int) $request->validated('loss_points'),
             (bool) $request->boolean('skip_scores'),
         );
 
-        $session = $result['session'];
         $session->load([
             'sport',
             'creator:id,name,email',
@@ -35,6 +37,6 @@ class QueueingGameSessionStoreController extends Controller
 
         return response()->json([
             'data' => new GameSessionResource($session),
-        ], 201);
+        ]);
     }
 }

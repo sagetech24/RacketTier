@@ -55,6 +55,7 @@ class GameSessionResource extends JsonResource
             'queue_name' => $this->queue_name,
             'win_points' => $this->win_points !== null ? (int) $this->win_points : null,
             'loss_points' => $this->loss_points !== null ? (int) $this->loss_points : null,
+            'skip_scores' => (bool) ($this->skip_scores ?? false),
             'completed_matches_count' => (int) ($this->completed_matches_count ?? 0),
             'facility' => $this->when(
                 $this->relationLoaded('facility') && $this->facility_id !== null,
@@ -77,10 +78,11 @@ class GameSessionResource extends JsonResource
             'is_active' => $this->is_active,
             'status' => $this->status,
             'last_match' => $this->when(
-                $this->last_team1_score !== null && $this->last_team2_score !== null,
+                $this->last_winning_team !== null
+                    || ($this->last_team1_score !== null && $this->last_team2_score !== null),
                 fn (): array => [
-                    'team1_score' => (int) $this->last_team1_score,
-                    'team2_score' => (int) $this->last_team2_score,
+                    'team1_score' => $this->last_team1_score !== null ? (int) $this->last_team1_score : null,
+                    'team2_score' => $this->last_team2_score !== null ? (int) $this->last_team2_score : null,
                     'winning_team' => $this->last_winning_team !== null ? (int) $this->last_winning_team : null,
                     'finished_at' => $this->last_finished_at?->toIso8601String(),
                     'players' => is_array($this->last_result_breakdown)

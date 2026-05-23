@@ -19,16 +19,18 @@ class CreateQueueingGameSession
         string $matchType,
         int $winPoints,
         int $lossPoints,
+        bool $skipScores = false,
     ): array {
         $sport = Sport::query()->where('slug', $sportSlug)->firstOrFail();
 
-        return DB::transaction(function () use ($creator, $sport, $queueName, $matchType, $winPoints, $lossPoints): array {
+        return DB::transaction(function () use ($creator, $sport, $queueName, $matchType, $winPoints, $lossPoints, $skipScores): array {
             $session = GameSession::query()->create([
                 'facility_id' => null,
                 'session_context' => 'queueing',
                 'queue_name' => $queueName,
                 'win_points' => $winPoints,
                 'loss_points' => $lossPoints,
+                'skip_scores' => $skipScores,
                 'completed_matches_count' => 0,
                 'sport_id' => $sport->id,
                 'match_type' => $matchType,

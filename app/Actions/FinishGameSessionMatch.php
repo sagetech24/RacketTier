@@ -18,19 +18,20 @@ class FinishGameSessionMatch
         private CreditMemberPointWallet $creditMemberPointWallet,
     ) {}
 
-    public function execute(GameSession $session, int $team1Score, int $team2Score, ?int $queueingSessionMatchId = null): GameSession
-    {
-        if ($team1Score === $team2Score) {
-            abort(422, 'Scores cannot be tied.');
-        }
-
+    public function execute(
+        GameSession $session,
+        ?int $team1Score,
+        ?int $team2Score,
+        ?int $queueingSessionMatchId = null,
+        ?int $winningTeamOverride = null,
+    ): GameSession {
         if (! $session->is_active) {
             abort(422, 'This session is not active.');
         }
 
         $required = $session->match_type === 'doubles' ? 4 : 2;
 
-        return DB::transaction(function () use ($session, $team1Score, $team2Score, $required, $queueingSessionMatchId): GameSession {
+        return DB::transaction(function () use ($session, $team1Score, $team2Score, $required, $queueingSessionMatchId, $winningTeamOverride): GameSession {
             /** @var GameSession $locked */
             $locked = GameSession::query()
                 ->whereKey($session->id)
@@ -39,6 +40,29 @@ class FinishGameSessionMatch
 
             if ($locked->status !== 'ongoing') {
                 abort(422, 'No match is in progress for this session.');
+            }
+
+            $useWinnerOnly = $locked->isQueueing() && (bool) $locked->skip_scores;
+
+            if ($useWinnerOnly) {
+                if (! in_array($winningTeamOverride, [1, 2], true)) {
+                    abort(422, 'Select the winning team.');
+                }
+                $winningTeam = $winningTeamOverride;
+                $storedTeam1Score = null;
+                $storedTeam2Score = null;
+                $margin = 0;
+            } else {
+                if ($team1Score === null || $team2Score === null) {
+                    abort(422, 'Enter both final scores.');
+                }
+                if ($team1Score === $team2Score) {
+                    abort(422, 'Scores cannot be tied.');
+                }
+                $winningTeam = $team1Score > $team2Score ? 1 : 2;
+                $storedTeam1Score = $team1Score;
+                $storedTeam2Score = $team2Score;
+                $margin = abs($team1Score - $team2Score);
             }
 
             $playing = collect();
@@ -79,24 +103,21 @@ class FinishGameSessionMatch
                 $teamMap = $this->resolveTeams($playing, $locked->match_type);
             }
 
-            $winningTeam = $team1Score > $team2Score ? 1 : 2;
-            $margin = abs($team1Score - $team2Score);
-
             $breakdown = $this->applyResults(
                 $locked,
                 $playing,
                 $teamMap,
                 $winningTeam,
                 $margin,
-                $team1Score,
-                $team2Score,
+                $storedTeam1Score,
+                $storedTeam2Score,
             );
 
             if ($locked->isQueueing()) {
                 $targetQueueingMatch->update([
                     'status' => 'finished',
-                    'team1_score' => $team1Score,
-                    'team2_score' => $team2Score,
+                    'team1_score' => $storedTeam1Score,
+                    'team2_score' => $storedTeam2Score,
                     'winning_team' => $winningTeam,
                     'finished_at' => now(),
                     'result_breakdown' => $breakdown,
@@ -118,8 +139,8 @@ class FinishGameSessionMatch
                 GameSession::query()->whereKey($locked->id)->update([
                     'status' => $stillHasOngoingPlayers ? 'ongoing' : 'queueing',
                     'is_active' => true,
-                    'last_team1_score' => $team1Score,
-                    'last_team2_score' => $team2Score,
+                    'last_team1_score' => $storedTeam1Score,
+                    'last_team2_score' => $storedTeam2Score,
                     'last_winning_team' => $winningTeam,
                     'last_finished_at' => now(),
                     'last_result_breakdown' => $breakdown,
@@ -132,8 +153,8 @@ class FinishGameSessionMatch
                     'status' => 'finished',
                     'is_active' => false,
                     'ended_at' => now(),
-                    'last_team1_score' => $team1Score,
-                    'last_team2_score' => $team2Score,
+                    'last_team1_score' => $storedTeam1Score,
+                    'last_team2_score' => $storedTeam2Score,
                     'last_winning_team' => $winningTeam,
                     'last_finished_at' => now(),
                     'last_result_breakdown' => $breakdown,
@@ -274,8 +295,8 @@ class FinishGameSessionMatch
         array $teamMap,
         int $winningTeam,
         int $margin,
-        int $team1Score,
-        int $team2Score,
+        ?int $team1Score,
+        ?int $team2Score,
     ): array {
         $sportId = (int) $session->sport_id;
         $memberUserIds = $playing->pluck('user_id')->filter()->unique()->values()->all();

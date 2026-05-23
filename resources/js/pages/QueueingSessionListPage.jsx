@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchQueueingSessions } from '../api/queueingSession.js';
+import { fetchQueueingSessions, patchUpdateQueueingSession } from '../api/queueingSession.js';
+import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
@@ -16,9 +17,14 @@ function formatTime(iso) {
 }
 
 /**
- * @param {{ row: import('../api/gameSession.js').GameSessionDetail, navPath: string, viewOnly: boolean }} props
+ * @param {{
+ *   row: import('../api/gameSession.js').GameSessionDetail,
+ *   navPath: string,
+ *   viewOnly: boolean,
+ *   onEdit?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
+ * }} props
  */
-function QueueingSessionCard({ row, navPath, viewOnly }) {
+function QueueingSessionCard({ row, navPath, viewOnly, onEdit }) {
     const paths = queueingSessionNavPaths(row.id);
     return (
         <article
@@ -29,9 +35,11 @@ function QueueingSessionCard({ row, navPath, viewOnly }) {
             <div className="mb-2 flex items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-base font-bold">
                     <SportIcon icon={row.sport?.icon} className="text-[#4ce081]" />
+                    <Link to={`/queueing-session/${row.id}`}>
                     {row.queue_name?.trim()
                         ? row.queue_name.trim()
                         : `${row.sport?.name ?? 'Sport'} Queue`}
+                    </Link>
                 </h2>
                 <QueueSessionCardBadges row={row} viewOnly={viewOnly} />
             </div>
@@ -52,6 +60,15 @@ function QueueingSessionCard({ row, navPath, viewOnly }) {
                 ) : null}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
+                {!viewOnly && row.is_host && row.is_active && onEdit ? (
+                    <button
+                        type="button"
+                        onClick={() => onEdit(row)}
+                        className={`${queueingSessionTabClass(false)} text-[#c2c1ff] border-[#c2c1ff]/50`}
+                    >
+                        Edit
+                    </button>
+                ) : null}
                 <Link
                     to={paths.dash}
                     className={`${queueingSessionTabClass(navPath === paths.dash)} text-white/70 border-white/70`}
@@ -102,6 +119,59 @@ export function QueueingSessionListPage() {
     const [status, setStatus] = useState('all');
     const [mineOnly, setMineOnly] = useState(false);
     const [sort, setSort] = useState('updated_desc');
+    /** @type {import('../api/gameSession.js').GameSessionDetail | null} */
+    const [editRow, setEditRow] = useState(null);
+    const [editQueueName, setEditQueueName] = useState('');
+    const [editWinPoints, setEditWinPoints] = useState('30');
+    const [editLossPoints, setEditLossPoints] = useState('8');
+    const [editSkipScores, setEditSkipScores] = useState(false);
+    const [editSubmitting, setEditSubmitting] = useState(false);
+    const [editError, setEditError] = useState('');
+
+    function openEditModal(row) {
+        setEditRow(row);
+        setEditQueueName(row.queue_name?.trim() ?? '');
+        setEditWinPoints(String(row.win_points ?? 30));
+        setEditLossPoints(String(row.loss_points ?? 8));
+        setEditSkipScores(Boolean(row.skip_scores));
+        setEditError('');
+    }
+
+    function closeEditModal() {
+        setEditRow(null);
+        setEditError('');
+    }
+
+    async function onSaveEdit() {
+        if (!editRow) return;
+        const w = Number.parseInt(editWinPoints, 10);
+        const l = Number.parseInt(editLossPoints, 10);
+        const name = editQueueName.trim();
+        if (!name) {
+            setEditError('Enter a name for this queue.');
+            return;
+        }
+        if (!Number.isFinite(w) || w < 0 || !Number.isFinite(l) || l < 0) {
+            setEditError('Enter valid point numbers.');
+            return;
+        }
+        setEditSubmitting(true);
+        setEditError('');
+        try {
+            const updated = await patchUpdateQueueingSession(editRow.id, {
+                queue_name: name,
+                win_points: w,
+                loss_points: l,
+                skip_scores: editSkipScores,
+            });
+            setRows((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+            closeEditModal();
+        } catch (e) {
+            setEditError(e instanceof Error ? e.message : 'Could not update session.');
+        } finally {
+            setEditSubmitting(false);
+        }
+    }
 
     useEffect(() => {
         let cancelled = false;
@@ -224,7 +294,13 @@ export function QueueingSessionListPage() {
                         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Active</h2>
                         <div className="space-y-3">
                             {activeRows.map((row) => (
-                                <QueueingSessionCard key={row.id} row={row} navPath={navPath} viewOnly={false} />
+                                <QueueingSessionCard
+                                    key={row.id}
+                                    row={row}
+                                    navPath={navPath}
+                                    viewOnly={false}
+                                    onEdit={openEditModal}
+                                />
                             ))}
                         </div>
                     </section>
@@ -246,6 +322,83 @@ export function QueueingSessionListPage() {
                     </section>
                 ) : null}
             </main>
+
+            {editRow ? (
+                <div className="fixed inset-0 z-[99] flex items-end justify-center bg-black/60 sm:items-center">
+                    <div className="w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl sm:rounded-2xl">
+                        <h2 className="mb-1 text-lg font-bold">Edit queue</h2>
+                        <p className="mb-4 text-xs text-[#918f9c]">
+                            Update settings for {editRow.queue_name?.trim() || `session #${editRow.id}`}.
+                        </p>
+                        <div className="space-y-4">
+                            <div>
+                                <label htmlFor="edit-queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
+                                    Name of the queue
+                                </label>
+                                <input
+                                    id="edit-queue-name"
+                                    type="text"
+                                    value={editQueueName}
+                                    onChange={(e) => setEditQueueName(e.target.value)}
+                                    maxLength={120}
+                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={9999}
+                                        value={editWinPoints}
+                                        onChange={(e) => setEditWinPoints(e.target.value)}
+                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Loss points</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={9999}
+                                        value={editLossPoints}
+                                        onChange={(e) => setEditLossPoints(e.target.value)}
+                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                    />
+                                </div>
+                            </div>
+                            <QueueingSessionSkipScoresField
+                                checked={editSkipScores}
+                                onChange={setEditSkipScores}
+                                disabled={editSubmitting}
+                            />
+                            {editError ? (
+                                <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{editError}</p>
+                            ) : null}
+                        </div>
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                type="button"
+                                disabled={editSubmitting}
+                                onClick={() => closeEditModal()}
+                                className="flex-1 rounded-lg border border-white/50 py-2.5 text-sm font-bold text-white/70"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={editSubmitting}
+                                onClick={() => onSaveEdit()}
+                                className="flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:opacity-50"
+                            >
+                                {editSubmitting ? 'Saving…' : 'Save changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
             <DashboardMobileNav />
         </div>
     );

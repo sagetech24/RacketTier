@@ -1,0 +1,81 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\GameSession;
+use App\Models\Sport;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class QueueingGameSessionUpdateTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_queue_master_can_update_active_queueing_session(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'session_context' => 'queueing',
+            'queue_name' => 'Old Name',
+            'sport_id' => $sport->id,
+            'match_type' => 'singles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'skip_scores' => false,
+            'started_at' => now(),
+        ]);
+
+        $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$session->id, [
+            'queue_name' => 'Updated Queue',
+            'win_points' => 40,
+            'loss_points' => 10,
+            'skip_scores' => true,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.queue_name', 'Updated Queue');
+        $response->assertJsonPath('data.win_points', 40);
+        $response->assertJsonPath('data.loss_points', 10);
+        $response->assertJsonPath('data.skip_scores', true);
+
+        $session->refresh();
+        $this->assertSame('Updated Queue', $session->queue_name);
+        $this->assertTrue($session->skip_scores);
+    }
+
+    public function test_non_host_cannot_update_queueing_session(): void
+    {
+        $host = User::factory()->create();
+        $other = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'session_context' => 'queueing',
+            'queue_name' => 'Host Queue',
+            'sport_id' => $sport->id,
+            'match_type' => 'singles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $this->actingAs($other)->patchJson('/auth/queueing-sessions/'.$session->id, [
+            'queue_name' => 'Hijacked',
+            'win_points' => 1,
+            'loss_points' => 1,
+        ])->assertForbidden();
+    }
+}

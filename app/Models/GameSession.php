@@ -15,6 +15,7 @@ class GameSession extends Model
         'queue_name',
         'win_points',
         'loss_points',
+        'skip_scores',
         'completed_matches_count',
         'sport_id',
         'match_type',
@@ -39,6 +40,7 @@ class GameSession extends Model
     {
         return [
             'is_active' => 'boolean',
+            'skip_scores' => 'boolean',
             'win_points' => 'integer',
             'loss_points' => 'integer',
             'completed_matches_count' => 'integer',

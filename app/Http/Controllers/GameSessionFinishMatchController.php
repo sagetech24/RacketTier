@@ -16,13 +16,26 @@ class GameSessionFinishMatchController extends Controller
         FinishGameSessionMatch $finishGameSessionMatch,
     ): JsonResponse {
         $validated = $request->validated();
+        $matchId = isset($validated['queueing_session_match_id'])
+            ? (int) $validated['queueing_session_match_id']
+            : null;
 
-        $finishGameSessionMatch->execute(
-            $gameSession,
-            (int) $validated['team1_score'],
-            (int) $validated['team2_score'],
-            isset($validated['queueing_session_match_id']) ? (int) $validated['queueing_session_match_id'] : null,
-        );
+        if ($gameSession->isQueueing() && (bool) $gameSession->skip_scores) {
+            $finishGameSessionMatch->execute(
+                $gameSession,
+                null,
+                null,
+                $matchId,
+                (int) $validated['winning_team'],
+            );
+        } else {
+            $finishGameSessionMatch->execute(
+                $gameSession,
+                (int) $validated['team1_score'],
+                (int) $validated['team2_score'],
+                $matchId,
+            );
+        }
 
         $gameSession->refresh();
         $gameSession->load([

@@ -15,11 +15,13 @@ use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
 use App\Http\Controllers\QueueingGameSessionEndController;
 use App\Http\Controllers\QueueingGameSessionStoreController;
+use App\Http\Controllers\QueueingGameSessionUpdateController;
 use App\Http\Controllers\QueueingGameSessionSummaryController;
 use App\Http\Controllers\QueueingSessionMatchDestroyController;
 use App\Http\Controllers\QueueingSessionMatchesIndexController;
 use App\Http\Controllers\QueueingSessionMatchesStoreController;
 use App\Http\Controllers\QueueingSessionMatchStartController;
+use App\Http\Controllers\QueueingSessionMatchUpdateController;
 use App\Http\Controllers\QueueingSessionPlayersDestroyController;
 use App\Http\Controllers\QueueingSessionPlayersStoreController;
 use App\Http\Controllers\RankingIndexController;
@@ -97,6 +99,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/auth/game-sessions', [GameSessionStoreController::class, 'store'])->name('auth.game-sessions.store');
 
     Route::post('/auth/queueing-sessions', [QueueingGameSessionStoreController::class, 'store'])->name('auth.queueing-sessions.store');
+    Route::patch('/auth/queueing-sessions/{gameSession}', QueueingGameSessionUpdateController::class)
+        ->name('auth.queueing-sessions.update');
     Route::post('/auth/queueing-sessions/{gameSession}/players', [QueueingSessionPlayersStoreController::class, 'store'])
         ->name('auth.queueing-sessions.players.store');
     Route::delete('/auth/queueing-sessions/{gameSession}/players/{gameSessionPlayer}', QueueingSessionPlayersDestroyController::class)
@@ -111,6 +115,8 @@ Route::middleware('auth')->group(function () {
         ->name('auth.queueing-sessions.matches.store');
     Route::post('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}/start', QueueingSessionMatchStartController::class)
         ->name('auth.queueing-sessions.matches.start');
+    Route::patch('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}', QueueingSessionMatchUpdateController::class)
+        ->name('auth.queueing-sessions.matches.update');
     Route::delete('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}', QueueingSessionMatchDestroyController::class)
         ->name('auth.queueing-sessions.matches.destroy');
 });

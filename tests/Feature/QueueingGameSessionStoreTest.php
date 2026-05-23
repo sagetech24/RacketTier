@@ -36,5 +36,26 @@ class QueueingGameSessionStoreTest extends TestCase
         $this->assertTrue($session->isQueueing());
         $this->assertNull($session->facility_id);
         $this->assertSame('Friday Night Smash', $session->queue_name);
+        $this->assertFalse($session->skip_scores);
+    }
+
+    public function test_create_queueing_session_can_enable_skip_scores(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Quick Wins',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'skip_scores' => true,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.skip_scores', true);
+
+        $session = GameSession::query()->findOrFail($response->json('data.id'));
+        $this->assertTrue($session->skip_scores);
     }
 }

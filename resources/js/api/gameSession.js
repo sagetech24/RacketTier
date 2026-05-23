@@ -233,14 +233,24 @@ export async function postStartGameSessionMatch(id, opts = {}) {
 
 /**
  * @param {string | number} id
- * @param {{ team1_score: number, team2_score: number, facilityId?: number | string, queueingSessionMatchId?: number | string }} body
+ * @param {{
+ *   team1_score?: number,
+ *   team2_score?: number,
+ *   winning_team?: 1 | 2,
+ *   facilityId?: number | string,
+ *   queueingSessionMatchId?: number | string,
+ * }} body
  * @returns {Promise<GameSessionDetail>}
  */
 export async function postFinishGameSessionMatch(id, body) {
-    const payload = {
-        team1_score: body.team1_score,
-        team2_score: body.team2_score,
-    };
+    /** @type {Record<string, unknown>} */
+    const payload = {};
+    if (body.winning_team != null) {
+        payload.winning_team = body.winning_team;
+    } else {
+        payload.team1_score = body.team1_score;
+        payload.team2_score = body.team2_score;
+    }
     if (body.facilityId != null && String(body.facilityId).trim() !== '') {
         payload.facility_id = Number(body.facilityId);
     }

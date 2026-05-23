@@ -2,13 +2,21 @@
 
 namespace App\Http\Requests;
 
+use App\Models\GameSession;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreQueueingGameSessionRequest extends FormRequest
+class UpdateQueueingGameSessionRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user();
+        $user = $this->user();
+        $session = $this->route('gameSession');
+
+        if (! $user || ! $session instanceof GameSession) {
+            return false;
+        }
+
+        return (int) $session->created_by === (int) $user->id;
     }
 
     protected function prepareForValidation(): void
@@ -25,8 +33,6 @@ class StoreQueueingGameSessionRequest extends FormRequest
     {
         return [
             'queue_name' => ['required', 'filled', 'string', 'max:120'],
-            'sport_slug' => ['required', 'string', 'max:64', 'exists:sports,slug'],
-            'match_type' => ['required', 'string', 'in:singles,doubles'],
             'win_points' => ['required', 'integer', 'min:0', 'max:9999'],
             'loss_points' => ['required', 'integer', 'min:0', 'max:9999'],
             'skip_scores' => ['sometimes', 'boolean'],

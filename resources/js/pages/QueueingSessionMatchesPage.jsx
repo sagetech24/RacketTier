@@ -5,6 +5,7 @@ import { fetchGameSession, postFinishGameSessionMatch } from '../api/gameSession
 import {
     deleteQueueingSessionMatch,
     fetchQueueingSessionMatches,
+    patchUpdateQueueingSessionMatch,
     postCreateQueueingSessionMatch,
     postEndQueueingSession,
     postStartQueueingSessionMatch,
@@ -12,6 +13,7 @@ import {
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
+import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -42,6 +44,29 @@ function lineupPlayerIds(lineup) {
     return rows
         .map((p) => Number(p.game_session_player_id ?? p.id ?? 0))
         .filter((id) => id > 0);
+}
+
+/** @param {unknown} lineup */
+function lineupToTeams(lineup) {
+    const rows = Array.isArray(lineup) ? lineup : [];
+    /** @type {number[]} */
+    const team1 = [];
+    /** @type {number[]} */
+    const team2 = [];
+    /** @type {number[]} */
+    const unteamed = [];
+    for (const p of rows) {
+        const id = Number(p.game_session_player_id ?? p.id ?? 0);
+        if (id <= 0) continue;
+        const team = Number(p.team);
+        if (team === 1) team1.push(id);
+        else if (team === 2) team2.push(id);
+        else unteamed.push(id);
+    }
+    if (unteamed.length === 2 && team1.length === 0 && team2.length === 0) {
+        return { team1: [unteamed[0]], team2: [unteamed[1]] };
+    }
+    return { team1, team2 };
 }
 
 /** @param {{ user?: { name?: string } | null, guest_name?: string | null } | null | undefined} p */
@@ -144,6 +169,35 @@ function lineupTeamSideClass(status, winningTeam, teamNo) {
     return `${base} text-red-400`;
 }
 
+/**
+ * @param {1 | 2} teamNo
+ * @param {1 | 2 | null} selectedWinningTeam
+ */
+function winnerPickerCardClass(teamNo, selectedWinningTeam) {
+    const base = 'rounded-xl p-3 text-left transition-colors';
+    if (selectedWinningTeam === null) {
+        return `${base} border border-[#2a2a2d] bg-[#131316] hover:border-[#4ce081]/40`;
+    }
+    if (selectedWinningTeam === teamNo) {
+        return `${base} border-2 border-[#4ce081] bg-[#4ce081]/15`;
+    }
+    return `${base} border-2 border-red-400/60 bg-red-400/10`;
+}
+
+/**
+ * @param {1 | 2} teamNo
+ * @param {1 | 2 | null} selectedWinningTeam
+ */
+function winnerPickerLabelClass(teamNo, selectedWinningTeam) {
+    if (selectedWinningTeam === null) {
+        return teamNo === 1 ? 'text-[#4ce081]' : 'text-[#c2c1ff]';
+    }
+    if (selectedWinningTeam === teamNo) {
+        return 'text-[#4ce081]';
+    }
+    return 'text-red-400';
+}
+
 /** e.g. singles: "John VS Sam" · doubles: "John, Peter VS Jason & Sam" */
 /** @param {{ lineup: unknown, status?: string, winningTeam?: number | null }} props */
 function LineupDisplay({ lineup, status, winningTeam }) {
@@ -178,13 +232,21 @@ export function QueueingSessionMatchesPage() {
     const [finishOpen, setFinishOpen] = useState(false);
     const [t1, setT1] = useState('');
     const [t2, setT2] = useState('');
+    /** @type {1 | 2 | null} */
+    const [selectedWinningTeam, setSelectedWinningTeam] = useState(null);
     const [selectedMatchId, setSelectedMatchId] = useState(null);
     const [selectedMatchNo, setSelectedMatchNo] = useState(null);
     const [finishTeams, setFinishTeams] = useState({ team1: [], team2: [] });
-    const [createMatchOpen, setCreateMatchOpen] = useState(false);
-    const [createMatchTeams, setCreateMatchTeams] = useState({ team1: [], team2: [] });
-    const [createMatchSearch, setCreateMatchSearch] = useState('');
+    const [matchLineupOpen, setMatchLineupOpen] = useState(false);
+    /** @type {'create' | 'edit'} */
+    const [matchLineupMode, setMatchLineupMode] = useState('create');
+    const [editingMatchId, setEditingMatchId] = useState(null);
+    const [editingMatchNo, setEditingMatchNo] = useState(null);
+    const [matchLineupTeams, setMatchLineupTeams] = useState({ team1: [], team2: [] });
+    const [matchLineupSearch, setMatchLineupSearch] = useState('');
     const [stopSessionOpen, setStopSessionOpen] = useState(false);
+    /** @type {null | { id: number, matchNo: number | null, status: string }} */
+    const [removeMatchConfirm, setRemoveMatchConfirm] = useState(null);
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
@@ -227,20 +289,37 @@ export function QueueingSessionMatchesPage() {
 
     async function onEndMatch() {
         if (sessionId == null) return;
-        const a = Number.parseInt(t1, 10);
-        const b = Number.parseInt(t2, 10);
-        if (!Number.isFinite(a) || !Number.isFinite(b)) {
-            setActionError('Enter both final scores.');
-            return;
+        const skipScores = Boolean(session?.skip_scores);
+
+        if (skipScores) {
+            if (selectedWinningTeam !== 1 && selectedWinningTeam !== 2) {
+                setActionError('Select the winning team.');
+                return;
+            }
+        } else {
+            const a = Number.parseInt(t1, 10);
+            const b = Number.parseInt(t2, 10);
+            if (!Number.isFinite(a) || !Number.isFinite(b)) {
+                setActionError('Enter both final scores.');
+                return;
+            }
         }
+
         setActionError('');
         setBusy(true);
         try {
-            await postFinishGameSessionMatch(sessionId, {
-                team1_score: a,
-                team2_score: b,
-                queueingSessionMatchId: selectedMatchId ?? undefined,
-            });
+            if (skipScores) {
+                await postFinishGameSessionMatch(sessionId, {
+                    winning_team: selectedWinningTeam,
+                    queueingSessionMatchId: selectedMatchId ?? undefined,
+                });
+            } else {
+                await postFinishGameSessionMatch(sessionId, {
+                    team1_score: Number.parseInt(t1, 10),
+                    team2_score: Number.parseInt(t2, 10),
+                    queueingSessionMatchId: selectedMatchId ?? undefined,
+                });
+            }
             await reload();
             setFinishOpen(false);
             setSelectedMatchId(null);
@@ -248,6 +327,7 @@ export function QueueingSessionMatchesPage() {
             setFinishTeams({ team1: [], team2: [] });
             setT1('');
             setT2('');
+            setSelectedWinningTeam(null);
         } catch (e) {
             setActionError(e instanceof Error ? e.message : 'Could not end match.');
         } finally {
@@ -259,12 +339,13 @@ export function QueueingSessionMatchesPage() {
         const ids = new Set();
         for (const row of matches) {
             if (row.status !== 'queueing') continue;
+            if (matchLineupMode === 'edit' && editingMatchId != null && row.id === editingMatchId) continue;
             for (const pid of lineupPlayerIds(row.lineup)) {
                 ids.add(pid);
             }
         }
         return ids;
-    }, [matches]);
+    }, [matches, matchLineupMode, editingMatchId]);
 
     /** In queue (waiting), not on court, and not reserved in a queued match. */
     const assignableSessionPlayers = useMemo(() => {
@@ -272,47 +353,66 @@ export function QueueingSessionMatchesPage() {
         return rows.filter((p) => p.is_waiting && !p.is_playing && !reservedPlayerIds.has(p.id));
     }, [session?.players, reservedPlayerIds]);
 
-    const createMatchSearchResults = useMemo(() => {
-        const assigned = new Set([...createMatchTeams.team1, ...createMatchTeams.team2]);
+    const matchLineupSearchResults = useMemo(() => {
+        const assigned = new Set([...matchLineupTeams.team1, ...matchLineupTeams.team2]);
         const pool = assignableSessionPlayers.filter((p) => !assigned.has(p.id));
-        const q = createMatchSearch.trim().toLowerCase();
+        const q = matchLineupSearch.trim().toLowerCase();
         if (!q) return pool;
         return pool.filter((p) => {
             const label = rosterPlayerLabel(p).toLowerCase();
             const email = (p.user?.email ?? '').toLowerCase();
             return label.includes(q) || email.includes(q);
         });
-    }, [assignableSessionPlayers, createMatchSearch, createMatchTeams.team1, createMatchTeams.team2]);
+    }, [assignableSessionPlayers, matchLineupSearch, matchLineupTeams.team1, matchLineupTeams.team2]);
 
-    const createMatchMaxPerTeam = session?.match_type === 'doubles' ? 2 : 1;
+    const matchLineupMaxPerTeam = session?.match_type === 'doubles' ? 2 : 1;
 
-    const createMatchLineupValid = useMemo(() => {
-        const { team1, team2 } = createMatchTeams;
-        const max = createMatchMaxPerTeam;
+    const matchLineupValid = useMemo(() => {
+        const { team1, team2 } = matchLineupTeams;
+        const max = matchLineupMaxPerTeam;
         if (team1.length !== max || team2.length !== max) return false;
         const all = [...team1, ...team2];
         return new Set(all).size === all.length;
-    }, [createMatchTeams, createMatchMaxPerTeam]);
+    }, [matchLineupTeams, matchLineupMaxPerTeam]);
+
+    function closeMatchLineupModal() {
+        setMatchLineupOpen(false);
+        setMatchLineupMode('create');
+        setEditingMatchId(null);
+        setEditingMatchNo(null);
+        setMatchLineupTeams({ team1: [], team2: [] });
+        setMatchLineupSearch('');
+    }
 
     function openCreateMatchModal() {
         setActionError('');
-        setCreateMatchTeams({ team1: [], team2: [] });
-        setCreateMatchSearch('');
-        setCreateMatchOpen(true);
+        setMatchLineupMode('create');
+        setEditingMatchId(null);
+        setEditingMatchNo(null);
+        setMatchLineupTeams({ team1: [], team2: [] });
+        setMatchLineupSearch('');
+        setMatchLineupOpen(true);
     }
 
-    function closeCreateMatchModal() {
-        setCreateMatchOpen(false);
-        setCreateMatchTeams({ team1: [], team2: [] });
-        setCreateMatchSearch('');
+    /**
+     * @param {{ id?: number, match_no?: number, lineup?: unknown }} row
+     */
+    function openEditMatchModal(row) {
+        setActionError('');
+        setMatchLineupMode('edit');
+        setEditingMatchId(row.id ?? null);
+        setEditingMatchNo(row.match_no ?? null);
+        setMatchLineupTeams(lineupToTeams(row.lineup));
+        setMatchLineupSearch('');
+        setMatchLineupOpen(true);
     }
 
     /**
      * @param {1 | 2} team
      * @param {number} playerId
      */
-    function addPlayerToCreateMatchTeam(team, playerId) {
-        setCreateMatchTeams((prev) => {
+    function addPlayerToMatchLineupTeam(team, playerId) {
+        setMatchLineupTeams((prev) => {
             const max = session?.match_type === 'doubles' ? 2 : 1;
             const t1 = prev.team1.filter((id) => id !== playerId);
             const t2 = prev.team2.filter((id) => id !== playerId);
@@ -329,16 +429,27 @@ export function QueueingSessionMatchesPage() {
      * @param {1 | 2} team
      * @param {number} playerId
      */
-    function removePlayerFromCreateMatchTeam(team, playerId) {
-        setCreateMatchTeams((prev) => ({
+    function removePlayerFromMatchLineupTeam(team, playerId) {
+        setMatchLineupTeams((prev) => ({
             team1: team === 1 ? prev.team1.filter((id) => id !== playerId) : prev.team1,
             team2: team === 2 ? prev.team2.filter((id) => id !== playerId) : prev.team2,
         }));
     }
 
-    async function onCreateMatch() {
+    /** @returns {{ id: number, team?: number }[] | null} */
+    function buildMatchLineupPayload() {
+        if (session == null || !matchLineupValid) return null;
+        const { team1, team2 } = matchLineupTeams;
+        if (session.match_type === 'doubles') {
+            return [...team1.map((id) => ({ id, team: 1 })), ...team2.map((id) => ({ id, team: 2 }))];
+        }
+        return [{ id: team1[0] }, { id: team2[0] }];
+    }
+
+    async function onSaveMatchLineup() {
         if (sessionId == null || session == null) return;
-        if (!createMatchLineupValid) {
+        const lineup = buildMatchLineupPayload();
+        if (!lineup) {
             setActionError(
                 session.match_type === 'doubles'
                     ? 'Assign two players to Team 1 and two to Team 2.'
@@ -346,22 +457,24 @@ export function QueueingSessionMatchesPage() {
             );
             return;
         }
-        const { team1, team2 } = createMatchTeams;
-        /** @type {{ id: number, team?: number }[]} */
-        let lineup;
-        if (session.match_type === 'doubles') {
-            lineup = [...team1.map((id) => ({ id, team: 1 })), ...team2.map((id) => ({ id, team: 2 }))];
-        } else {
-            lineup = [{ id: team1[0] }, { id: team2[0] }];
-        }
         setActionError('');
         setBusy(true);
         try {
-            await postCreateQueueingSessionMatch(sessionId, { lineup });
+            if (matchLineupMode === 'edit' && editingMatchId != null) {
+                await patchUpdateQueueingSessionMatch(sessionId, editingMatchId, { lineup });
+            } else {
+                await postCreateQueueingSessionMatch(sessionId, { lineup });
+            }
             await reload();
-            closeCreateMatchModal();
+            closeMatchLineupModal();
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : 'Could not create match.');
+            setActionError(
+                e instanceof Error
+                    ? e.message
+                    : matchLineupMode === 'edit'
+                      ? 'Could not update match.'
+                      : 'Could not create match.',
+            );
         } finally {
             setBusy(false);
         }
@@ -381,15 +494,38 @@ export function QueueingSessionMatchesPage() {
         }
     }
 
-    async function onDeleteQueuedMatch(matchId) {
-        if (sessionId == null) return;
+    /**
+     * @param {{ id?: number, match_no?: number | null, status?: string }} row
+     */
+    function openRemoveMatchConfirm(row) {
+        setActionError('');
+        setRemoveMatchConfirm({
+            id: row.id ?? 0,
+            matchNo: row.match_no ?? null,
+            status: row.status ?? 'queueing',
+        });
+    }
+
+    async function confirmRemoveMatch() {
+        if (sessionId == null || removeMatchConfirm == null) return;
+        const { id: matchId, status } = removeMatchConfirm;
         setActionError('');
         setBusy(true);
         try {
             await deleteQueueingSessionMatch(sessionId, matchId);
             await reload();
+            setRemoveMatchConfirm(null);
+            if (matchLineupOpen && editingMatchId === matchId) {
+                closeMatchLineupModal();
+            }
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : 'Could not delete match.');
+            setActionError(
+                e instanceof Error
+                    ? e.message
+                    : status === 'ongoing'
+                      ? 'Could not cancel match.'
+                      : 'Could not remove match.',
+            );
         } finally {
             setBusy(false);
         }
@@ -397,10 +533,6 @@ export function QueueingSessionMatchesPage() {
 
     async function onStopQueueSession() {
         if (sessionId == null) return;
-        const queueLabel =
-            session?.queue_name?.trim() ||
-            (session?.sport?.name ? `${session.sport.name} queue` : 'this queue session');
-
         setActionError('');
         setBusy(true);
         try {
@@ -430,6 +562,10 @@ export function QueueingSessionMatchesPage() {
     const canStopSession = Boolean(session?.is_host) && Boolean(session?.is_active);
     const canEndMatch = canManageMatches && session?.status === 'ongoing';
     const hasOngoingMatch = session?.status === 'ongoing';
+
+    const queueSessionLabel =
+        session?.queue_name?.trim() ||
+        (session?.sport?.name ? `${session.sport.name} queue` : 'this queue session');
 
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
@@ -480,9 +616,22 @@ export function QueueingSessionMatchesPage() {
                                                             <span className="font-normal"> {formatTime(row.finished_at)}</span>
                                                         </span>
                                                     </p>
-                                                    <p className={`mt-1 text-sm text-[#c8c5d2] ${(row.team1_score == null || row.team2_score == null) ? 'hidden' : ''}`}>
-                                                        Score: {row.team1_score == null ? '—' : row.team1_score} - {row.team2_score == null ? '—' : row.team2_score}
-                                                        {row.winning_team ? ` · Winner: Team ${row.winning_team}` : ''}
+                                                    <p
+                                                        className={`mt-1 text-sm text-[#c8c5d2] ${
+                                                            row.winning_team == null &&
+                                                            (row.team1_score == null || row.team2_score == null)
+                                                                ? 'hidden'
+                                                                : ''
+                                                        }`}
+                                                    >
+                                                        {row.team1_score != null && row.team2_score != null ? (
+                                                            <>
+                                                                Score: {row.team1_score} - {row.team2_score}
+                                                                {row.winning_team ? ` · Winner: Team ${row.winning_team}` : ''}
+                                                            </>
+                                                        ) : row.winning_team ? (
+                                                            <>Winner: Team {row.winning_team}</>
+                                                        ) : null}
                                                     </p>
                                                     <p className="mt-2 mb-4 text-xs text-[#c8c5d2] line-clamp-1">
                                                         <LineupDisplay
@@ -492,7 +641,7 @@ export function QueueingSessionMatchesPage() {
                                                         />
                                                     </p>
                                                     {canManageMatches && row.status === 'queueing' ? (
-                                                        <div className="mt-3 flex gap-2">
+                                                        <div className="mt-3 flex flex-wrap gap-2">
                                                             <button
                                                                 type="button"
                                                                 disabled={busy}
@@ -504,29 +653,50 @@ export function QueueingSessionMatchesPage() {
                                                             <button
                                                                 type="button"
                                                                 disabled={busy}
-                                                                onClick={() => onDeleteQueuedMatch(row.id)}
+                                                                onClick={() => openEditMatchModal(row)}
+                                                                className="rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-3 py-2 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
+                                                            >
+                                                                Edit Match
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                disabled={busy}
+                                                                onClick={() => openRemoveMatchConfirm(row)}
                                                                 className="rounded-full border border-red-400/30 bg-red-400/20 px-3 py-2 text-xs font-bold text-red-400/80 disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
-                                                                Delete Match
+                                                                Remove Match
                                                             </button>
                                                         </div>
                                                     ) : null}
-                                                    {canEndMatch && row.status === 'ongoing' ? (
-                                                        <button
-                                                            type="button"
-                                                            disabled={busy}
-                                                            onClick={() => {
-                                                                setSelectedMatchId(row.id ?? null);
-                                                                setSelectedMatchNo(row.match_no ?? null);
-                                                                setFinishTeams(lineupDisplayNamesByTeam(row.lineup));
-                                                                setT1('');
-                                                                setT2('');
-                                                                setFinishOpen(true);
-                                                            }}
-                                                            className="mt-3 rounded-full bg-[#e4b555] text-[#714e07] px-3 py-2 text-xs font-bold"
-                                                        >
-                                                            End Match
-                                                        </button>
+                                                    {canManageMatches && row.status === 'ongoing' ? (
+                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                            {canEndMatch ? (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={busy}
+                                                                    onClick={() => {
+                                                                        setSelectedMatchId(row.id ?? null);
+                                                                        setSelectedMatchNo(row.match_no ?? null);
+                                                                        setFinishTeams(lineupDisplayNamesByTeam(row.lineup));
+                                                                        setT1('');
+                                                                        setT2('');
+                                                                        setSelectedWinningTeam(null);
+                                                                        setFinishOpen(true);
+                                                                    }}
+                                                                    className="rounded-full bg-[#e4b555] px-3 py-2 text-xs font-bold text-[#714e07] disabled:cursor-not-allowed disabled:opacity-50"
+                                                                >
+                                                                    End Match
+                                                                </button>
+                                                            ) : null}
+                                                            <button
+                                                                type="button"
+                                                                disabled={busy}
+                                                                onClick={() => openRemoveMatchConfirm(row)}
+                                                                className="rounded-full border border-red-400/30 bg-red-400/20 px-3 py-2 text-xs font-bold text-red-400/80 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            >
+                                                                Cancel Match
+                                                            </button>
+                                                        </div>
                                                     ) : null}
                                                 </li>
                                             ))}
@@ -554,16 +724,22 @@ export function QueueingSessionMatchesPage() {
                 </button>
             ) : null}
 
-            {createMatchOpen && session ? (
+            {matchLineupOpen && session ? (
                 <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center pt-10 sm:items-center">
                     <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl">
                         <div className="border-b border-[#2a2a2d] p-5 pb-4">
-                            <h3 className="text-lg font-bold">Create Match</h3>
+                            <h3 className="text-lg font-bold">
+                                {matchLineupMode === 'edit'
+                                    ? `Edit Match${editingMatchNo != null ? ` #${editingMatchNo}` : ''}`
+                                    : 'Create Match'}
+                            </h3>
                             <p className="mt-1 text-xs text-[#918f9c]">
-                                Search players who are in the queue and not on court, assign them to Team 1 or Team 2, then add the match to the queue.{' '}
+                                {matchLineupMode === 'edit'
+                                    ? 'Update players on Team 1 or Team 2 for this queued match.'
+                                    : 'Search players who are in the queue and not on court, assign them to Team 1 or Team 2, then add the match to the queue.'}{' '}
                                 <br />
                                 <br />
-                                <span className="text-md capitalize">{session.match_type}</span>: {createMatchMaxPerTeam} player(s) per team.
+                                <span className="text-md capitalize">{session.match_type}</span>: {matchLineupMaxPerTeam} player(s) per team.
                             </p>
                         </div>
                         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -577,8 +753,8 @@ export function QueueingSessionMatchesPage() {
                                         type="search"
                                         autoComplete="off"
                                         placeholder="Name or email…"
-                                        value={createMatchSearch}
-                                        onChange={(e) => setCreateMatchSearch(e.target.value)}
+                                        value={matchLineupSearch}
+                                        onChange={(e) => setMatchLineupSearch(e.target.value)}
                                         className="w-full rounded-xl border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-md text-[#e4e1e6] outline-none placeholder:text-[#918f9c] focus:border-[#4ce081]/50"
                                     />
                                     <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[#2a2a2d] bg-[#131316]">
@@ -586,17 +762,17 @@ export function QueueingSessionMatchesPage() {
                                             <p className="px-3 py-3 text-xs text-[#918f9c]">
                                                 No eligible players (must be waiting in queue and not in a match). Add players on the Players tab or wait until a match ends.
                                             </p>
-                                        ) : createMatchSearchResults.length === 0 ? (
+                                        ) : matchLineupSearchResults.length === 0 ? (
                                             <p className="px-3 py-3 text-xs text-[#918f9c]">
-                                                {createMatchSearch.trim()
+                                                {matchLineupSearch.trim()
                                                     ? 'No matching players, or everyone matching is already on a team below.'
                                                     : 'Everyone eligible is already assigned — remove someone from a team to search again, or clear a slot with ×.'}
                                             </p>
                                         ) : (
                                             <ul className="divide-y divide-[#2a2a2d]">
-                                                {createMatchSearchResults.map((p) => {
-                                                    const t1Full = createMatchTeams.team1.length >= createMatchMaxPerTeam;
-                                                    const t2Full = createMatchTeams.team2.length >= createMatchMaxPerTeam;
+                                                {matchLineupSearchResults.map((p) => {
+                                                    const t1Full = matchLineupTeams.team1.length >= matchLineupMaxPerTeam;
+                                                    const t2Full = matchLineupTeams.team2.length >= matchLineupMaxPerTeam;
                                                     const rosterStatus = playerRosterStatus(
                                                         p,
                                                         reservedPlayerIds,
@@ -618,7 +794,7 @@ export function QueueingSessionMatchesPage() {
                                                                 <button
                                                                     type="button"
                                                                     disabled={busy || t1Full}
-                                                                    onClick={() => addPlayerToCreateMatchTeam(1, p.id)}
+                                                                    onClick={() => addPlayerToMatchLineupTeam(1, p.id)}
                                                                     className="rounded-lg border border-[#4ce081]/50 px-3 py-1.5 text-xs font-bold text-[#4ce081] disabled:cursor-not-allowed disabled:opacity-40"
                                                                 >
                                                                     Team 1
@@ -626,7 +802,7 @@ export function QueueingSessionMatchesPage() {
                                                                 <button
                                                                     type="button"
                                                                     disabled={busy || t2Full}
-                                                                    onClick={() => addPlayerToCreateMatchTeam(2, p.id)}
+                                                                    onClick={() => addPlayerToMatchLineupTeam(2, p.id)}
                                                                     className="rounded-lg border border-white/30 px-3 py-1.5 text-xs font-bold text-[#e4e1e6] disabled:cursor-not-allowed disabled:opacity-40"
                                                                 >
                                                                     Team 2
@@ -645,10 +821,10 @@ export function QueueingSessionMatchesPage() {
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="flex min-h-[140px] flex-col rounded-xl border border-[#4ce081]/35 bg-[#131316] p-3">
                                             <p className="mb-2 border-b border-[#4ce081]/20 pb-2 text-center text-xs font-bold uppercase tracking-wide text-[#4ce081]">
-                                                Team 1 ({createMatchTeams.team1.length}/{createMatchMaxPerTeam})
+                                                Team 1 ({matchLineupTeams.team1.length}/{matchLineupMaxPerTeam})
                                             </p>
                                             <div className="flex flex-1 flex-col gap-2">
-                                                {createMatchTeams.team1.map((pid) => {
+                                                {matchLineupTeams.team1.map((pid) => {
                                                     const p = session.players?.find((row) => row.id === pid);
                                                     return (
                                                         <div
@@ -659,7 +835,7 @@ export function QueueingSessionMatchesPage() {
                                                             <button
                                                                 type="button"
                                                                 disabled={busy}
-                                                                onClick={() => removePlayerFromCreateMatchTeam(1, pid)}
+                                                                onClick={() => removePlayerFromMatchLineupTeam(1, pid)}
                                                                 className="shrink-0 rounded px-1 text-[#e4e1e6]/70 hover:text-white"
                                                                 aria-label={`Remove ${rosterPlayerLabel(p)} from team 1`}
                                                             >
@@ -668,7 +844,7 @@ export function QueueingSessionMatchesPage() {
                                                         </div>
                                                     );
                                                 })}
-                                                {createMatchTeams.team1.length === 0 ? (
+                                                {matchLineupTeams.team1.length === 0 ? (
                                                     <p className="flex flex-1 items-center justify-center text-center text-[11px] leading-snug text-[#918f9c]">
                                                         Use Team 1 in search results
                                                     </p>
@@ -677,10 +853,10 @@ export function QueueingSessionMatchesPage() {
                                         </div>
                                         <div className="flex min-h-[140px] flex-col rounded-xl border border-white/15 bg-[#131316] p-3">
                                             <p className="mb-2 border-b border-white/10 pb-2 text-center text-xs font-bold uppercase tracking-wide text-[#c8c5d2]">
-                                                Team 2 ({createMatchTeams.team2.length}/{createMatchMaxPerTeam})
+                                                Team 2 ({matchLineupTeams.team2.length}/{matchLineupMaxPerTeam})
                                             </p>
                                             <div className="flex flex-1 flex-col gap-2">
-                                                {createMatchTeams.team2.map((pid) => {
+                                                {matchLineupTeams.team2.map((pid) => {
                                                     const p = session.players?.find((row) => row.id === pid);
                                                     return (
                                                         <div
@@ -691,7 +867,7 @@ export function QueueingSessionMatchesPage() {
                                                             <button
                                                                 type="button"
                                                                 disabled={busy}
-                                                                onClick={() => removePlayerFromCreateMatchTeam(2, pid)}
+                                                                onClick={() => removePlayerFromMatchLineupTeam(2, pid)}
                                                                 className="shrink-0 rounded px-1 text-[#e4e1e6]/70 hover:text-white"
                                                                 aria-label={`Remove ${rosterPlayerLabel(p)} from team 2`}
                                                             >
@@ -700,7 +876,7 @@ export function QueueingSessionMatchesPage() {
                                                         </div>
                                                     );
                                                 })}
-                                                {createMatchTeams.team2.length === 0 ? (
+                                                {matchLineupTeams.team2.length === 0 ? (
                                                     <p className="flex flex-1 items-center justify-center text-center text-[11px] leading-snug text-[#918f9c]">
                                                         Use Team 2 in search results
                                                     </p>
@@ -715,18 +891,18 @@ export function QueueingSessionMatchesPage() {
                             <button
                                 type="button"
                                 disabled={busy}
-                                onClick={() => closeCreateMatchModal()}
+                                onClick={() => closeMatchLineupModal()}
                                 className="flex-1 rounded-lg border border-white/50 py-2.5 text-sm font-bold text-white/70"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="button"
-                                disabled={busy || !createMatchLineupValid}
-                                onClick={() => onCreateMatch()}
+                                disabled={busy || !matchLineupValid}
+                                onClick={() => onSaveMatchLineup()}
                                 className="flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                Create Match
+                                {matchLineupMode === 'edit' ? 'Save changes' : 'Create Match'}
                             </button>
                         </div>
                     </div>
@@ -737,40 +913,85 @@ export function QueueingSessionMatchesPage() {
                 <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center sm:items-center">
                     <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl">
                         <h3 className="mb-4 text-lg font-bold">
-                            End Match{selectedMatchNo != null ? ` #${selectedMatchNo}` : ''}: Final score
+                            End Match{selectedMatchNo != null ? ` #${selectedMatchNo}` : ''}
+                            {session?.skip_scores ? ': Pick Winner' : ': Final Score'}
                         </h3>
-                        <div className="mb-4 grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="mb-1 block text-xs text-[#918f9c]">Team 1</label>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    value={t1}
-                                    onChange={(e) => setT1(e.target.value)}
-                                    placeholder="Team 1 Score"
-                                    className="w-full rounded-lg border border-white/50 px-3 py-2 text-white/50 outline-none focus:border-white/70"
-                                />
-                                <div className="mt-2 text-xs line-clamp-1 leading-snug text-[#918f9c] capitalize">
-                                    <span className="font-bold">Players:</span>
-                                    <span className="font-normal capitalize"> {finishTeams.team1.length > 0 ? finishTeams.team1.join(', ') : '—'}</span>
+                        {session?.skip_scores ? (
+                            <div className="mb-4 space-y-3">
+                                <p className="text-xs text-[#918f9c]">Select which team won this match.</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => setSelectedWinningTeam(1)}
+                                        className={winnerPickerCardClass(1, selectedWinningTeam)}
+                                    >
+                                        <p className={`text-xs font-bold uppercase ${winnerPickerLabelClass(1, selectedWinningTeam)}`}>
+                                            Team 1
+                                            {selectedWinningTeam === 1 ? ' · Winner' : selectedWinningTeam === 2 ? ' · Loser' : ''}
+                                        </p>
+                                        <p
+                                            className={`mt-1 text-sm capitalize ${
+                                                selectedWinningTeam === 2 ? 'text-red-300/90' : 'text-[#e4e1e6]'
+                                            }`}
+                                        >
+                                            {finishTeams.team1.length > 0 ? finishTeams.team1.join(', ') : '—'}
+                                        </p>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => setSelectedWinningTeam(2)}
+                                        className={winnerPickerCardClass(2, selectedWinningTeam)}
+                                    >
+                                        <p className={`text-xs font-bold uppercase ${winnerPickerLabelClass(2, selectedWinningTeam)}`}>
+                                            Team 2
+                                            {selectedWinningTeam === 2 ? ' · Winner' : selectedWinningTeam === 1 ? ' · Loser' : ''}
+                                        </p>
+                                        <p
+                                            className={`mt-1 text-sm capitalize ${
+                                                selectedWinningTeam === 1 ? 'text-red-300/90' : 'text-[#e4e1e6]'
+                                            }`}
+                                        >
+                                            {finishTeams.team2.length > 0 ? finishTeams.team2.join(', ') : '—'}
+                                        </p>
+                                    </button>
                                 </div>
                             </div>
-                            <div>
-                                <label className="mb-1 block text-xs text-[#918f9c]">Team 2</label>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    value={t2}
-                                    onChange={(e) => setT2(e.target.value)}
-                                    placeholder="Team 2 Score"
-                                    className="w-full rounded-lg border border-white/50 px-3 py-2 text-white/50 outline-none focus:border-white/70"
-                                />
-                                <div className="mt-2 text-xs leading-snug text-[#918f9c]">
-                                    <span className="font-bold">Players:</span>
-                                    <span className="font-normal capitalize"> {finishTeams.team2.length > 0 ? finishTeams.team2.join(', ') : '—'}</span>
+                        ) : (
+                            <div className="mb-4 grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="mb-1 block text-xs text-[#918f9c]">Team 1</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        value={t1}
+                                        onChange={(e) => setT1(e.target.value)}
+                                        placeholder="Team 1 Score"
+                                        className="w-full rounded-lg border border-white/50 px-3 py-2 text-white/50 outline-none focus:border-white/70"
+                                    />
+                                    <div className="mt-2 text-xs line-clamp-1 leading-snug text-[#918f9c] capitalize">
+                                        <span className="font-bold">Players:</span>
+                                        <span className="font-normal capitalize"> {finishTeams.team1.length > 0 ? finishTeams.team1.join(', ') : '—'}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs text-[#918f9c]">Team 2</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        value={t2}
+                                        onChange={(e) => setT2(e.target.value)}
+                                        placeholder="Team 2 Score"
+                                        className="w-full rounded-lg border border-white/50 px-3 py-2 text-white/50 outline-none focus:border-white/70"
+                                    />
+                                    <div className="mt-2 text-xs leading-snug text-[#918f9c]">
+                                        <span className="font-bold">Players:</span>
+                                        <span className="font-normal capitalize"> {finishTeams.team2.length > 0 ? finishTeams.team2.join(', ') : '—'}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                         <div className="flex gap-2">
                             <button
                                 type="button"
@@ -779,6 +1000,7 @@ export function QueueingSessionMatchesPage() {
                                     setSelectedMatchId(null);
                                     setSelectedMatchNo(null);
                                     setFinishTeams({ team1: [], team2: [] });
+                                    setSelectedWinningTeam(null);
                                 }}
                                 className="flex-1 rounded-lg border border-white/50 py-2 text-sm font-bold text-white/50"
                             >
@@ -790,47 +1012,49 @@ export function QueueingSessionMatchesPage() {
                                 onClick={() => onEndMatch()}
                                 className="flex-1 rounded-lg bg-[#4ce081] py-2 text-sm font-bold text-[#003919]"
                             >
-                                Save score
+                                {session?.skip_scores ? 'Confirm Winner' : 'Save Score'}
                             </button>
                         </div>
                     </div>
                 </div>
             ) : null}
 
-            {stopSessionOpen ? (
-                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center sm:items-center">
-                    <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl">
-                        <h3 className="text-lg font-bold text-red-300">Stop queue session?</h3>
-                        <p className="mt-2 text-sm text-[#918f9c]">
-                            This permanently ends the queue for all players. No new matches can be started and the session
-                            will show as finished.
-                        </p>
-                        {hasOngoingMatch ? (
-                            <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-                                Finish or end the ongoing match before stopping the session.
-                            </p>
-                        ) : null}
-                        <div className="mt-5 flex gap-2">
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => setStopSessionOpen(false)}
-                                className="flex-1 rounded-lg border border-white/50 py-2 text-sm font-bold text-white/70"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                disabled={busy || hasOngoingMatch}
-                                onClick={() => onStopQueueSession()}
-                                className="flex-1 rounded-lg bg-red-500/90 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {busy ? 'Stopping…' : 'Stop Session'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
+            <ConfirmActionModal
+                open={removeMatchConfirm != null}
+                title={
+                    removeMatchConfirm?.status === 'ongoing'
+                        ? `Cancel match${removeMatchConfirm.matchNo != null ? ` #${removeMatchConfirm.matchNo}` : ''}?`
+                        : `Remove match${removeMatchConfirm?.matchNo != null ? ` #${removeMatchConfirm.matchNo}` : ''}?`
+                }
+                description={
+                    removeMatchConfirm?.status === 'ongoing'
+                        ? 'Players will return to the queue. No score will be recorded and this match will be deleted.'
+                        : 'This queued match will be removed. Assigned players will be available for other matches again.'
+                }
+                busy={busy}
+                confirmLabel={removeMatchConfirm?.status === 'ongoing' ? 'Cancel match' : 'Remove match'}
+                confirmBusyLabel={removeMatchConfirm?.status === 'ongoing' ? 'Canceling…' : 'Removing…'}
+                onCancel={() => setRemoveMatchConfirm(null)}
+                onConfirm={() => confirmRemoveMatch()}
+            />
+
+            <ConfirmActionModal
+                open={stopSessionOpen}
+                title="Stop queue session?"
+                description={`This permanently ends ${queueSessionLabel} for all players. No new matches can be started and the session will show as finished.`}
+                busy={busy}
+                confirmDisabled={hasOngoingMatch}
+                confirmLabel="Stop session"
+                confirmBusyLabel="Stopping…"
+                onCancel={() => setStopSessionOpen(false)}
+                onConfirm={() => onStopQueueSession()}
+            >
+                {hasOngoingMatch ? (
+                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                        Finish or cancel the ongoing match before stopping the session.
+                    </p>
+                ) : null}
+            </ConfirmActionModal>
             <DashboardMobileNav />
         </div>
     );
