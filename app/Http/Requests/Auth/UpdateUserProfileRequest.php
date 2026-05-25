@@ -4,35 +4,47 @@ namespace App\Http\Requests\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rule;
 
-class RegisterUserRequest extends FormRequest
+class UpdateUserProfileRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user() !== null;
     }
 
     /**
-     * @return array<string, array<int, Password|string>>
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
+        $userId = $this->user()?->id;
+
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                Rule::unique(User::class, 'email')->ignore($userId),
+            ],
             'age' => ['nullable', 'integer', 'min:1', 'max:150'],
             'pronoun' => ['nullable', 'string', 'in:He/Him,She/Her,They/Them,Other'],
-            'password' => ['required', 'string', 'confirmed', Password::defaults()],
         ];
     }
 
     protected function prepareForValidation(): void
     {
+        $name = trim((string) $this->input('name', ''));
+        $email = mb_strtolower(trim((string) $this->input('email', '')));
         $age = $this->input('age');
         $pronoun = trim((string) $this->input('pronoun', ''));
 
         $this->merge([
+            'name' => preg_replace('/\s+/', ' ', $name) ?? $name,
+            'email' => $email,
             'age' => $age === '' || $age === null ? null : $age,
             'pronoun' => $pronoun === '' ? null : $pronoun,
         ]);

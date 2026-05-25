@@ -20,6 +20,10 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'age' => $this->age !== null ? (int) $this->age : null,
+            'pronoun' => $this->pronoun,
+            'member_since' => $this->created_at?->toIso8601String(),
+            'member_since_human' => $this->created_at?->diffForHumans(),
             'is_admin' => (bool) $this->is_admin,
         ];
     }

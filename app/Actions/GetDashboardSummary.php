@@ -13,7 +13,7 @@ class GetDashboardSummary
 {
     /**
      * @return array{
-     *   user: array{id: int, name: string, email: string, member_since: string|null},
+     *   user: array{id: int, name: string, email: string, age: int|null, pronoun: string|null, member_since: string|null, member_since_human: string|null},
      *   stats: array{
      *     rating: int,
      *     matches_played: int,
@@ -130,7 +130,10 @@ class GetDashboardSummary
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'age' => $user->age !== null ? (int) $user->age : null,
+                'pronoun' => $user->pronoun,
                 'member_since' => $user->created_at?->toIso8601String(),
+                'member_since_human' => $user->created_at?->diffForHumans(),
             ],
             'stats' => [
                 'rating' => $rating,
