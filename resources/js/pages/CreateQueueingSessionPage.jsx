@@ -168,7 +168,7 @@ export function CreateQueueingSessionPage() {
                                     <input
                                         type="number"
                                         min={0}
-                                        max={9999}
+                                        max={30}
                                         value={winPoints}
                                         onChange={(e) => setWinPoints(e.target.value)}
                                         className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
@@ -179,7 +179,7 @@ export function CreateQueueingSessionPage() {
                                     <input
                                         type="number"
                                         min={0}
-                                        max={9999}
+                                        max={15}
                                         value={lossPoints}
                                         onChange={(e) => setLossPoints(e.target.value)}
                                         className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
