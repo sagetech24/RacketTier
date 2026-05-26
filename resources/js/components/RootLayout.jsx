@@ -28,13 +28,14 @@ export function RootLayout() {
     const location = useLocation();
     const isLoginPage = location.pathname === '/login';
     const isRegisterPage = location.pathname === '/register';
+    const isHomePage = location.pathname === '/';
     const isV2Shell = isV2DashboardShellPath(location.pathname);
 
     return (
         <div className="flex min-h-screen flex-col">
             <main
                 className={
-                    isLoginPage || isRegisterPage
+                    isLoginPage || isRegisterPage || isHomePage
                         ? ''
                         : isV2Shell
                           ? 'flex w-full flex-1 flex-col'

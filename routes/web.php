@@ -17,6 +17,7 @@ use App\Http\Controllers\GameSessionIndexController;
 use App\Http\Controllers\GameSessionShowController;
 use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
+use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\QueueingGameSessionEndController;
 use App\Http\Controllers\QueueingGameSessionHistoryController;
 use App\Http\Controllers\QueueingGameSessionStoreController;
@@ -46,11 +47,9 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('dashboard')
-        : redirect()->route('login');
-})->name('home');
+Route::view('/', 'app')->name('home');
+
+Route::get('/public/stats', [PublicStatsController::class, 'show'])->name('public.stats');
 
 Route::get('/auth/user', function () {
     $user = auth()->user();
