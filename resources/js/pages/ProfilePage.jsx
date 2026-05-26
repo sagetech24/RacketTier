@@ -1,21 +1,40 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { fetchDashboardSummary } from '../api/dashboard.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { LogoutButton } from '../components/LogoutButton.jsx';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal.jsx';
 import { EditProfileModal } from '../components/profile/EditProfileModal.jsx';
+import { EmailVerificationCard } from '../components/profile/EmailVerificationCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
+function formatCurrentRating(rating) {
+    if (rating == null) {
+        return '0.00';
+    }
+
+    return (rating / 100).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+}
+
 export function ProfilePage() {
-    const { user: authUser, setUser } = useAuth();
+    const { user: authUser, setUser, refreshUser } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [editOpen, setEditOpen] = useState(false);
     const [passwordOpen, setPasswordOpen] = useState(false);
     const [passwordToast, setPasswordToast] = useState('');
+
+    const justVerified = useMemo(
+        () => new URLSearchParams(location.search).get('verified') === '1',
+        [location.search],
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -36,6 +55,18 @@ export function ProfilePage() {
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        if (justVerified) {
+            void refreshUser();
+        }
+    }, [justVerified, refreshUser]);
+
+    function clearVerifiedToast() {
+        if (justVerified) {
+            navigate('/profile', { replace: true });
+        }
+    }
 
     const user = summary?.user ?? authUser;
     const stats = summary?.stats;
@@ -88,6 +119,13 @@ export function ProfilePage() {
                     </div>
                 </div>
 
+                <EmailVerificationCard
+                    user={user}
+                    initialToast={justVerified ? 'Email verified successfully.' : ''}
+                    onVerifiedToastDismissed={clearVerifiedToast}
+                    onVerified={() => void refreshUser()}
+                />
+
                 <div className="mt-4 rounded-xl bg-[#1b1b1e] border border-zinc-700 p-5">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -123,7 +161,7 @@ export function ProfilePage() {
                 <div className="mt-4 grid grid-cols-2 gap-4">
                     <div className="rounded-xl bg-[#1f1f22] border border-zinc-700 p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">Current Rating</div>
-                        <div className="mt-1 text-2xl font-extrabold">{stats?.rating / 100 ?? 1000}</div>
+                        <div className="mt-1 text-2xl font-extrabold">{formatCurrentRating(stats?.rating)}</div>
                     </div>
                     <div className="rounded-xl bg-[#1f1f22] border border-zinc-700 p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">Matches</div>

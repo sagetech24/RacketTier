@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\UserPasswordUpdateController;
 use App\Http\Controllers\Auth\UserProfileUpdateController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\DashboardSummaryController;
 use App\Http\Controllers\FacilityGameRoomController;
 use App\Http\Controllers\FacilityIndexController;
@@ -72,6 +74,14 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::patch('/auth/user', UserProfileUpdateController::class)->name('auth.user.update');
     Route::patch('/auth/user/password', UserPasswordUpdateController::class)->name('auth.user.password.update');
+
+    Route::view('/verify-email', 'app')->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', EmailVerificationNotificationController::class)
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
 
     Route::view('/dashboard', 'app')->name('dashboard');
     Route::view('/facilities', 'app');

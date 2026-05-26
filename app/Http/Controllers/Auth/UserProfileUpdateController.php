@@ -21,7 +21,18 @@ class UserProfileUpdateController extends Controller
             'email' => $validated['email'],
             'age' => $validated['age'] ?? null,
             'pronoun' => $validated['pronoun'] ?? null,
-        ])->save();
+        ]);
+
+        $emailChanged = $user->isDirty('email');
+        if ($emailChanged) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        if ($emailChanged) {
+            $user->sendEmailVerificationNotification();
+        }
 
         return response()->json([
             'user' => new UserResource($user->fresh()),

@@ -1,4 +1,4 @@
-import { patchJson } from '../lib/http.js';
+import { patchJson, postJson } from '../lib/http.js';
 
 /**
  * @typedef {{
@@ -9,7 +9,9 @@ import { patchJson } from '../lib/http.js';
  *   pronoun: string | null,
  *   member_since: string | null,
  *   member_since_human: string | null,
- *   is_admin: boolean
+ *   is_admin: boolean,
+ *   email_verified: boolean,
+ *   email_verified_at: string | null
  * }} ProfileUser
  */
 
@@ -38,6 +40,27 @@ export async function updateUserProfile(payload) {
     }
 
     return data.user;
+}
+
+/**
+ * @returns {Promise<{ message: string, already_verified: boolean }>}
+ */
+export async function resendVerificationEmail() {
+    const res = await postJson('/email/verification-notification', {});
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 429) {
+        throw new Error('Too many requests. Try again in a minute.');
+    }
+
+    if (!res.ok) {
+        throw new Error(data.message ?? 'Could not send verification email.');
+    }
+
+    return {
+        message: data.message ?? 'Verification email sent.',
+        already_verified: Boolean(data.already_verified),
+    };
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthBrandHeader } from '../components/AuthBrandHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { postForm } from '../lib/http.js';
@@ -18,7 +18,6 @@ const PRONOUN_OPTIONS = [
 
 export function RegisterPage() {
     const navigate = useNavigate();
-    const location = useLocation();
     const { setUser } = useAuth();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -29,8 +28,6 @@ export function RegisterPage() {
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState(/** @type {Record<string, string[]>} */ ({}));
     const [submitting, setSubmitting] = useState(false);
-
-    const from = location.state?.from ?? '/dashboard';
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -67,7 +64,7 @@ export function RegisterPage() {
             });
             const { user: nextUser } = await userRes.json();
             setUser(nextUser);
-            navigate(from, { replace: true });
+            navigate('/verify-email', { replace: true });
         } catch {
             setError('Network error. Check your connection.');
             setSubmitting(false);

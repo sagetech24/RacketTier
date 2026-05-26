@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\GameSession;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +23,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        VerifyEmail::toMailUsing(function (object $notifiable, string $url): MailMessage {
+            $name = trim((string) ($notifiable->name ?? ''));
+
+            return (new MailMessage)
+                ->subject('Verify your RacketTier email')
+                ->greeting($name !== '' ? "Hi {$name}!" : 'Hi there!')
+                ->line('Welcome to RacketTier — please confirm your email address so we can keep your matches, rankings, and notifications in sync.')
+                ->action('Verify Email', $url)
+                ->line('This link expires in 60 minutes.')
+                ->line('If you did not create a RacketTier account, you can safely ignore this email.')
+                ->salutation('Game on, The RacketTier Team');
+        });
+
         Route::bind('gameSession', function (string $value): GameSession {
             $user = auth()->user();
             abort_if(! $user, 401);

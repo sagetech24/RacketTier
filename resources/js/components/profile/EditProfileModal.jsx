@@ -136,6 +136,11 @@ export function EditProfileModal({ open, user, onClose, onSaved }) {
                         {fieldErrors.email?.[0] ? (
                             <p className="text-xs text-[#ffb4ab]">{fieldErrors.email[0]}</p>
                         ) : null}
+                        {email && user?.email && email.trim().toLowerCase() !== user.email.toLowerCase() ? (
+                            <p className="text-xs text-[#f5b955]">
+                                We’ll send a verification link to your new email.
+                            </p>
+                        ) : null}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

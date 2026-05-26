@@ -15,7 +15,7 @@ class GetDashboardSummary
      * @return array{
      *   user: array{id: int, name: string, email: string, age: int|null, pronoun: string|null, member_since: string|null, member_since_human: string|null},
      *   stats: array{
-     *     rating: int,
+     *     rating: int|null,
      *     matches_played: int,
      *     matches_won: int,
      *     sessions_active: int
@@ -32,7 +32,10 @@ class GetDashboardSummary
             ->where('user_id', $user->id)
             ->sum('balance');
 
-        $rating = (int) (Ranking::query()->where('user_id', $user->id)->max('rating') ?? 1000);
+        $rankingsQuery = Ranking::query()->where('user_id', $user->id);
+        $rating = $rankingsQuery->exists()
+            ? (int) $rankingsQuery->max('rating')
+            : null;
 
         $playerAgg = GameSessionPlayer::query()
             ->where('user_id', $user->id)
@@ -134,6 +137,8 @@ class GetDashboardSummary
                 'pronoun' => $user->pronoun,
                 'member_since' => $user->created_at?->toIso8601String(),
                 'member_since_human' => $user->created_at?->diffForHumans(),
+                'email_verified' => $user->hasVerifiedEmail(),
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],
             'stats' => [
                 'rating' => $rating,
