@@ -2,7 +2,7 @@ import { postJson } from '../lib/http.js';
 
 /**
  * @typedef {{ id: number, slug: string, name: string, code: string, icon: string }} SportRow
- * @typedef {{ id: number, name: string, email: string, tier?: { id: number, tier_no: number, name: string } | null }} FacilityPlayerRow
+ * @typedef {{ id: number, name: string, email: string, tier?: { id: number, tier_no: number, name: string } | null, stats?: { wins: number, losses: number, total_matches: number } }} FacilityPlayerRow
  */
 
 /**

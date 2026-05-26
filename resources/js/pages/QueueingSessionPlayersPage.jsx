@@ -10,6 +10,7 @@ import {
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
+import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -86,6 +87,36 @@ function PlayerSessionStats({ p }) {
     );
 }
 
+/**
+ * @param {{
+ *   stats?: { wins: number, losses: number, total_matches: number } | null,
+ *   sportName?: string | null,
+ * }} props
+ */
+function MemberSportStats({ stats, sportName }) {
+    const wins = stats?.wins ?? 0;
+    const losses = stats?.losses ?? 0;
+    const total = stats?.total_matches ?? wins + losses;
+    const label = sportName ? `${sportName} stats` : 'Sport stats';
+
+    return (
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-[#918f9c]" title={label}>
+            <span className="inline-flex items-center gap-0.5">
+                <MaterialIcon name="arrow_upward" className="text-[13px]! text-[#4ce081]" />
+                <span className="tabular-nums font-medium text-[#e4e1e6]">{wins}</span>
+            </span>
+            <span className="inline-flex items-center gap-0.5">
+                <MaterialIcon name="arrow_downward" className="text-[13px]! text-red-300/90" />
+                <span className="tabular-nums font-medium text-[#e4e1e6]">{losses}</span>
+            </span>
+            <span className="inline-flex items-center gap-0.5">
+                Total:
+                <span className="tabular-nums font-medium text-[#e4e1e6]">{total} games</span>
+            </span>
+        </div>
+    );
+}
+
 export function QueueingSessionPlayersPage() {
     const { id: idParam } = useParams();
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
@@ -102,6 +133,9 @@ export function QueueingSessionPlayersPage() {
     const [matches, setMatches] = useState(/** @type {Array<{ status?: string, lineup?: unknown }>} */ ([]));
     const [visibleRosterCount, setVisibleRosterCount] = useState(ROSTER_PAGE_SIZE);
     const [loadingMoreRoster, setLoadingMoreRoster] = useState(false);
+    const [removeTarget, setRemoveTarget] = useState(
+        /** @type {{ id: number, name: string, isGuest: boolean } | null} */ (null),
+    );
 
     useEffect(() => {
         if (sessionId == null) {
@@ -245,6 +279,18 @@ export function QueueingSessionPlayersPage() {
         }
     }
 
+    function onRemoveClick(p) {
+        if (!canManagePlayers || busy) return;
+        setRemoveTarget({ id: p.id, name: displayName(p), isGuest: Boolean(p.is_guest) });
+    }
+
+    async function onConfirmRemove() {
+        if (!removeTarget) return;
+        const id = removeTarget.id;
+        await onRemove(id);
+        setRemoveTarget(null);
+    }
+
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
@@ -278,27 +324,37 @@ export function QueueingSessionPlayersPage() {
                                     placeholder="Search members…"
                                     className="mb-2 w-full rounded-lg border border-[#3c3c3e] bg-[#131316] p-3 text-md focus:ring-[#4ce081] focus:ring-1 outline-none"
                                 />
-                                <div className="max-h-44 space-y-1.5 overflow-y-auto">
+                                <div className="max-h-60 space-y-1.5 overflow-y-auto">
                                     {addablePlayers.map((r) => (
                                         <button
                                             key={r.id}
                                             type="button"
                                             disabled={busy}
                                             onClick={() => onAddMember(r.id)}
-                                            className="line-clamp-2 flex w-full items-center justify-between rounded-lg bg-white/10 border border-[#514c53] px-3 py-2 text-left text-md hover:border-[#4ce081]/50"
+                                            className="flex w-full items-center justify-between gap-2 rounded-lg bg-white/10 border border-[#514c53] px-3 py-2 text-left text-md hover:border-[#4ce081]/50"
                                         >
-                                            <span className="flex min-w-0 flex-1 items-center gap-2">
-                                                <span className="truncate">{r.name}</span>
+                                            <span className="flex min-w-0 flex-1 flex-col">
+                                                <span className="flex min-w-0 items-center gap-2">
+                                                    <span className="truncate">{r.name}</span>
+                                                    {session?.sport?.id != null ? (
+                                                        <span
+                                                            className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
+                                                            title="Tier for this session’s sport (lifetime session points)"
+                                                        >
+                                                            {r.tier?.name ?? '—'}
+                                                        </span>
+                                                    ) : null}
+                                                </span>
                                                 {session?.sport?.id != null ? (
-                                                    <span
-                                                        className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
-                                                        title="Tier for this session’s sport (lifetime session points)"
-                                                    >
-                                                        {r.tier?.name ?? '—'}
-                                                    </span>
+                                                    <MemberSportStats
+                                                        stats={r.stats}
+                                                        sportName={session?.sport?.name}
+                                                    />
                                                 ) : null}
                                             </span>
-                                            <span className="text-xs text-[#c2c1ff]/70">ADD</span>
+                                            <span className="shrink-0 text-xs text-[#c2c1ff]/70">
+                                                <MaterialIcon name="add" className="text-xs text-[#c2c1ff]/70" />
+                                            </span>
                                         </button>
                                     ))}
                                 </div>
@@ -364,7 +420,7 @@ export function QueueingSessionPlayersPage() {
                                             <button
                                                 type="button"
                                                 disabled={busy}
-                                                onClick={() => onRemove(p.id)}
+                                                onClick={() => onRemoveClick(p)}
                                                 className="shrink-0 text-xs font-bold text-red-300 hover:text-red-200"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
@@ -391,6 +447,24 @@ export function QueueingSessionPlayersPage() {
                     </div>
                 ) : null}
             </main>
+            <ConfirmActionModal
+                open={removeTarget != null}
+                title={removeTarget?.isGuest ? 'Remove guest player?' : 'Remove player?'}
+                description={
+                    removeTarget
+                        ? `Remove "${removeTarget.name}" from this queue session? This cannot be undone.`
+                        : ''
+                }
+                confirmLabel="Remove"
+                confirmBusyLabel="Removing…"
+                busy={busy}
+                onCancel={() => {
+                    if (!busy) setRemoveTarget(null);
+                }}
+                onConfirm={() => {
+                    onConfirmRemove();
+                }}
+            />
             <DashboardMobileNav />
         </div>
     );
