@@ -39,21 +39,19 @@ export function QueueingSessionHeader({
                             </>
                         )}
                     </h1>
-                    <span
-                        className={
-                            session.is_active
+                    {session.is_active ? (
+                        <span className={ session.is_active
                                 ? 'capitalize rounded-full border border-[#4ce081] bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
                                 : 'capitalize rounded-full border border-[#4ce081] bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
-                        }
-                    >
-                        {session.is_active ? (
-                            session.status
-                        ) : (
-                            <span className="rounded-full bg-[#4ce081] px-2 py-1 text-sm font-bold text-[#1f753d]">
-                                Finished
-                            </span>
-                        )}
-                    </span>
+                            }
+                        >
+                            {session.status}
+                        </span>
+                    ) : (
+                        <span className="capitalize rounded-full bg-[#4ce081] px-2 py-0.5 text-sm font-bold text-[#1f753d]">
+                            Finished
+                        </span>
+                    )}
                 </div>
             </div>
             <p className="text-sm text-[#c8c5d2]/90 capitalize">Game Type: {session.match_type}</p>

@@ -14,6 +14,7 @@ import { RegisterPage } from './pages/RegisterPage.jsx';
 import { VerifyEmailPage } from './pages/VerifyEmailPage.jsx';
 import { CreateQueueingSessionPage } from './pages/CreateQueueingSessionPage.jsx';
 import { QueueingSessionPage } from './pages/QueueingSessionPage.jsx';
+import { QueueingSessionHistoryPage } from './pages/QueueingSessionHistoryPage.jsx';
 import { QueueingSessionListPage } from './pages/QueueingSessionListPage.jsx';
 import { QueueingSessionMatchesPage } from './pages/QueueingSessionMatchesPage.jsx';
 import { QueueingSessionPlayersPage } from './pages/QueueingSessionPlayersPage.jsx';
@@ -102,6 +103,14 @@ export function AppRoutes() {
                     element={
                         <ProtectedRoute>
                             <CreateQueueingSessionPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="queueing-session/history"
+                    element={
+                        <ProtectedRoute>
+                            <QueueingSessionHistoryPage />
                         </ProtectedRoute>
                     }
                 />

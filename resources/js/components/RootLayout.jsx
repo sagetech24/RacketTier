@@ -15,6 +15,7 @@ function isV2DashboardShellPath(pathname) {
     if (
         pathname === '/queueing-session' ||
         pathname === '/queueing-session/new' ||
+        pathname === '/queueing-session/history' ||
         /^\/queueing-session\/\d+(\/(players|matches))?\/?$/.test(pathname)
     ) {
         return true;

@@ -79,7 +79,7 @@ export function EditProfileModal({ open, user, onClose, onSaved }) {
         >
             <div className="w-full max-w-md rounded-2xl border border-[#474651]/40 bg-[#1b1b1e] p-6 shadow-2xl">
                 <h2 id="rt-profile-edit-title" className="mb-1 text-lg font-bold text-[#e4e1e6]">
-                    Edit profile
+                    Edit Profile
                 </h2>
                 <p className="mb-6 text-xs text-[#918f9c]">
                     Update your account information. Changes apply immediately across RacketTier.

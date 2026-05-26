@@ -18,6 +18,7 @@ use App\Http\Controllers\GameSessionShowController;
 use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
 use App\Http\Controllers\QueueingGameSessionEndController;
+use App\Http\Controllers\QueueingGameSessionHistoryController;
 use App\Http\Controllers\QueueingGameSessionStoreController;
 use App\Http\Controllers\QueueingGameSessionUpdateController;
 use App\Http\Controllers\QueueingGameSessionSummaryController;
@@ -92,6 +93,7 @@ Route::middleware('auth')->group(function () {
     Route::view('/facility/{facility}/create-match', 'app')->whereNumber('facility');
     Route::view('/queueing-session', 'app');
     Route::view('/queueing-session/new', 'app');
+    Route::view('/queueing-session/history', 'app');
     Route::view('/queueing-session/{id}', 'app')->whereNumber('id');
     Route::view('/queueing-session/{id}/matches', 'app')->whereNumber('id');
     Route::view('/queueing-session/{id}/players', 'app')->whereNumber('id');
@@ -113,6 +115,8 @@ Route::middleware('auth')->group(function () {
         ->name('auth.game-sessions.finish-match');
     Route::post('/auth/game-sessions', [GameSessionStoreController::class, 'store'])->name('auth.game-sessions.store');
 
+    Route::get('/auth/queueing-sessions/history', QueueingGameSessionHistoryController::class)
+        ->name('auth.queueing-sessions.history');
     Route::post('/auth/queueing-sessions', [QueueingGameSessionStoreController::class, 'store'])->name('auth.queueing-sessions.store');
     Route::patch('/auth/queueing-sessions/{gameSession}', QueueingGameSessionUpdateController::class)
         ->name('auth.queueing-sessions.update');

@@ -54,6 +54,7 @@ export function DashboardMobileNav() {
     const queueActive =
         pathname === '/queueing-session' ||
         pathname === '/queueing-session/new' ||
+        pathname === '/queueing-session/history' ||
         /^\/queueing-session\/\d+(\/(players|matches))?\/?$/.test(pathname);
     const facilitiesActive = pathname === '/facility' || pathname === '/facilities' || pathname.startsWith('/facility/');
     const profileActive = pathname === '/profile';

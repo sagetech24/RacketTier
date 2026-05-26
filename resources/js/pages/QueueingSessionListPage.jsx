@@ -220,7 +220,13 @@ export function QueueingSessionListPage() {
                             Queueing <span className="text-[#c2c1ff]">Sessions</span>
                         </h1>
                         <p className="text-sm text-[#c8c5d2]/80 mt-2">
-                            Browse active queues and review today&apos;s finished sessions.
+                            Browse active queues and review today&apos;s finished sessions.{' '}
+                            <Link
+                                to="/queueing-session/history"
+                                className="text-[#4ce081]"
+                            >
+                                View my session history
+                            </Link>
                         </p>
                     </div>
                     <Link

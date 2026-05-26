@@ -146,6 +146,59 @@ export async function fetchQueueingSessions(opts = {}) {
 }
 
 /**
+ * @typedef {{
+ *   data: import('./gameSession.js').GameSessionDetail[],
+ *   meta: { next_cursor: string | null, has_more: boolean },
+ * }} QueueingSessionHistoryPage
+ */
+
+/**
+ * @param {{
+ *   q?: string,
+ *   mineOnly?: boolean,
+ *   limit?: number,
+ *   cursor?: string | null,
+ * }} [opts]
+ * @returns {Promise<QueueingSessionHistoryPage>}
+ */
+export async function fetchQueueingSessionHistory(opts = {}) {
+    const params = new URLSearchParams();
+    if (opts.q && opts.q.trim()) {
+        params.set('q', opts.q.trim());
+    }
+    if (opts.mineOnly) {
+        params.set('mine_only', '1');
+    }
+    if (opts.limit != null) {
+        params.set('limit', String(opts.limit));
+    }
+    if (opts.cursor != null && String(opts.cursor).trim() !== '') {
+        params.set('cursor', String(opts.cursor));
+    }
+    const qs = params.toString();
+    const url = qs ? `/auth/queueing-sessions/history?${qs}` : '/auth/queueing-sessions/history';
+
+    const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+    });
+    if (res.status === 401) {
+        throw new Error('Unauthorized');
+    }
+    if (!res.ok) {
+        throw new Error('Could not load session history.');
+    }
+    const json = await res.json();
+    return {
+        data: json.data ?? [],
+        meta: {
+            next_cursor: json.meta?.next_cursor ?? null,
+            has_more: Boolean(json.meta?.has_more),
+        },
+    };
+}
+
+/**
  * @param {number|string} sessionId
  */
 export async function fetchQueueingSessionMatches(sessionId) {
