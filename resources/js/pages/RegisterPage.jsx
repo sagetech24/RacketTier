@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthBrandHeader } from '../components/AuthBrandHeader.jsx';
+import { LegalDocumentModal } from '../components/auth/LegalDocumentModal.jsx';
+import { PRIVACY_POLICY_TEXT } from '../components/auth/privacyPolicyContent.js';
+import { TERMS_OF_SERVICE_TEXT } from '../components/auth/termsOfServiceContent.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { postForm } from '../lib/http.js';
+
+/** @typedef {'terms' | 'privacy'} LegalModalKind */
 
 const GOOGLE_ICON =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuAg6awCdOFM2mUf4iHGroiuA4v5FGVYEt8GEc92F4OoyT6bPN8TgPc9BXPwzIwu6l6DzC-ib67_TfDdsMJGski5FBONFL2OCZtkAXkPfW5fjp0Aa7CYj1xz8fPs3c94HvcxIBfE931i7mdW-d75OYOWJO6ZRrdOwdqPYcK6Pvw4rcFmItgXGZeVHiOOpAG3gm5ycAVVg-8KThXtrrHSXtZuG76rIEYQYEUAfkK7vvhPTG9lGDjsnVhTkjSYXSaozv_E4CchpD1d7xc';
@@ -28,6 +33,7 @@ export function RegisterPage() {
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState(/** @type {Record<string, string[]>} */ ({}));
     const [submitting, setSubmitting] = useState(false);
+    const [legalModal, setLegalModal] = useState(/** @type {LegalModalKind | null} */ (null));
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -139,8 +145,8 @@ export function RegisterPage() {
                                         autoComplete="off"
                                         disabled={submitting}
                                         placeholder="Age"
-                                        min={1}
-                                        max={150}
+                                        min={14}
+                                        max={85}
                                         className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
                                     />
                                 </div>
@@ -228,6 +234,26 @@ export function RegisterPage() {
                             >
                                 {submitting ? 'Creating account…' : 'Create Account'}
                             </button>
+
+                            <p className="text-center text-[11px] leading-relaxed text-[#918f9c]">
+                                By continuing, you agree to our{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => setLegalModal('terms')}
+                                    className="font-medium text-[#c2c1ff] underline-offset-2 transition-colors hover:text-[#e4e1e6] hover:underline"
+                                >
+                                    Terms
+                                </button>{' '}
+                                and{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => setLegalModal('privacy')}
+                                    className="font-medium text-[#c2c1ff] underline-offset-2 transition-colors hover:text-[#e4e1e6] hover:underline"
+                                >
+                                    Privacy Policy
+                                </button>
+                                .
+                            </p>
                         </form>
                     </div>
 
@@ -240,22 +266,21 @@ export function RegisterPage() {
                 </div>
             </main>
 
+            <LegalDocumentModal
+                open={legalModal === 'terms'}
+                title="Terms of Service"
+                content={TERMS_OF_SERVICE_TEXT}
+                onClose={() => setLegalModal(null)}
+            />
+            <LegalDocumentModal
+                open={legalModal === 'privacy'}
+                title="Privacy Policy"
+                content={PRIVACY_POLICY_TEXT}
+                onClose={() => setLegalModal(null)}
+            />
+
             <div className="pointer-events-none fixed -left-20 top-[10%] h-64 w-64 rounded-full bg-[#c2c1ff]/5 blur-[100px]" />
             <div className="pointer-events-none fixed -right-20 bottom-[10%] h-80 w-80 rounded-full bg-[#4ce081]/5 blur-[120px]" />
-
-            {/* <footer className="p-8 text-center">
-                <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs uppercase tracking-[0.2em] text-[#918f9c]">
-                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
-                        Privacy Policy
-                    </a>
-                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
-                        Terms of Service
-                    </a>
-                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
-                        Help Center
-                    </a>
-                </div>
-            </footer> */}
         </div>
     );
 }
