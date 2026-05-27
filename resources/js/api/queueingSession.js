@@ -214,6 +214,70 @@ export async function fetchQueueingSessionMatches(sessionId) {
 }
 
 /**
+ * @typedef {{
+ *   game_session_player_id: number,
+ *   user_id: number | null,
+ *   guest_name: string | null,
+ *   name: string,
+ *   is_guest: boolean,
+ *   queue_position: number,
+ *   wins_count: number,
+ *   losses_count: number,
+ *   matches_played: number,
+ *   team: 1 | 2,
+ * }} AutoProposalPlayer
+ *
+ * @typedef {{
+ *   proposal_id: string,
+ *   match_type: 'singles' | 'doubles',
+ *   bracket_label: string | null,
+ *   players: AutoProposalPlayer[],
+ *   lineup: Array<{ id: number, team: 1 | 2 }>,
+ * }} AutoMatchProposal
+ *
+ * @typedef {{
+ *   proposals: AutoMatchProposal[],
+ *   total_eligible: number,
+ *   required_per_match: number,
+ *   has_stats: boolean,
+ *   match_type: 'singles' | 'doubles',
+ * }} AutoProposalsResponse
+ */
+
+/**
+ * @param {number|string} sessionId
+ * @returns {Promise<AutoProposalsResponse>}
+ */
+export async function fetchQueueingSessionAutoProposals(sessionId) {
+    const res = await fetch(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/auto-proposals`,
+        {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        },
+    );
+    if (!res.ok) {
+        let msg = 'Could not load match suggestions.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    const data = json.data ?? {};
+    return {
+        proposals: Array.isArray(data.proposals) ? data.proposals : [],
+        total_eligible: Number(data.total_eligible ?? 0),
+        required_per_match: Number(data.required_per_match ?? 2),
+        has_stats: Boolean(data.has_stats),
+        match_type: data.match_type === 'doubles' ? 'doubles' : 'singles',
+    };
+}
+
+/**
  * @param {number|string} sessionId
  * @param {{ lineup: Array<{ id: number, team?: number }> }} body
  */

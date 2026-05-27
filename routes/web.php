@@ -21,8 +21,9 @@ use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\QueueingGameSessionEndController;
 use App\Http\Controllers\QueueingGameSessionHistoryController;
 use App\Http\Controllers\QueueingGameSessionStoreController;
-use App\Http\Controllers\QueueingGameSessionUpdateController;
 use App\Http\Controllers\QueueingGameSessionSummaryController;
+use App\Http\Controllers\QueueingGameSessionUpdateController;
+use App\Http\Controllers\QueueingSessionAutoProposalsController;
 use App\Http\Controllers\QueueingSessionMatchDestroyController;
 use App\Http\Controllers\QueueingSessionMatchesIndexController;
 use App\Http\Controllers\QueueingSessionMatchesStoreController;
@@ -129,6 +130,8 @@ Route::middleware('auth')->group(function () {
         ->name('auth.queueing-sessions.summary');
     Route::get('/auth/queueing-sessions/{gameSession}/matches', QueueingSessionMatchesIndexController::class)
         ->name('auth.queueing-sessions.matches.index');
+    Route::get('/auth/queueing-sessions/{gameSession}/matches/auto-proposals', QueueingSessionAutoProposalsController::class)
+        ->name('auth.queueing-sessions.matches.auto-proposals');
     Route::post('/auth/queueing-sessions/{gameSession}/matches', QueueingSessionMatchesStoreController::class)
         ->name('auth.queueing-sessions.matches.store');
     Route::post('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}/start', QueueingSessionMatchStartController::class)

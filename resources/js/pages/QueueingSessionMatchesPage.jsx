@@ -13,6 +13,7 @@ import {
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
+import { AutoMatchProposalsModal } from '../components/queueing/AutoMatchProposalsModal.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -245,6 +246,7 @@ export function QueueingSessionMatchesPage() {
     const [matchLineupTeams, setMatchLineupTeams] = useState({ team1: [], team2: [] });
     const [matchLineupSearch, setMatchLineupSearch] = useState('');
     const [stopSessionOpen, setStopSessionOpen] = useState(false);
+    const [autoMatchOpen, setAutoMatchOpen] = useState(false);
     /** @type {null | { id: number, matchNo: number | null, status: string }} */
     const [removeMatchConfirm, setRemoveMatchConfirm] = useState(null);
 
@@ -709,20 +711,45 @@ export function QueueingSessionMatchesPage() {
             </main>
 
             {canManageMatches ? (
-                <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => openCreateMatchModal()}
-                    className="rt-kinetic-gradient border border[#c2c1ff] fixed bottom-24 right-5 z-40 flex h-16 w-16 items-center justify-center rounded-full transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 md:bottom-8 md:right-8"
-                    aria-label="Create match"
-                    title="Create match"
-                >
-                    <img src="/images/rt-logo.png" alt="" className="h-9 w-9" aria-hidden />
-                    <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#131316] bg-[#c2c1ff] text-[#131316] shadow-md">
-                        <MaterialIcon name="add" className="text-base! font-bold" />
-                    </span>
-                </button>
+                <>
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                            setActionError('');
+                            setAutoMatchOpen(true);
+                        }}
+                        className="fixed bottom-40 right-3 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-[#4ce081]/50 bg-[#4ce081]/30 text-[#4ce081] shadow-lg transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 md:bottom-28 md:right-8"
+                        aria-label="Auto-generate matches"
+                        title="Auto-generate matches"
+                    >
+                        <MaterialIcon name="auto_awesome" className="text-xl!" />
+                        <span className="absolute -bottom-3 -right-1 flex h-6 w-6 items-center text-[10px] justify-center rounded-full border-2 border-[#131316] bg-[#4ce081] text-[#131316] shadow-md">
+                            Ai
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => openCreateMatchModal()}
+                        className="rt-kinetic-gradient border border-[#c2c1ff] fixed bottom-24 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 md:bottom-8 md:right-8"
+                        aria-label="Create match"
+                        title="Create match"
+                    >
+                        <img src="/images/rt-logo.png" alt="" className="h-5 w-5" aria-hidden />
+                        <span className="absolute -bottom-3 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#131316] bg-[#c2c1ff] text-[#131316] shadow-md">
+                            <MaterialIcon name="add" className="text-base! font-bold" />
+                        </span>
+                    </button>
+                </>
             ) : null}
+
+            <AutoMatchProposalsModal
+                open={autoMatchOpen && canManageMatches}
+                sessionId={sessionId}
+                onClose={() => setAutoMatchOpen(false)}
+                onApproved={() => reload()}
+            />
 
             {matchLineupOpen && session ? (
                 <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center pt-10 sm:items-center">
