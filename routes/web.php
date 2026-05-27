@@ -3,6 +3,8 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\UserPasswordUpdateController;
 use App\Http\Controllers\Auth\UserProfileUpdateController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -70,6 +72,12 @@ Route::middleware('guest')->group(function () {
 
     Route::view('/register', 'app')->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
+
+    // Password reset (React SPA pages + JSON endpoints)
+    Route::view('/forgot-password', 'app')->name('password.forgot');
+    Route::post('/auth/password/forgot', PasswordResetLinkController::class)->name('auth.password.forgot');
+    Route::view('/password/reset/{token}', 'app')->name('password.reset');
+    Route::post('/auth/password/reset', PasswordResetController::class)->name('auth.password.reset');
 });
 
 Route::middleware('auth')->group(function () {

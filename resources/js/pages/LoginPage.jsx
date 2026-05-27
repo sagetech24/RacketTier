@@ -98,12 +98,12 @@ export function LoginPage() {
                                     >
                                         Password
                                     </label>
-                                    {/* <a
+                                    <Link
+                                        to="/forgot-password"
                                         className="text-[10px] uppercase tracking-widest text-[#c2c1ff] transition-opacity hover:opacity-80"
-                                        href="#"
                                     >
                                         Forgot?
-                                    </a> */}
+                                    </Link>
                                 </div>
                                 <input
                                     id="v2-login-password"

@@ -28,6 +28,8 @@ export function RootLayout() {
     const location = useLocation();
     const isLoginPage = location.pathname === '/login';
     const isRegisterPage = location.pathname === '/register';
+    const isForgotPasswordPage = location.pathname === '/forgot-password';
+    const isResetPasswordPage = /^\/password\/reset\/.+$/.test(location.pathname);
     const isHomePage = location.pathname === '/';
     const isV2Shell = isV2DashboardShellPath(location.pathname);
 
@@ -35,7 +37,7 @@ export function RootLayout() {
         <div className="flex min-h-screen flex-col">
             <main
                 className={
-                    isLoginPage || isRegisterPage || isHomePage
+                    isLoginPage || isRegisterPage || isForgotPasswordPage || isResetPasswordPage || isHomePage
                         ? ''
                         : isV2Shell
                           ? 'flex w-full flex-1 flex-col'

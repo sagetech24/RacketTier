@@ -52,6 +52,13 @@ class AppServiceProvider extends ServiceProvider
                 return $session;
             }
 
+            // For write operations (e.g. queue-master updates), we want the controller/action
+            // authorization logic to decide between 403/422. If we abort 404 here, the user
+            // sees "not found" instead of "forbidden" (and tests expect 403).
+            if (request()->isMethod('PATCH')) {
+                return $session;
+            }
+
             // Facility game room lists every active session at a facility; allow read-only access when
             // the client scopes by facility (same check as GameSessionShowController).
             if (request()->isMethod('GET')) {
