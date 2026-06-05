@@ -6,7 +6,7 @@ use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use Illuminate\Foundation\Http\FormRequest;
 
-class DestroyQueueingSessionPlayerRequest extends FormRequest
+class UpdateQueueingSessionPlayerRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -30,6 +30,13 @@ class DestroyQueueingSessionPlayerRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        $player = $this->route('gameSessionPlayer');
+        $isGuest = $player instanceof GameSessionPlayer && $player->isGuest();
+
+        return [
+            'guest_name' => $isGuest ? ['required', 'string', 'max:191'] : ['prohibited'],
+            'pronoun' => $isGuest ? ['nullable', 'string', 'in:He/Him,She/Her,They/Them,Other'] : ['prohibited'],
+            'skill_level' => ['required', 'integer', 'min:1', 'max:5'],
+        ];
     }
 }

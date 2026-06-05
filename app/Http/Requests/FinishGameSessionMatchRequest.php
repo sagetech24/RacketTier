@@ -17,6 +17,10 @@ class FinishGameSessionMatchRequest extends FormRequest
             return false;
         }
 
+        if ($session->isQueueing()) {
+            return $session->userCanManage($user);
+        }
+
         return (int) $session->created_by === (int) $user->id;
     }
 

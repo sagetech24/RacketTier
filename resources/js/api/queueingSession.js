@@ -380,7 +380,7 @@ export async function deleteQueueingSessionMatch(sessionId, matchId) {
 
 /**
  * @param {number|string} sessionId
- * @param {{ user_id?: number, guest_name?: string }} body
+ * @param {{ user_id?: number, guest_name?: string, pronoun?: string | null, skill_level: number }} body
  */
 export async function postAddQueueingSessionPlayer(sessionId, body) {
     const res = await postJson(
@@ -389,6 +389,30 @@ export async function postAddQueueingSessionPlayer(sessionId, body) {
     );
     if (!res.ok) {
         let msg = 'Could not add player.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
+ * @param {number|string} sessionId
+ * @param {number|string} playerRowId
+ * @param {{ guest_name?: string, pronoun?: string | null, skill_level: number }} body
+ */
+export async function patchUpdateQueueingSessionPlayer(sessionId, playerRowId, body) {
+    const res = await patchJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/players/${encodeURIComponent(String(playerRowId))}`,
+        body,
+    );
+    if (!res.ok) {
+        let msg = 'Could not update player.';
         try {
             const j = await res.json();
             if (typeof j.message === 'string') msg = j.message;

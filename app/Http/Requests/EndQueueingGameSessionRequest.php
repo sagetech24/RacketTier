@@ -16,7 +16,7 @@ class EndQueueingGameSessionRequest extends FormRequest
             return false;
         }
 
-        return $session->isQueueing() && (int) $session->created_by === (int) $user->id;
+        return $session->isQueueing() && $session->userCanManage($user);
     }
 
     /**

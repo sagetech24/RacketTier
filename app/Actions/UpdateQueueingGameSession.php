@@ -20,8 +20,8 @@ class UpdateQueueingGameSession
             abort(422, 'This action only applies to queueing sessions.');
         }
 
-        if ((int) $session->created_by !== (int) $host->id) {
-            abort(403, 'Only the queue master can update this session.');
+        if (! $session->userCanManage($host)) {
+            abort(403, 'Only the queue master or an admin can update this session.');
         }
 
         if (! $session->is_active) {

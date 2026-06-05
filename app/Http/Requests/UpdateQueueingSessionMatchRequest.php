@@ -21,7 +21,7 @@ class UpdateQueueingSessionMatchRequest extends FormRequest
         }
 
         return $session->isQueueing()
-            && (int) $session->created_by === (int) $user->id
+            && $session->userCanManage($user)
             && (int) $match->game_session_id === (int) $session->id;
     }
 

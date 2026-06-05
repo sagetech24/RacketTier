@@ -33,6 +33,7 @@ use App\Http\Controllers\QueueingSessionMatchStartController;
 use App\Http\Controllers\QueueingSessionMatchUpdateController;
 use App\Http\Controllers\QueueingSessionPlayersDestroyController;
 use App\Http\Controllers\QueueingSessionPlayersStoreController;
+use App\Http\Controllers\QueueingSessionPlayersUpdateController;
 use App\Http\Controllers\RankingIndexController;
 use App\Http\Controllers\SportsListController;
 use App\Http\Controllers\UserActivityIndexController;
@@ -130,6 +131,8 @@ Route::middleware('auth')->group(function () {
         ->name('auth.queueing-sessions.update');
     Route::post('/auth/queueing-sessions/{gameSession}/players', [QueueingSessionPlayersStoreController::class, 'store'])
         ->name('auth.queueing-sessions.players.store');
+    Route::patch('/auth/queueing-sessions/{gameSession}/players/{gameSessionPlayer}', QueueingSessionPlayersUpdateController::class)
+        ->name('auth.queueing-sessions.players.update');
     Route::delete('/auth/queueing-sessions/{gameSession}/players/{gameSessionPlayer}', QueueingSessionPlayersDestroyController::class)
         ->name('auth.queueing-sessions.players.destroy');
     Route::post('/auth/queueing-sessions/{gameSession}/end', QueueingGameSessionEndController::class)

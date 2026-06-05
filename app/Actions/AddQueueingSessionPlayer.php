@@ -11,21 +11,24 @@ use Illuminate\Support\Str;
 class AddQueueingSessionPlayer
 {
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
      */
-    public function executeMember(GameSession $session, int $userId): array
+    public function executeMember(GameSession $session, int $userId, int $skillLevel, ?string $pronoun = null): array
     {
         if (! $session->isQueueing()) {
             abort(422, 'This action only applies to queueing sessions.');
         }
 
-        return DB::transaction(function () use ($session, $userId): array {
+        return DB::transaction(function () use ($session, $userId, $skillLevel, $pronoun): array {
             $locked = GameSession::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
             if (! $locked->is_active) {
                 abort(422, 'Cannot modify the roster after the session has ended.');
             }
 
-            User::query()->whereKey($userId)->firstOrFail();
+            $user = User::query()->whereKey($userId)->firstOrFail();
+            $resolvedPronoun = $pronoun !== null && trim($pronoun) !== ''
+                ? trim($pronoun)
+                : ($user->pronoun !== null && trim((string) $user->pronoun) !== '' ? (string) $user->pronoun : null);
 
             $exists = GameSessionPlayer::query()
                 ->where('game_session_id', $locked->id)
@@ -43,6 +46,8 @@ class AddQueueingSessionPlayer
                 'game_session_id' => $locked->id,
                 'user_id' => $userId,
                 'guest_name' => null,
+                'pronoun' => $resolvedPronoun,
+                'skill_level' => $skillLevel,
                 'queue_position' => $next,
                 'is_waiting' => true,
                 'is_playing' => false,
@@ -54,9 +59,9 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
      */
-    public function executeGuest(GameSession $session, string $guestName): array
+    public function executeGuest(GameSession $session, string $guestName, ?string $pronoun, int $skillLevel): array
     {
         if (! $session->isQueueing()) {
             abort(422, 'This action only applies to queueing sessions.');
@@ -67,7 +72,9 @@ class AddQueueingSessionPlayer
             abort(422, 'Guest name is required.');
         }
 
-        return DB::transaction(function () use ($session, $guestName): array {
+        $resolvedPronoun = $pronoun !== null && trim($pronoun) !== '' ? trim($pronoun) : null;
+
+        return DB::transaction(function () use ($session, $guestName, $resolvedPronoun, $skillLevel): array {
             $locked = GameSession::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
             if (! $locked->is_active) {
                 abort(422, 'Cannot modify the roster after the session has ended.');
@@ -90,6 +97,8 @@ class AddQueueingSessionPlayer
                 'game_session_id' => $locked->id,
                 'user_id' => null,
                 'guest_name' => $guestName,
+                'pronoun' => $resolvedPronoun,
+                'skill_level' => $skillLevel,
                 'queue_position' => $next,
                 'is_waiting' => true,
                 'is_playing' => false,
@@ -101,7 +110,7 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
      */
     private function payload(GameSessionPlayer $row): array
     {
@@ -113,6 +122,8 @@ class AddQueueingSessionPlayer
             'team' => $row->team,
             'user_id' => $row->user_id !== null ? (int) $row->user_id : null,
             'guest_name' => $row->guest_name,
+            'pronoun' => $row->pronoun,
+            'skill_level' => $row->skill_level !== null ? (int) $row->skill_level : null,
         ];
     }
 }

@@ -17,7 +17,7 @@ class StoreQueueingSessionPlayerRequest extends FormRequest
             return false;
         }
 
-        return $session->isQueueing() && (int) $session->created_by === (int) $user->id;
+        return $session->isQueueing() && $session->userCanManage($user);
     }
 
     /**
@@ -28,6 +28,8 @@ class StoreQueueingSessionPlayerRequest extends FormRequest
         return [
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'guest_name' => ['nullable', 'string', 'max:191'],
+            'pronoun' => ['nullable', 'string', 'in:He/Him,She/Her,They/Them,Other'],
+            'skill_level' => ['required', 'integer', 'min:1', 'max:5'],
         ];
     }
 

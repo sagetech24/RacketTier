@@ -60,7 +60,7 @@ function QueueingSessionCard({ row, navPath, viewOnly, onEdit }) {
                 ) : null}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-                {!viewOnly && row.is_host && row.is_active && onEdit ? (
+                {!viewOnly && row.can_manage && row.is_active && onEdit ? (
                     <button
                         type="button"
                         onClick={() => onEdit(row)}

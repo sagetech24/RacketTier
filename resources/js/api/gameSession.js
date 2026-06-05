@@ -109,6 +109,7 @@ export function postCreateGameSession(payload) {
  *   started_at: string | null,
  *   ended_at: string | null,
  *   is_host: boolean,
+ *   can_manage?: boolean,
  *   created_by?: { id: number, name: string, email: string },
  *   participant_count?: number,
  *   players?: Array<{
@@ -123,6 +124,8 @@ export function postCreateGameSession(payload) {
  *     elo_rating?: number | null,
  *     is_guest?: boolean,
  *     guest_name?: string | null,
+ *     pronoun?: string | null,
+ *     skill_level?: number | null,
  *     user: { id: number, name: string, email: string } | null,
  *     tier?: { id: number, tier_no: number, name: string } | null,
  *   }>,

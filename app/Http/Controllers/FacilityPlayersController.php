@@ -39,7 +39,7 @@ class FacilityPlayersController extends Controller
             });
         }
 
-        $rows = $query->get(['id', 'name', 'email']);
+        $rows = $query->get(['id', 'name', 'email', 'pronoun']);
 
         $tierRows = collect();
         $balancesByUserId = [];
@@ -78,6 +78,7 @@ class FacilityPlayersController extends Controller
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
+                'pronoun' => $u->pronoun,
             ];
 
             if ($sportId === null) {

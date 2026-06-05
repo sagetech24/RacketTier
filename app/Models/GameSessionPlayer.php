@@ -11,6 +11,8 @@ class GameSessionPlayer extends Model
         'game_session_id',
         'user_id',
         'guest_name',
+        'pronoun',
+        'skill_level',
         'queue_position',
         'is_waiting',
         'is_playing',
@@ -32,6 +34,7 @@ class GameSessionPlayer extends Model
             'wins_count' => 'integer',
             'losses_count' => 'integer',
             'session_points' => 'integer',
+            'skill_level' => 'integer',
         ];
     }
 

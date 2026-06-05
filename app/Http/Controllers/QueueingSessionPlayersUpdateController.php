@@ -2,34 +2,38 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\AddQueueingSessionPlayer;
-use App\Http\Requests\StoreQueueingSessionPlayerRequest;
+use App\Actions\UpdateQueueingSessionPlayer;
+use App\Http\Requests\UpdateQueueingSessionPlayerRequest;
 use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
+use App\Models\GameSessionPlayer;
 use Illuminate\Http\JsonResponse;
 
-class QueueingSessionPlayersStoreController extends Controller
+class QueueingSessionPlayersUpdateController extends Controller
 {
-    public function store(
-        StoreQueueingSessionPlayerRequest $request,
+    public function __invoke(
+        UpdateQueueingSessionPlayerRequest $request,
         GameSession $gameSession,
-        AddQueueingSessionPlayer $action,
+        GameSessionPlayer $gameSessionPlayer,
+        UpdateQueueingSessionPlayer $action,
     ): JsonResponse {
         $validated = $request->validated();
         $skillLevel = (int) $validated['skill_level'];
-        $pronoun = isset($validated['pronoun']) && trim((string) $validated['pronoun']) !== ''
-            ? trim((string) $validated['pronoun'])
-            : null;
 
-        if (isset($validated['guest_name']) && trim((string) $validated['guest_name']) !== '') {
+        if ($gameSessionPlayer->isGuest()) {
+            $pronoun = isset($validated['pronoun']) && trim((string) $validated['pronoun']) !== ''
+                ? trim((string) $validated['pronoun'])
+                : null;
+
             $action->executeGuest(
                 $gameSession,
+                $gameSessionPlayer,
                 trim((string) $validated['guest_name']),
                 $pronoun,
                 $skillLevel,
             );
         } else {
-            $action->executeMember($gameSession, (int) $validated['user_id'], $skillLevel, $pronoun);
+            $action->executeMember($gameSession, $gameSessionPlayer, $skillLevel);
         }
 
         $gameSession->refresh();

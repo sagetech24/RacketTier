@@ -112,12 +112,21 @@ class GameSession extends Model
 
     public function userCanView(User $user): bool
     {
-        if ((int) $this->created_by === (int) $user->id) {
+        if ($this->userCanManage($user)) {
             return true;
         }
 
         return $this->players()
             ->where('user_id', $user->id)
             ->exists();
+    }
+
+    public function userCanManage(User $user): bool
+    {
+        if ((int) $this->created_by === (int) $user->id) {
+            return true;
+        }
+
+        return $this->isQueueing() && $user->isAdmin();
     }
 }

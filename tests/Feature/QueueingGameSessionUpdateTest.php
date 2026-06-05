@@ -51,6 +51,39 @@ class QueueingGameSessionUpdateTest extends TestCase
         $this->assertTrue($session->skip_scores);
     }
 
+    public function test_admin_can_update_active_queueing_session(): void
+    {
+        $host = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'session_context' => 'queueing',
+            'queue_name' => 'Host Queue',
+            'sport_id' => $sport->id,
+            'match_type' => 'singles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->patchJson('/auth/queueing-sessions/'.$session->id, [
+            'queue_name' => 'Admin Updated',
+            'win_points' => 50,
+            'loss_points' => 12,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.queue_name', 'Admin Updated');
+        $response->assertJsonPath('data.can_manage', true);
+        $response->assertJsonPath('data.is_host', false);
+    }
+
     public function test_non_host_cannot_update_queueing_session(): void
     {
         $host = User::factory()->create();

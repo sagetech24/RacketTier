@@ -16,7 +16,7 @@ class UpdateQueueingGameSessionRequest extends FormRequest
             return false;
         }
 
-        return (int) $session->created_by === (int) $user->id;
+        return $session->isQueueing() && $session->userCanManage($user);
     }
 
     protected function prepareForValidation(): void

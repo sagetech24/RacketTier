@@ -560,8 +560,8 @@ export function QueueingSessionMatchesPage() {
         return base;
     }, [matches]);
 
-    const canManageMatches = Boolean(session?.is_host) && Boolean(session?.is_active);
-    const canStopSession = Boolean(session?.is_host) && Boolean(session?.is_active);
+    const canManageMatches = Boolean(session?.can_manage) && Boolean(session?.is_active);
+    const canStopSession = Boolean(session?.can_manage) && Boolean(session?.is_active);
     const canEndMatch = canManageMatches && session?.status === 'ongoing';
     const hasOngoingMatch = session?.status === 'ongoing';
 
