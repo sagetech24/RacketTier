@@ -148,20 +148,6 @@ export function LoginPage() {
 
             <div className="pointer-events-none fixed -left-20 top-[10%] h-64 w-64 rounded-full bg-[#c2c1ff]/5 blur-[100px]" />
             <div className="pointer-events-none fixed -right-20 bottom-[10%] h-80 w-80 rounded-full bg-[#4ce081]/5 blur-[120px]" />
-
-            {/* <footer className="p-8 text-center">
-                <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs uppercase tracking-[0.2em] text-[#918f9c]">
-                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
-                        Privacy Policy
-                    </a>
-                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
-                        Terms of Service
-                    </a>
-                    <a className="transition-colors hover:text-[#e4e1e6]" href="#">
-                        Help Center
-                    </a>
-                </div>
-            </footer> */}
         </div>
     );
 }
