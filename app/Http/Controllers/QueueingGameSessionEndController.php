@@ -15,7 +15,7 @@ class QueueingGameSessionEndController extends Controller
         GameSession $gameSession,
         EndQueueingGameSession $action,
     ): JsonResponse {
-        $session = $action->execute($gameSession);
+        $session = $action->execute($gameSession, $request->user());
 
         $session->load([
             'sport',

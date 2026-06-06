@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthBrandHeader } from '../components/AuthBrandHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { normalizeAuthUser } from '../lib/userRoles.js';
 import { postForm } from '../lib/http.js';
 
 const GOOGLE_ICON =
@@ -50,8 +51,8 @@ export function LoginPage() {
                 headers: { Accept: 'application/json' },
                 credentials: 'same-origin',
             });
-            const { user: nextUser } = await userRes.json();
-            setUser(nextUser);
+            const { user: nextUserRaw } = await userRes.json();
+            setUser(normalizeAuthUser(nextUserRaw));
             navigate(from, { replace: true });
         } catch {
             setError('Network error. Check your connection.');

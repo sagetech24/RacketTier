@@ -4,11 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
+use App\Services\QueueingSessionState;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class GameSessionShowController extends Controller
 {
+    public function __construct(
+        private QueueingSessionState $queueingSessionState,
+    ) {}
+
     public function show(Request $request, GameSession $gameSession): JsonResponse
     {
         $user = $request->user();
@@ -37,6 +42,10 @@ class GameSessionShowController extends Controller
 
     private function sessionResponse(GameSession $gameSession): JsonResponse
     {
+        if ($this->queueingSessionState->reconcileStaleActiveSession($gameSession)) {
+            $gameSession->refresh();
+        }
+
         $gameSession->load([
             'sport',
             'facility',

@@ -563,7 +563,11 @@ export function QueueingSessionMatchesPage() {
     const canManageMatches = Boolean(session?.can_manage) && Boolean(session?.is_active);
     const canStopSession = Boolean(session?.can_manage) && Boolean(session?.is_active);
     const canEndMatch = canManageMatches && session?.status === 'ongoing';
-    const hasOngoingMatch = session?.status === 'ongoing';
+    const hasOngoingMatchRecord = matches.some((row) => row.status === 'ongoing');
+    const hasStaleOngoingSession = session?.status === 'ongoing' && !hasOngoingMatchRecord;
+    const isAdmin = Boolean(user?.is_admin);
+    const canForceEndSession = canStopSession && isAdmin && hasOngoingMatchRecord;
+    const blockEndSession = hasOngoingMatchRecord && !isAdmin;
 
     const queueSessionLabel =
         session?.queue_name?.trim() ||
@@ -1067,18 +1071,32 @@ export function QueueingSessionMatchesPage() {
 
             <ConfirmActionModal
                 open={stopSessionOpen}
-                title="Stop queue session?"
-                description={`This permanently ends ${queueSessionLabel} for all players. No new matches can be started and the session will show as finished.`}
+                title={canForceEndSession ? 'Force stop queue session?' : 'Stop queue session?'}
+                description={
+                    canForceEndSession
+                        ? `This will cancel the ongoing match, close pending matches, and permanently end ${queueSessionLabel} for all players. No scores or rankings will be recorded for cancelled matches.`
+                        : `This permanently ends ${queueSessionLabel} for all players. No new matches can be started and the session will show as finished.`
+                }
                 busy={busy}
-                confirmDisabled={hasOngoingMatch}
-                confirmLabel="Stop session"
-                confirmBusyLabel="Stopping…"
+                confirmDisabled={blockEndSession}
+                confirmLabel={canForceEndSession ? 'Force stop session' : 'Stop session'}
+                confirmBusyLabel={canForceEndSession ? 'Force stopping…' : 'Stopping…'}
                 onCancel={() => setStopSessionOpen(false)}
                 onConfirm={() => onStopQueueSession()}
             >
-                {hasOngoingMatch ? (
+                {blockEndSession ? (
                     <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
                         Finish or cancel the ongoing match before stopping the session.
+                    </p>
+                ) : null}
+                {hasStaleOngoingSession ? (
+                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                        Session status was out of sync. Ending will clear stale player states and close the session.
+                    </p>
+                ) : null}
+                {canForceEndSession ? (
+                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                        Admin override: ongoing and queued matches will be closed without recording results.
                     </p>
                 ) : null}
             </ConfirmActionModal>

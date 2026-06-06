@@ -20,9 +20,15 @@ class GameSessionIndexController extends Controller
             'session_context' => ['sometimes', 'string', 'in:facility,queueing'],
         ]);
 
+        $isAdminQueueingBrowse = $user->isAdmin()
+            && ($validated['session_context'] ?? null) === 'queueing';
+
         $query = GameSession::query()
             ->where('is_active', true)
-            ->whereUserIsParticipant($user)
+            ->when(
+                ! $isAdminQueueingBrowse,
+                fn ($q) => $q->whereUserIsParticipant($user),
+            )
             ->when(
                 isset($validated['facility_id']),
                 fn ($q) => $q->where('facility_id', $validated['facility_id']),
@@ -34,12 +40,12 @@ class GameSessionIndexController extends Controller
             ->with(['sport', 'facility', 'creator:id,name,email'])
             ->withCount('players')
             ->orderByDesc('updated_at')
-            ->limit(25);
+            ->limit($isAdminQueueingBrowse ? 100 : 25);
 
         $sessions = $query->get();
 
         $payload = [
-            'data' => GameSessionResource::collection($sessions),
+            'data' => GameSessionResource::collection($sessions)->toArray($request),
         ];
 
         if (($validated['session_context'] ?? null) === 'queueing') {
@@ -50,16 +56,19 @@ class GameSessionIndexController extends Controller
             $finishedToday = GameSession::query()
                 ->where('session_context', 'queueing')
                 ->where('is_active', false)
-                ->whereUserIsParticipant($user)
+                ->when(
+                    ! $user->isAdmin(),
+                    fn ($q) => $q->whereUserIsParticipant($user),
+                )
                 ->whereBetween('ended_at', [$startOfToday, $endOfToday])
                 ->with(['sport', 'facility', 'creator:id,name,email'])
                 ->withCount('players')
                 ->orderByDesc('ended_at')
                 ->orderByDesc('updated_at')
-                ->limit(25)
+                ->limit($user->isAdmin() ? 100 : 25)
                 ->get();
 
-            $payload['finished_today'] = GameSessionResource::collection($finishedToday);
+            $payload['finished_today'] = GameSessionResource::collection($finishedToday)->toArray($request);
         }
 
         return response()->json($payload);

@@ -94,6 +94,7 @@ class GameSessionResource extends JsonResource
             'ended_at' => $this->ended_at?->toIso8601String(),
             'is_host' => $user !== null && (int) $this->created_by === (int) $user->id,
             'can_manage' => $user !== null && $this->userCanManage($user),
+            'can_delete' => $user !== null && $this->userCanDelete($user),
             'created_by' => $this->whenLoaded('creator', fn (): array => [
                 'id' => $this->creator?->id,
                 'name' => $this->creator?->name,

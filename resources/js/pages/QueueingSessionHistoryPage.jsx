@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchQueueingSessionHistory } from '../api/queueingSession.js';
+import { fetchQueueingSessionHistory, deleteQueueingSession } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
+import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
+import { canDeleteQueueingSession } from '../lib/queueingSessionPermissions.js';
+import { userIsAdmin } from '../lib/userRoles.js';
 
 const PAGE_SIZE = 15;
 
@@ -19,10 +22,16 @@ function formatTime(iso) {
 }
 
 /**
- * @param {{ row: import('../api/gameSession.js').GameSessionDetail }} props
+ * @param {{
+ *   row: import('../api/gameSession.js').GameSessionDetail,
+ *   onRemove?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
+ *   removeSubmitting?: boolean,
+ *   isAdmin?: boolean,
+ * }} props
  */
-function HistoryCard({ row }) {
+function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
     const paths = queueingSessionNavPaths(row.id);
+    const showRemove = canDeleteQueueingSession(row, isAdmin);
     return (
         <article className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -60,6 +69,16 @@ function HistoryCard({ row }) {
                 ) : null}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
+                {showRemove && onRemove ? (
+                    <button
+                        type="button"
+                        disabled={removeSubmitting}
+                        onClick={() => onRemove(row)}
+                        className={`${queueingSessionTabClass(false)} text-red-300 border-red-400/50 disabled:opacity-50`}
+                    >
+                        Remove
+                    </button>
+                ) : null}
                 <Link
                     to={paths.dash}
                     className={`${queueingSessionTabClass(false)} text-white/70 border-white/70`}
@@ -85,6 +104,7 @@ function HistoryCard({ row }) {
 
 export function QueueingSessionHistoryPage() {
     const { user } = useAuth();
+    const isAdmin = userIsAdmin(user);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -92,6 +112,10 @@ export function QueueingSessionHistoryPage() {
     const [hasMore, setHasMore] = useState(false);
     const [q, setQ] = useState('');
     const [mineOnly, setMineOnly] = useState(false);
+    /** @type {import('../api/gameSession.js').GameSessionDetail | null} */
+    const [removeRow, setRemoveRow] = useState(null);
+    const [removeSubmitting, setRemoveSubmitting] = useState(false);
+    const [removeError, setRemoveError] = useState('');
     const cursorRef = useRef(null);
     const loadMoreRef = useRef(null);
     const loadingMoreRef = useRef(false);
@@ -171,16 +195,47 @@ export function QueueingSessionHistoryPage() {
         return () => observer.disconnect();
     }, [hasMore, loading, loadingMore, loadPage, items.length, q, mineOnly]);
 
+    function openRemoveConfirm(row) {
+        setRemoveRow(row);
+        setRemoveError('');
+    }
+
+    function closeRemoveConfirm() {
+        setRemoveRow(null);
+        setRemoveError('');
+    }
+
+    async function onConfirmRemove() {
+        if (!removeRow) return;
+        setRemoveSubmitting(true);
+        setRemoveError('');
+        try {
+            await deleteQueueingSession(removeRow.id);
+            setItems((prev) => prev.filter((row) => row.id !== removeRow.id));
+            closeRemoveConfirm();
+        } catch (e) {
+            setRemoveError(e instanceof Error ? e.message : 'Could not remove session.');
+        } finally {
+            setRemoveSubmitting(false);
+        }
+    }
+
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
             <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36">
                 <div className="mb-4">
                     <h1 className="text-3xl font-extrabold tracking-tight">
-                        My Session <span className="text-[#c2c1ff]">History</span>
+                        {isAdmin ? (
+                            <>Session <span className="text-[#c2c1ff]">History</span></>
+                        ) : (
+                            <>My Session <span className="text-[#c2c1ff]">History</span></>
+                        )}
                     </h1>
                     <p className="mt-2 text-sm text-[#c8c5d2]/80">
-                        Every queueing session you hosted or joined.
+                        {isAdmin
+                            ? 'All finished queueing sessions across the platform.'
+                            : 'Every queueing session you hosted or joined.'}
                     </p>
                 </div>
 
@@ -225,7 +280,13 @@ export function QueueingSessionHistoryPage() {
                 ) : (
                     <div className="space-y-3">
                         {items.map((row) => (
-                            <HistoryCard key={row.id} row={row} />
+                            <HistoryCard
+                                key={row.id}
+                                row={row}
+                                isAdmin={isAdmin}
+                                onRemove={openRemoveConfirm}
+                                removeSubmitting={removeSubmitting}
+                            />
                         ))}
 
                         {hasMore ? (
@@ -244,6 +305,27 @@ export function QueueingSessionHistoryPage() {
                     </div>
                 )}
             </main>
+
+            <ConfirmActionModal
+                open={Boolean(removeRow)}
+                title="Remove finished queue?"
+                description={
+                    removeRow
+                        ? `This permanently removes ${removeRow.queue_name?.trim() || `session #${removeRow.id}`} and all related players and matches. This cannot be undone.`
+                        : undefined
+                }
+                busy={removeSubmitting}
+                confirmLabel="Remove session"
+                confirmBusyLabel="Removing…"
+                onCancel={() => closeRemoveConfirm()}
+                onConfirm={() => onConfirmRemove()}
+            >
+                {removeError ? (
+                    <p className="mt-3 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                        {removeError}
+                    </p>
+                ) : null}
+            </ConfirmActionModal>
 
             <DashboardMobileNav />
         </div>

@@ -110,6 +110,7 @@ export function postCreateGameSession(payload) {
  *   ended_at: string | null,
  *   is_host: boolean,
  *   can_manage?: boolean,
+ *   can_delete?: boolean,
  *   created_by?: { id: number, name: string, email: string },
  *   participant_count?: number,
  *   players?: Array<{

@@ -8,6 +8,7 @@ use App\Models\QueueingSessionMatch;
 use App\Models\Ranking;
 use App\Models\RatingHistory;
 use App\Services\EloCalculator;
+use App\Services\QueueingSessionState;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -16,6 +17,7 @@ class FinishGameSessionMatch
     public function __construct(
         private EloCalculator $elo,
         private CreditMemberPointWallet $creditMemberPointWallet,
+        private QueueingSessionState $queueingSessionState,
     ) {}
 
     public function execute(
@@ -131,13 +133,15 @@ class FinishGameSessionMatch
                     ]);
                 }
                 $this->recompactQueuePositions($locked->id);
-                $stillHasOngoingPlayers = GameSessionPlayer::query()
-                    ->where('game_session_id', $locked->id)
-                    ->where('is_playing', true)
-                    ->exists();
+                $this->queueingSessionState->clearOrphanPlayingPlayers((int) $locked->id);
+                $this->recompactQueuePositions($locked->id);
+
+                $sessionStatus = $this->queueingSessionState->hasOngoingMatch((int) $locked->id)
+                    ? 'ongoing'
+                    : 'queueing';
 
                 GameSession::query()->whereKey($locked->id)->update([
-                    'status' => $stillHasOngoingPlayers ? 'ongoing' : 'queueing',
+                    'status' => $sessionStatus,
                     'is_active' => true,
                     'last_team1_score' => $storedTeam1Score,
                     'last_team2_score' => $storedTeam2Score,

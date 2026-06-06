@@ -52,10 +52,15 @@ class AppServiceProvider extends ServiceProvider
                 return $session;
             }
 
-            // For write operations (e.g. queue-master updates), we want the controller/action
+            // Queueing admins and queue masters may manage sessions they did not join.
+            if ($session->isQueueing() && $session->userCanManage($user)) {
+                return $session;
+            }
+
+            // For write operations (e.g. queue-master updates/deletes), we want the controller/action
             // authorization logic to decide between 403/422. If we abort 404 here, the user
             // sees "not found" instead of "forbidden" (and tests expect 403).
-            if (request()->isMethod('PATCH')) {
+            if (request()->isMethod('PATCH') || request()->isMethod('DELETE')) {
                 return $session;
             }
 

@@ -36,7 +36,10 @@ class GetQueueingSessionHistory
             ->where('session_context', 'queueing')
             ->where('is_active', false)
             ->whereNotNull('ended_at')
-            ->whereUserIsParticipant($user)
+            ->when(
+                ! $user->isAdmin(),
+                fn (Builder $q) => $q->whereUserIsParticipant($user),
+            )
             ->when($mineOnly, fn (Builder $q) => $q->where('created_by', $user->id))
             ->when($search !== null && $search !== '', function (Builder $q) use ($search): void {
                 $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';

@@ -20,6 +20,7 @@ use App\Http\Controllers\GameSessionShowController;
 use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
 use App\Http\Controllers\PublicStatsController;
+use App\Http\Controllers\QueueingGameSessionDestroyController;
 use App\Http\Controllers\QueueingGameSessionEndController;
 use App\Http\Controllers\QueueingGameSessionHistoryController;
 use App\Http\Controllers\QueueingGameSessionStoreController;
@@ -55,11 +56,11 @@ Route::view('/', 'app')->name('home');
 
 Route::get('/public/stats', [PublicStatsController::class, 'show'])->name('public.stats');
 
-Route::get('/auth/user', function () {
+Route::get('/auth/user', function (\Illuminate\Http\Request $request) {
     $user = auth()->user();
 
     return response()->json([
-        'user' => $user ? new UserResource($user) : null,
+        'user' => $user ? (new UserResource($user))->resolve($request) : null,
     ]);
 })->name('auth.user');
 
@@ -129,6 +130,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/auth/queueing-sessions', [QueueingGameSessionStoreController::class, 'store'])->name('auth.queueing-sessions.store');
     Route::patch('/auth/queueing-sessions/{gameSession}', QueueingGameSessionUpdateController::class)
         ->name('auth.queueing-sessions.update');
+    Route::delete('/auth/queueing-sessions/{gameSession}', QueueingGameSessionDestroyController::class)
+        ->name('auth.queueing-sessions.destroy');
     Route::post('/auth/queueing-sessions/{gameSession}/players', [QueueingSessionPlayersStoreController::class, 'store'])
         ->name('auth.queueing-sessions.players.store');
     Route::patch('/auth/queueing-sessions/{gameSession}/players/{gameSessionPlayer}', QueueingSessionPlayersUpdateController::class)

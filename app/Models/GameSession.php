@@ -129,4 +129,17 @@ class GameSession extends Model
 
         return $this->isQueueing() && $user->isAdmin();
     }
+
+    public function userCanDelete(User $user): bool
+    {
+        if (! $this->isQueueing()) {
+            return false;
+        }
+
+        if (! $this->is_active) {
+            return $user->isAdmin();
+        }
+
+        return $this->userCanManage($user);
+    }
 }

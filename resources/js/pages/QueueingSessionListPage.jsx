@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchQueueingSessions, patchUpdateQueueingSession } from '../api/queueingSession.js';
+import { fetchQueueingSessions, patchUpdateQueueingSession, deleteQueueingSession } from '../api/queueingSession.js';
 import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
+import { canDeleteQueueingSession } from '../lib/queueingSessionPermissions.js';
+import { userIsAdmin } from '../lib/userRoles.js';
 
 function formatTime(iso) {
     if (!iso) return '—';
@@ -21,11 +23,15 @@ function formatTime(iso) {
  *   row: import('../api/gameSession.js').GameSessionDetail,
  *   navPath: string,
  *   viewOnly: boolean,
+ *   isAdmin?: boolean,
  *   onEdit?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
+ *   onDelete?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
+ *   deleteSubmitting?: boolean,
  * }} props
  */
-function QueueingSessionCard({ row, navPath, viewOnly, onEdit }) {
+function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, onDelete, deleteSubmitting }) {
     const paths = queueingSessionNavPaths(row.id);
+    const showDelete = canDeleteQueueingSession(row, isAdmin);
     return (
         <article
             className={`rounded-xl border bg-[#1b1b1e] p-4 ${
@@ -60,13 +66,23 @@ function QueueingSessionCard({ row, navPath, viewOnly, onEdit }) {
                 ) : null}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-                {!viewOnly && row.can_manage && row.is_active && onEdit ? (
+                {!viewOnly && row.can_manage && onEdit ? (
                     <button
                         type="button"
                         onClick={() => onEdit(row)}
                         className={`${queueingSessionTabClass(false)} text-[#c2c1ff] border-[#c2c1ff]/50`}
                     >
                         Edit
+                    </button>
+                ) : null}
+                {showDelete && onDelete ? (
+                    <button
+                        type="button"
+                        disabled={deleteSubmitting}
+                        onClick={() => onDelete(row)}
+                        className={`${queueingSessionTabClass(false)} text-red-300 border-red-400/50 disabled:opacity-50`}
+                    >
+                        {row.is_active ? 'Delete' : 'Remove'}
                     </button>
                 ) : null}
                 <Link
@@ -109,7 +125,8 @@ function QueueSessionCardBadges({ row, viewOnly }) {
 }
 
 export function QueueingSessionListPage() {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
+    const isAdmin = userIsAdmin(user);
     const location = useLocation();
     const navPath = normalizedAppPath(location.pathname);
     const [loading, setLoading] = useState(true);
@@ -127,6 +144,10 @@ export function QueueingSessionListPage() {
     const [editSkipScores, setEditSkipScores] = useState(false);
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [editError, setEditError] = useState('');
+    /** @type {import('../api/gameSession.js').GameSessionDetail | null} */
+    const [deleteRow, setDeleteRow] = useState(null);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
 
     function openEditModal(row) {
         setEditRow(row);
@@ -172,6 +193,35 @@ export function QueueingSessionListPage() {
             setEditSubmitting(false);
         }
     }
+
+    function openDeleteConfirm(row) {
+        setDeleteRow(row);
+        setDeleteError('');
+    }
+
+    function closeDeleteConfirm() {
+        setDeleteRow(null);
+        setDeleteError('');
+    }
+
+    async function onConfirmDelete() {
+        if (!deleteRow) return;
+        setDeleteSubmitting(true);
+        setDeleteError('');
+        try {
+            await deleteQueueingSession(deleteRow.id);
+            setRows((prev) => prev.filter((r) => r.id !== deleteRow.id));
+            closeDeleteConfirm();
+        } catch (e) {
+            setDeleteError(e instanceof Error ? e.message : 'Could not delete session.');
+        } finally {
+            setDeleteSubmitting(false);
+        }
+    }
+
+    useEffect(() => {
+        void refreshUser?.();
+    }, [refreshUser]);
 
     useEffect(() => {
         let cancelled = false;
@@ -220,14 +270,21 @@ export function QueueingSessionListPage() {
                             Queueing <span className="text-[#c2c1ff]">Sessions</span>
                         </h1>
                         <p className="text-sm text-[#c8c5d2]/80 mt-2">
-                            Browse active queues and review today&apos;s finished sessions.{' '}
+                            {isAdmin
+                                ? 'Admin view — all queueing sessions across the platform.'
+                                : 'Browse active queues and review today\u2019s finished sessions.'}{' '}
                             <Link
                                 to="/queueing-session/history"
                                 className="text-[#4ce081]"
                             >
-                                View my session history
+                                {isAdmin ? 'View all session history' : 'View my session history'}
                             </Link>
                         </p>
+                        {isAdmin ? (
+                            <span className="mt-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">
+                                Admin
+                            </span>
+                        ) : null}
                     </div>
                     <Link
                         to="/queueing-session/new"
@@ -305,7 +362,10 @@ export function QueueingSessionListPage() {
                                     row={row}
                                     navPath={navPath}
                                     viewOnly={false}
+                                    isAdmin={isAdmin}
                                     onEdit={openEditModal}
+                                    onDelete={openDeleteConfirm}
+                                    deleteSubmitting={deleteSubmitting}
                                 />
                             ))}
                         </div>
@@ -318,11 +378,22 @@ export function QueueingSessionListPage() {
                             Finished today
                         </h2>
                         <p className="mb-3 text-xs text-[#918f9c]">
-                            View only — open summary for leaderboard and session stats.
+                            {isAdmin
+                                ? 'Manage or open summary for finished sessions from today.'
+                                : 'View only — open summary for leaderboard and session stats.'}
                         </p>
                         <div className="space-y-3">
                             {finishedTodayRows.map((row) => (
-                                <QueueingSessionCard key={row.id} row={row} navPath={navPath} viewOnly />
+                                <QueueingSessionCard
+                                    key={row.id}
+                                    row={row}
+                                    navPath={navPath}
+                                    viewOnly={!row.can_manage && !canDeleteQueueingSession(row, isAdmin)}
+                                    isAdmin={isAdmin}
+                                    onEdit={row.can_manage ? openEditModal : undefined}
+                                    onDelete={openDeleteConfirm}
+                                    deleteSubmitting={deleteSubmitting}
+                                />
                             ))}
                         </div>
                     </section>
@@ -399,6 +470,50 @@ export function QueueingSessionListPage() {
                                 className="flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:opacity-50"
                             >
                                 {editSubmitting ? 'Saving…' : 'Save changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {deleteRow ? (
+                <div className="fixed inset-0 z-[99] flex items-end justify-center bg-black/60 sm:items-center">
+                    <div className="w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl sm:rounded-2xl">
+                        <h2 className="mb-1 text-lg font-bold text-red-200">
+                            {deleteRow.is_active ? 'Delete queue?' : 'Remove finished queue?'}
+                        </h2>
+                        <p className="mb-4 text-xs text-[#918f9c]">
+                            This permanently removes{' '}
+                            {deleteRow.queue_name?.trim() || `session #${deleteRow.id}`} and all
+                            related players and matches. This cannot be undone.
+                        </p>
+                        {deleteError ? (
+                            <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                                {deleteError}
+                            </p>
+                        ) : null}
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                disabled={deleteSubmitting}
+                                onClick={() => closeDeleteConfirm()}
+                                className="flex-1 rounded-lg border border-white/50 py-2.5 text-sm font-bold text-white/70"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={deleteSubmitting}
+                                onClick={() => onConfirmDelete()}
+                                className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                            >
+                                {deleteSubmitting
+                                    ? deleteRow.is_active
+                                        ? 'Deleting…'
+                                        : 'Removing…'
+                                    : deleteRow.is_active
+                                      ? 'Delete session'
+                                      : 'Remove session'}
                             </button>
                         </div>
                     </div>

@@ -30,7 +30,7 @@ class QueueingGameSessionHistoryController extends Controller
         );
 
         return response()->json([
-            'data' => GameSessionResource::collection($result['items']),
+            'data' => GameSessionResource::collection($result['items'])->toArray($request),
             'meta' => [
                 'next_cursor' => $result['next_cursor'],
                 'has_more' => $result['has_more'],

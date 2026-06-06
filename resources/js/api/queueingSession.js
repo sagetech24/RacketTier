@@ -35,6 +35,25 @@ export async function patchUpdateQueueingSession(sessionId, payload) {
 }
 
 /**
+ * @param {number|string} sessionId
+ */
+export async function deleteQueueingSession(sessionId) {
+    const res = await deleteJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}`,
+    );
+    if (!res.ok) {
+        let msg = 'Could not delete queueing session.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+}
+
+/**
  * @param {{
  *   queue_name: string,
  *   sport_slug: string,

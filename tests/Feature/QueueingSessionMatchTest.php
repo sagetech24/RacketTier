@@ -242,6 +242,40 @@ class QueueingSessionMatchTest extends TestCase
         $this->assertSame('queueing', $session->status);
     }
 
+    public function test_cancel_ongoing_match_with_empty_lineup_clears_all_playing_players(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedQueueingDoublesSession($host);
+        $players = $this->players($session);
+
+        foreach (array_slice($players, 0, 4) as $p) {
+            $p->update(['is_playing' => true, 'is_waiting' => false, 'team' => 1]);
+        }
+        $session->update(['status' => 'ongoing']);
+
+        $match = QueueingSessionMatch::query()->create([
+            'game_session_id' => $session->id,
+            'match_no' => 1,
+            'status' => 'ongoing',
+            'lineup' => [],
+            'started_at' => now(),
+        ]);
+
+        $this->actingAs($host)->deleteJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$match->id,
+        )->assertOk();
+
+        foreach (array_slice($players, 0, 4) as $p) {
+            $p->refresh();
+            $this->assertFalse($p->is_playing);
+            $this->assertTrue($p->is_waiting);
+            $this->assertNull($p->team);
+        }
+
+        $session->refresh();
+        $this->assertSame('queueing', $session->status);
+    }
+
     public function test_cannot_assign_player_already_in_another_queued_match(): void
     {
         $host = User::factory()->create();

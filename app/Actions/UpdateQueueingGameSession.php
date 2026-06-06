@@ -24,7 +24,7 @@ class UpdateQueueingGameSession
             abort(403, 'Only the queue master or an admin can update this session.');
         }
 
-        if (! $session->is_active) {
+        if (! $session->is_active && ! $host->isAdmin()) {
             abort(422, 'This session is no longer active.');
         }
 

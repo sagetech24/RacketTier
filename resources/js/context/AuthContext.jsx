@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { normalizeAuthUser } from '../lib/userRoles.js';
 
 /** @typedef {{ id: number, name: string, email: string, is_admin: boolean, email_verified: boolean, email_verified_at: string | null } | null} User */
 
@@ -8,7 +9,7 @@ function readInitialUser() {
     if (typeof window === 'undefined' || !window.__RT_USER__) {
         return null;
     }
-    return window.__RT_USER__;
+    return normalizeAuthUser(window.__RT_USER__);
 }
 
 /**
@@ -23,8 +24,9 @@ export function AuthProvider({ children }) {
             credentials: 'same-origin',
         });
         const data = await res.json();
-        setUser(data.user ?? null);
-        return data.user ?? null;
+        const nextUser = normalizeAuthUser(data.user);
+        setUser(nextUser);
+        return nextUser;
     }, []);
 
     const value = useMemo(() => ({ user, setUser, refreshUser }), [user, refreshUser]);

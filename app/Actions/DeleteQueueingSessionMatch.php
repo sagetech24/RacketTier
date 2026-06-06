@@ -3,12 +3,16 @@
 namespace App\Actions;
 
 use App\Models\GameSession;
-use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
+use App\Services\QueueingSessionState;
 use Illuminate\Support\Facades\DB;
 
 class DeleteQueueingSessionMatch
 {
+    public function __construct(
+        private QueueingSessionState $state,
+    ) {}
+
     public function execute(GameSession $session, QueueingSessionMatch $match): void
     {
         if (! $session->is_active) {
@@ -63,43 +67,10 @@ class DeleteQueueingSessionMatch
 
     private function cancelOngoingMatch(GameSession $session, QueueingSessionMatch $match): void
     {
-        $lineup = is_array($match->lineup) ? $match->lineup : [];
-        $playerIds = collect($lineup)
-            ->pluck('game_session_player_id')
-            ->map(fn ($id): int => (int) $id)
-            ->filter(fn (int $id): bool => $id > 0)
-            ->values()
-            ->all();
-
-        if ($playerIds !== []) {
-            GameSessionPlayer::query()
-                ->where('game_session_id', $session->id)
-                ->whereIn('id', $playerIds)
-                ->update([
-                    'is_playing' => false,
-                    'is_waiting' => true,
-                    'team' => null,
-                ]);
-        }
-
-        $rows = GameSessionPlayer::query()
-            ->where('game_session_id', $session->id)
-            ->where('is_waiting', true)
-            ->where('is_playing', false)
-            ->orderBy('queue_position')
-            ->get();
-
-        $pos = 1;
-        foreach ($rows as $row) {
-            GameSessionPlayer::query()->whereKey($row->id)->update([
-                'queue_position' => $pos++,
-            ]);
-        }
-
         $match->delete();
 
-        GameSession::query()->whereKey($session->id)->update([
-            'status' => 'queueing',
-        ]);
+        $this->state->clearOrphanPlayingPlayers((int) $session->id);
+        $this->state->recompactQueuePositions((int) $session->id);
+        $this->state->syncSessionStatus($session);
     }
 }
