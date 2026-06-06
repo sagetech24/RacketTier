@@ -25,18 +25,28 @@ function formatTime(iso) {
     return d.toLocaleString();
 }
 
-function statusClass(status) {
-    if (status === 'finished') return 'bg-[#c2c1ff]/20 text-[#c2c1ff]';
-    if (status === 'ongoing') return 'bg-orange-400/20 text-orange-200';
-    if (status === 'queueing') return 'bg-[#c2c1ff]/20 text-[#c2c1ff]';
-    return 'bg-[#353438] text-[#c8c5d2]';
-}
-
 function sectionTitle(status) {
     if (status === 'queueing') return 'Queueing';
     if (status === 'ongoing') return 'Ongoing';
     if (status === 'finished') return 'Finished';
     return status;
+}
+
+/** @param {{ status?: string }} props */
+function MatchStatusIndicator({ status }) {
+    const label = sectionTitle(status);
+    const circleClass =
+        status === 'ongoing'
+            ? 'rt-match-status-circle rt-match-status-circle-ongoing'
+            : status === 'finished'
+              ? 'rt-match-status-circle rt-match-status-circle-finished'
+              : 'rt-match-status-circle rt-match-status-circle-queueing';
+
+    return (
+        <span className="inline-flex items-center" role="status" aria-label={label} title={label}>
+            <span className={circleClass} aria-hidden />
+        </span>
+    );
 }
 
 /** @param {unknown} lineup */
@@ -605,12 +615,19 @@ export function QueueingSessionMatchesPage() {
                                     ) : (
                                         <ul className="space-y-3">
                                             {(grouped[status] ?? []).map((row) => (
-                                                <li key={row.id} className="rounded-xl border border-[#45454a] bg-[#1b1b1e] p-4">
+                                                <li
+                                                    key={row.id}
+                                                    className={`rounded-xl border p-4 ${
+                                                        row.status === 'ongoing'
+                                                            ? 'rt-ongoing-match-card border-orange-400'
+                                                            : row.status === 'finished'
+                                                              ? 'rt-finished-match-card'
+                                                              : 'border-[#45454a] bg-[#1b1b1e]'
+                                                    }`}
+                                                >
                                                     <div className="mb-2 flex items-center justify-between">
                                                         <p className="font-semibold">Match #{row.match_no}</p>
-                                                        <span className={`rounded-full px-3 py-1.5 text-xs font-bold capitalize ${statusClass(row.status)}`}>
-                                                            {row.status}
-                                                        </span>
+                                                        <MatchStatusIndicator status={row.status} />
                                                     </div>
                                                     <p className="flex flex-col text-xs text-[#918f9c]">
                                                         <span>
@@ -652,25 +669,25 @@ export function QueueingSessionMatchesPage() {
                                                                 type="button"
                                                                 disabled={busy}
                                                                 onClick={() => onStartQueuedMatch(row.id)}
-                                                                className="rounded-full bg-[#A2A2D4] px-3 py-2 text-xs font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
+                                                                className="rounded-full bg-[#A2A2D4] px-3 py-1 text-xs font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
-                                                                Start Match
+                                                                Start
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 disabled={busy}
                                                                 onClick={() => openEditMatchModal(row)}
-                                                                className="rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-3 py-2 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
+                                                                className="rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-3 py-1 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
-                                                                Edit Match
+                                                                Edit
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 disabled={busy}
                                                                 onClick={() => openRemoveMatchConfirm(row)}
-                                                                className="rounded-full border border-red-400/30 bg-red-400/20 px-3 py-2 text-xs font-bold text-red-400/80 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                className="rounded-full border border-red-400/30 bg-red-400/20 px-3 py-1 text-xs font-bold text-red-400/80 disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
-                                                                Remove Match
+                                                                Remove
                                                             </button>
                                                         </div>
                                                     ) : null}
@@ -689,18 +706,18 @@ export function QueueingSessionMatchesPage() {
                                                                         setSelectedWinningTeam(null);
                                                                         setFinishOpen(true);
                                                                     }}
-                                                                    className="rounded-full bg-[#e4b555] px-3 py-2 text-xs font-bold text-[#714e07] disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    className="rounded-full bg-[#e4b555] px-3 py-1 text-xs font-bold text-[#714e07] disabled:cursor-not-allowed disabled:opacity-50"
                                                                 >
-                                                                    End Match
+                                                                    End
                                                                 </button>
                                                             ) : null}
                                                             <button
                                                                 type="button"
                                                                 disabled={busy}
                                                                 onClick={() => openRemoveMatchConfirm(row)}
-                                                                className="rounded-full border border-red-400/30 bg-red-400/20 px-3 py-2 text-xs font-bold text-red-400/80 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                className="rounded-full border border-red-400/30 bg-red-400/20 px-3 py-1 text-xs font-bold text-red-400/80 disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
-                                                                Cancel Match
+                                                                Cancel
                                                             </button>
                                                         </div>
                                                     ) : null}
@@ -716,35 +733,37 @@ export function QueueingSessionMatchesPage() {
 
             {canManageMatches ? (
                 <>
-                    <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => {
-                            setActionError('');
-                            setAutoMatchOpen(true);
-                        }}
-                        className="fixed bottom-40 right-3 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-[#4ce081]/50 bg-[#4ce081]/30 text-[#4ce081] shadow-lg transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 md:bottom-28 md:right-8"
-                        aria-label="Auto-generate matches"
-                        title="Auto-generate matches"
-                    >
-                        <MaterialIcon name="auto_awesome" className="text-xl!" />
-                        <span className="absolute -bottom-3 -right-1 flex h-6 w-6 items-center text-[10px] justify-center rounded-full border-2 border-[#131316] bg-[#4ce081] text-[#131316] shadow-md">
-                            Ai
-                        </span>
-                    </button>
-                    <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => openCreateMatchModal()}
-                        className="rt-kinetic-gradient border border-[#c2c1ff] fixed bottom-24 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 md:bottom-8 md:right-8"
-                        aria-label="Create match"
-                        title="Create match"
-                    >
-                        <img src="/images/rt-logo.png" alt="" className="h-5 w-5" aria-hidden />
-                        <span className="absolute -bottom-3 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#131316] bg-[#c2c1ff] text-[#131316] shadow-md">
+                    <div className="rt-kinetic-gradient opacity-90 fixed bottom-24 py-2 right-5 z-40 flex flex-col gap-1 border border-[#2a2a2d] bg-[#1b1b1e] rounded-full">
+                        <span className="absolute z-50 top-[50%] -left-4 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#131316] bg-[#c2c1ff] text-[#131316] shadow-md">
                             <MaterialIcon name="add" className="text-base! font-bold" />
                         </span>
-                    </button>
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => {
+                                setActionError('');
+                                setAutoMatchOpen(true);
+                            }}
+                            className="relative flex items-center px-4 pb-4 pt-2 justify-center text-[#4ce081] transition-transform disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="Auto-generate matches"
+                            title="Auto-generate matches"
+                        >
+                            <MaterialIcon name="auto_awesome" className="text-3xl!" />
+                            <span className="absolute top-10 inset-x-0 mx-auto flex items-center text-[9px] justify-center rounded-full text-[#4ce081]">
+                                Auto-match
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => openCreateMatchModal()}
+                            className="relative flex border-t border-[#24243b]/60 items-center px-4 py-3 justify-center text-[#c2c1ff] transition-transform disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="Create match"
+                            title="Create match"
+                        >
+                            <img src="/images/rt-logo.png" alt="" className="h-8 w-8" aria-hidden />
+                        </button>
+                    </div>
                 </>
             ) : null}
 

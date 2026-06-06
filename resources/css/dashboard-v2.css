@@ -111,3 +111,55 @@
         animation-duration: 0.3s;
     }
 }
+
+@keyframes rt-ongoing-match-border-blink {
+    0%,
+    100% {
+        border-color: rgb(251 146 60 / 0.25);
+        background-color: rgb(251 146 60 / 0.05);
+    }
+    50% {
+        border-color: rgb(27, 203, 77, 0.25);
+        background-color: rgb(27, 203, 77, 0.10);
+    }
+}
+
+.rt-ongoing-match-card {
+    animation: rt-ongoing-match-border-blink 1.5s ease-in-out infinite;
+}
+
+.rt-finished-match-card {
+    border-color: rgb(27, 203, 77, 0.20);
+    background-color: rgb(27, 203, 77, 0.05);
+}
+
+.rt-match-status-circle {
+    display: inline-block;
+    height: 0.88rem;
+    width: 0.88rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+.rt-match-status-circle-queueing {
+    background-color: #918f9c;
+}
+
+.rt-match-status-circle-finished {
+    background-color: rgb(27 203 77);
+}
+
+@keyframes rt-match-status-blink {
+    0%,
+    100% {
+        opacity: 0.35;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.rt-match-status-circle-ongoing {
+    background-color: rgb(27 203 77);
+    animation: rt-match-status-blink 1.2s ease-in-out infinite;
+}
