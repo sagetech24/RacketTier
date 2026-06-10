@@ -9,6 +9,15 @@ use Illuminate\Support\Collection;
 
 class AutoGenerateQueueingSessionMatches
 {
+    /** @var array<int, string> */
+    private const SKILL_LEVEL_NAMES = [
+        1 => 'Starter',
+        2 => 'Beginner',
+        3 => 'Intermediate',
+        4 => 'Sempai',
+        5 => 'Sensie',
+    ];
+
     public function __construct(
         private QueueingSessionMatchLineup $lineup,
     ) {}
@@ -20,12 +29,11 @@ class AutoGenerateQueueingSessionMatches
      * which goes through the existing CreateQueueingSessionMatch action.
      *
      * Algorithm:
-     *   - Cold start (no eligible player has any wins/losses yet):
-     *       pure FIFO by queue_position.
-     *   - With stats:
-     *       group by win-rate band (4 buckets); sort by band DESC, then by
-     *       queue_position ASC so within each band FIFO breaks ties. Players
-     *       in the same chunk share a bracket and play each other.
+     *   - Sort eligible players by queue_position ASC, then skill_level DESC
+     *     (null skill → 3), then win-rate band DESC when any player has stats.
+     *   - Cold start (no wins/losses): bracket label reflects skill level.
+     *   - With stats: bracket label reflects win-rate band; skill level breaks ties.
+     *   - Doubles: within each chunk, re-sort by strength and snake-pair teams.
      *
      * Equal court time is implicit because the existing finish-match flow
      * pushes finished players to the back of the queue, so high-FIFO-position
@@ -87,18 +95,7 @@ class AutoGenerateQueueingSessionMatches
             ];
         }
 
-        if ($hasStats) {
-            // Sort by (win-rate band DESC, queue_position ASC). Stable
-            // ordering ensures FIFO within a band.
-            $ordered = $eligible
-                ->sortBy(fn (GameSessionPlayer $p): int => (int) $p->queue_position)
-                ->values()
-                ->sortByDesc(fn (GameSessionPlayer $p): int => $this->winRateBand($p))
-                ->values();
-        } else {
-            $ordered = $eligible->values();
-        }
-
+        $ordered = $this->orderEligible($eligible, $hasStats);
         $picked = $ordered->take($proposalCount * $required)->values();
 
         $proposals = [];
@@ -108,13 +105,13 @@ class AutoGenerateQueueingSessionMatches
             /** @var Collection<int, GameSessionPlayer> $chunkPlayers */
             $chunkPlayers = $chunk->values();
 
-            $bracketLabel = $hasStats ? $this->bracketLabelForChunk($chunkPlayers) : null;
-
-            $teamAssignments = $this->assignTeams($chunkPlayers, $matchType);
+            $bracketLabel = $this->bracketLabelForChunk($chunkPlayers, $hasStats);
+            $matchPlayers = $this->orderedChunkForMatch($chunkPlayers, $hasStats);
+            $teamAssignments = $this->assignTeams($matchPlayers, $matchType);
 
             $playersOut = [];
             $lineupOut = [];
-            foreach ($chunkPlayers as $index => $p) {
+            foreach ($matchPlayers as $index => $p) {
                 $team = $teamAssignments[$index];
                 $playersOut[] = $this->playerSummary($p, $team);
                 $lineupOut[] = ['id' => (int) $p->id, 'team' => $team];
@@ -136,6 +133,64 @@ class AutoGenerateQueueingSessionMatches
             'has_stats' => $hasStats,
             'match_type' => $matchType,
         ];
+    }
+
+    /**
+     * @param  Collection<int, GameSessionPlayer>  $eligible
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function orderEligible(Collection $eligible, bool $hasStats): Collection
+    {
+        $ordered = $eligible
+            ->sortBy(fn (GameSessionPlayer $p): int => (int) $p->queue_position)
+            ->values()
+            ->sortByDesc(fn (GameSessionPlayer $p): int => $this->normalizedSkillLevel($p))
+            ->values();
+
+        if ($hasStats) {
+            $ordered = $ordered
+                ->sortByDesc(fn (GameSessionPlayer $p): int => $this->winRateBand($p))
+                ->values();
+        }
+
+        return $ordered;
+    }
+
+    /**
+     * @param  Collection<int, GameSessionPlayer>  $chunk
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function orderedChunkForMatch(Collection $chunk, bool $hasStats): Collection
+    {
+        if ($chunk->count() <= 1) {
+            return $chunk->values();
+        }
+
+        return $chunk
+            ->sortBy(fn (GameSessionPlayer $p): int => (int) $p->queue_position)
+            ->values()
+            ->sortByDesc(fn (GameSessionPlayer $p): int => $this->strengthScore($p, $hasStats))
+            ->values();
+    }
+
+    private function normalizedSkillLevel(GameSessionPlayer $p): int
+    {
+        if ($p->skill_level === null) {
+            return 3;
+        }
+
+        return max(1, min(5, (int) $p->skill_level));
+    }
+
+    private function strengthScore(GameSessionPlayer $p, bool $hasStats): int
+    {
+        $skill = $this->normalizedSkillLevel($p);
+
+        if ($hasStats) {
+            return ($this->winRateBand($p) * 10) + $skill;
+        }
+
+        return $skill;
     }
 
     /**
@@ -167,30 +222,46 @@ class AutoGenerateQueueingSessionMatches
     }
 
     /** @param  Collection<int, GameSessionPlayer>  $chunk */
-    private function bracketLabelForChunk(Collection $chunk): string
+    private function bracketLabelForChunk(Collection $chunk, bool $hasStats): string
     {
-        $bands = $chunk
-            ->map(fn (GameSessionPlayer $p): int => $this->winRateBand($p))
+        if ($hasStats) {
+            $bands = $chunk
+                ->map(fn (GameSessionPlayer $p): int => $this->winRateBand($p))
+                ->unique()
+                ->values()
+                ->all();
+
+            $names = [
+                0 => 'Low win-rate',
+                1 => 'Mid-low win-rate',
+                2 => 'Mid-high win-rate',
+                3 => 'High win-rate',
+            ];
+
+            if (count($bands) === 1) {
+                return $names[$bands[0]] ?? 'Mixed bracket';
+            }
+
+            return 'Mixed bracket';
+        }
+
+        $levels = $chunk
+            ->map(fn (GameSessionPlayer $p): int => $this->normalizedSkillLevel($p))
             ->unique()
             ->values()
             ->all();
 
-        $names = [
-            0 => 'Low win-rate',
-            1 => 'Mid-low win-rate',
-            2 => 'Mid-high win-rate',
-            3 => 'High win-rate',
-        ];
+        if (count($levels) === 1) {
+            $level = $levels[0];
 
-        if (count($bands) === 1) {
-            return $names[$bands[0]] ?? 'Mixed bracket';
+            return 'Level '.$level.' — '.(self::SKILL_LEVEL_NAMES[$level] ?? 'Skill');
         }
 
-        return 'Mixed bracket';
+        return 'Mixed skill levels';
     }
 
     /**
-     * Assign team numbers to the players in a chunk.
+     * Assign team numbers to the players in a chunk (already strength-ordered).
      *
      * Singles: player 0 -> team 1, player 1 -> team 2.
      * Doubles: pair the strongest with the weakest (snake pairing) so both
@@ -223,6 +294,7 @@ class AutoGenerateQueueingSessionMatches
             'name' => $p->displayName(),
             'is_guest' => $p->isGuest(),
             'queue_position' => (int) $p->queue_position,
+            'skill_level' => $p->skill_level !== null ? (int) $p->skill_level : null,
             'wins_count' => $wins,
             'losses_count' => $losses,
             'matches_played' => $wins + $losses,

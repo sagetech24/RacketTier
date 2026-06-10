@@ -23,13 +23,37 @@ function groupByTeam(players) {
     return { team1, team2 };
 }
 
+/** @param {number | null | undefined} skillLevel */
+function skillLevelLabel(skillLevel) {
+    if (skillLevel == null) return null;
+    const names = {
+        1: 'Starter',
+        2: 'Beginner',
+        3: 'Intermediate',
+        4: 'Sempai',
+        5: 'Sensie',
+    };
+    const level = Math.min(5, Math.max(1, skillLevel));
+    return `L${level} — ${names[level] ?? 'Skill'}`;
+}
+
 /** @param {AutoMatchProposal['players'][number]} p */
 function PlayerRow({ p }) {
+    const skillLabel = skillLevelLabel(p.skill_level);
+
     return (
         <div className="flex items-start justify-between gap-2 rounded-lg border border-[#2a2a2d] bg-[#131316] px-2.5 py-2 text-xs">
             <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold capitalize text-[#e4e1e6]">{p.name}</p>
+                {skillLabel ? (
+                    <p className="inline-flex items-center gap-0.5" title="Skill level">
+                        <span className="text-[#c2c1ff] text-[10px]">Skill:</span>
+                        <MaterialIcon name="military_tech" className="text-[12px]! text-[#c2c1ff]" />
+                        <span className="font-medium text-[#c2c1ff] truncate">{skillLabel}</span>
+                    </p>
+                ) : null}
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[#918f9c]">
+                    <span className="text-[#c2c1ff] text-[10px]">Stats</span>
                     <span className="inline-flex items-center gap-0.5" title="Wins">
                         <MaterialIcon name="arrow_upward" className="text-[12px]! text-[#4ce081]" />
                         <span className="tabular-nums font-medium text-[#e4e1e6]">{p.wins_count}</span>
@@ -39,12 +63,9 @@ function PlayerRow({ p }) {
                         <span className="tabular-nums font-medium text-[#e4e1e6]">{p.losses_count}</span>
                     </span>
                     <span className="inline-flex items-center gap-0.5" title="Matches played">
-                        <MaterialIcon name="sports_tennis" className="text-[12px]! text-[#c8c5d2]" />
+                        {/* <MaterialIcon name="sports_tennis" className="text-[12px]! text-[#c8c5d2]" /> */}
+                        <span className="text-[#c8c5d2] text-[10px]">Total:</span>
                         <span className="tabular-nums font-medium text-[#e4e1e6]">{p.matches_played}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-0.5" title="Queue position">
-                        <MaterialIcon name="format_list_numbered" className="text-[12px]! text-[#c2c1ff]" />
-                        <span className="tabular-nums font-medium text-[#e4e1e6]">#{p.queue_position}</span>
                     </span>
                 </div>
             </div>
@@ -80,18 +101,11 @@ function ProposalCard({ proposal, index, busy, matchType, onApprove, onSkip }) {
                 {proposal.bracket_label ? (
                     <span
                         className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c2c1ff]"
-                        title="Win-rate bracket grouping"
+                        title="Match grouping bracket"
                     >
                         {proposal.bracket_label}
                     </span>
-                ) : (
-                    <span
-                        className="shrink-0 rounded-full border border-[#4ce081]/30 bg-[#4ce081]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#4ce081]"
-                        title="No win/loss stats yet — picked by FIFO only"
-                    >
-                        FIFO
-                    </span>
-                )}
+                ) : null}
             </div>
 
             {matchType === 'doubles' ? (
@@ -248,8 +262,8 @@ export function AutoMatchProposalsModal({ open, sessionId, onClose, onApproved }
                     <h3 className="text-lg font-bold">Auto-Generate Matches</h3>
                     <p className="mt-1 text-xs text-[#918f9c]">
                         {hasStats
-                            ? 'Grouped by win-rate bracket, then by FIFO inside each bracket. Approve a match to add it to the queue, or skip to dismiss.'
-                            : 'No stats yet — picking by FIFO order. Approve a match to add it to the queue, or skip to dismiss.'}
+                            ? 'Grouped by win-rate bracket and skill level, then FIFO. Approve a match to add it to the queue, or skip to dismiss.'
+                            : 'Grouped by skill level, then FIFO. Approve a match to add it to the queue, or skip to dismiss.'}
                     </p>
                     <p className="mt-2 text-[11px] text-[#918f9c]">
                         {totalEligible} eligible · {required} player(s) per {matchType} match

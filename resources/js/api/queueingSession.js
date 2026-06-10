@@ -240,6 +240,7 @@ export async function fetchQueueingSessionMatches(sessionId) {
  *   name: string,
  *   is_guest: boolean,
  *   queue_position: number,
+ *   skill_level: number | null,
  *   wins_count: number,
  *   losses_count: number,
  *   matches_played: number,
