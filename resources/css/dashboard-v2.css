@@ -128,6 +128,25 @@
     animation: rt-ongoing-match-border-blink 1.5s ease-in-out infinite;
 }
 
+@keyframes rt-playing-player-border-pulse {
+    0%,
+    100% {
+        border-color: rgb(76 224 129 / 0.15);
+        background-color: rgb(76 224 129 / 0.06);
+        box-shadow: 0 0 0 0 rgb(76 224 129 / 0.1);
+    }
+    50% {
+        border-color: rgb(76 224 129 / 0.20);
+        background-color: rgb(76 224 129 / 0.10);
+        box-shadow: 0 0 10px 0 rgb(76 224 129 / 0.25);
+    }
+}
+
+.rt-playing-player-card {
+    border-width: 2px;
+    animation: rt-playing-player-border-pulse 1.5s ease-in-out infinite;
+}
+
 .rt-finished-match-card {
     border-color: rgb(27, 203, 77, 0.20);
     background-color: rgb(27, 203, 77, 0.05);

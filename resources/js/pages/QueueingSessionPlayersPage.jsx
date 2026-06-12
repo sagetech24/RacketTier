@@ -70,15 +70,12 @@ function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
         return null;
     }
     if (p.is_playing) {
-        return { label: 'Playing', className: 'bg-orange-400/20 text-orange-200' };
+        return { label: 'Playing', className: 'border border-[#4ce081]/40 bg-[#4ce081]/20 text-[#4ce081]' };
     }
     if (reservedPlayerIds.has(p.id)) {
-        return { label: 'Queueing', className: 'bg-[#c2c1ff]/20 text-[#c2c1ff]' };
+        return { label: 'Queueing', className: 'border border-amber-400/40 bg-amber-400/20 text-amber-200' };
     }
-    if (p.is_waiting && !p.is_playing) {
-        return { label: 'Waiting', className: 'bg-[#4ce081]/20 text-[#4ce081]' };
-    }
-    return { label: 'Waiting', className: 'bg-[#353438] text-[#918f9c]' };
+    return { label: 'Waiting', className: 'border border-[#514c53] bg-[#353438] text-[#918f9c]' };
 }
 
 /** @param {{ status: { label: string, className: string } | null }} props */
@@ -215,7 +212,7 @@ export function QueueingSessionPlayersPage() {
     const [matches, setMatches] = useState(/** @type {Array<{ status?: string, lineup?: unknown }>} */ ([]));
     const [visibleRosterCount, setVisibleRosterCount] = useState(ROSTER_PAGE_SIZE);
     const [loadingMoreRoster, setLoadingMoreRoster] = useState(false);
-    const [rosterSortField, setRosterSortField] = useState('rank');
+    const [rosterSortField, setRosterSortField] = useState('status');
     const [rosterSortDirection, setRosterSortDirection] = useState('asc');
     const [addPlayerModal, setAddPlayerModal] = useState(
         /** @type {{
@@ -620,6 +617,7 @@ export function QueueingSessionPlayersPage() {
                             <ul className="space-y-3">
                                 {visibleRosterPlayers.map((p) => {
                                     const canEditPlayer = canManagePlayers && !p.is_playing;
+                                    const isPlaying = Boolean(session?.is_active && p.is_playing);
 
                                     return (
                                     <li
@@ -636,7 +634,11 @@ export function QueueingSessionPlayersPage() {
                                                 onEditPlayerClick(p);
                                             }
                                         }}
-                                        className={`flex items-stretch overflow-hidden rounded-lg border border-[#2a2a2d] bg-[#2a2a2d] text-sm shadow-sm ${
+                                        className={`flex items-stretch overflow-hidden rounded-lg border text-sm shadow-sm ${
+                                            isPlaying
+                                                ? 'rt-playing-player-card'
+                                                : 'border-[#2a2a2d] bg-[#2a2a2d]'
+                                        } ${
                                             canEditPlayer
                                                 ? 'cursor-pointer transition-colors hover:border-[#514c53] hover:bg-[#313134] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ce081]/50'
                                                 : ''
@@ -680,7 +682,19 @@ export function QueueingSessionPlayersPage() {
                                                 </div>
                                             </div>
                                             {canEditPlayer ? (
-                                                <div className="flex shrink-0 items-center">
+                                                <div className="flex shrink-0 items-center gap-3">
+                                                    <button
+                                                        type="button"
+                                                        disabled={busy}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onEditPlayerClick(p);
+                                                        }}
+                                                        className="text-[#c2c1ff] hover:text-[#e4e1e6] disabled:opacity-60"
+                                                        aria-label={`Edit ${displayName(p)}`}
+                                                    >
+                                                        <MaterialIcon name="edit" className="text-[16px]!" />
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         disabled={busy}
@@ -688,10 +702,10 @@ export function QueueingSessionPlayersPage() {
                                                             e.stopPropagation();
                                                             onRemoveClick(p);
                                                         }}
-                                                        className="text-xs font-bold text-red-300 hover:text-red-200"
+                                                        className="text-red-300 hover:text-red-200 disabled:opacity-60"
                                                         aria-label={`Remove ${displayName(p)}`}
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                                                         </svg>
                                                     </button>

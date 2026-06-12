@@ -97,15 +97,12 @@ function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
         return null;
     }
     if (p.is_playing) {
-        return { label: 'Playing', className: 'bg-orange-400/20 text-orange-200' };
+        return { label: 'Playing', className: 'border border-[#4ce081]/40 bg-[#4ce081]/20 text-[#4ce081]' };
     }
     if (reservedPlayerIds.has(p.id)) {
-        return { label: 'Queueing', className: 'bg-[#c2c1ff]/20 text-[#c2c1ff]' };
+        return { label: 'Queueing', className: 'border border-amber-400/40 bg-amber-400/20 text-amber-200' };
     }
-    if (p.is_waiting && !p.is_playing) {
-        return { label: 'Waiting', className: 'bg-[#4ce081]/20 text-[#4ce081]' };
-    }
-    return { label: 'Waiting', className: 'bg-[#353438] text-[#918f9c]' };
+    return { label: 'Waiting', className: 'border border-[#514c53] bg-[#353438] text-[#918f9c]' };
 }
 
 /** @param {{ status: { label: string, className: string } | null }} props */
