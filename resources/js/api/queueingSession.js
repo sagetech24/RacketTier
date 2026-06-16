@@ -234,6 +234,15 @@ export async function fetchQueueingSessionMatches(sessionId) {
 
 /**
  * @typedef {{
+ *   skill_level: boolean,
+ *   skill_match_mode: 'balanced' | 'same_level',
+ *   wl_statistics: boolean,
+ *   sequence: boolean,
+ *   genderless_mixed: boolean,
+ *   refresh_seed?: number,
+ * }} AutoMatchCriteria
+ *
+ * @typedef {{
  *   game_session_player_id: number,
  *   user_id: number | null,
  *   guest_name: string | null,
@@ -256,6 +265,7 @@ export async function fetchQueueingSessionMatches(sessionId) {
  * }} AutoMatchProposal
  *
  * @typedef {{
+ *   criteria?: AutoMatchCriteria,
  *   proposals: AutoMatchProposal[],
  *   total_eligible: number,
  *   required_per_match: number,
@@ -266,11 +276,24 @@ export async function fetchQueueingSessionMatches(sessionId) {
 
 /**
  * @param {number|string} sessionId
+ * @param {AutoMatchCriteria} [criteria]
  * @returns {Promise<AutoProposalsResponse>}
  */
-export async function fetchQueueingSessionAutoProposals(sessionId) {
+export async function fetchQueueingSessionAutoProposals(sessionId, criteria) {
+    const params = new URLSearchParams();
+    if (criteria) {
+        params.set('skill_level', criteria.skill_level ? '1' : '0');
+        params.set('skill_match_mode', criteria.skill_match_mode);
+        params.set('wl_statistics', criteria.wl_statistics ? '1' : '0');
+        params.set('sequence', criteria.sequence ? '1' : '0');
+        params.set('genderless_mixed', criteria.genderless_mixed ? '1' : '0');
+        if (typeof criteria.refresh_seed === 'number' && criteria.refresh_seed > 0) {
+            params.set('refresh_seed', String(criteria.refresh_seed));
+        }
+    }
+    const query = params.toString();
     const res = await fetch(
-        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/auto-proposals`,
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/auto-proposals${query ? `?${query}` : ''}`,
         {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
@@ -288,7 +311,19 @@ export async function fetchQueueingSessionAutoProposals(sessionId) {
     }
     const json = await res.json();
     const data = json.data ?? {};
+    const rawCriteria = data.criteria ?? {};
     return {
+        criteria: {
+            skill_level: rawCriteria.skill_level !== false,
+            skill_match_mode: rawCriteria.skill_match_mode === 'same_level' ? 'same_level' : 'balanced',
+            wl_statistics: rawCriteria.wl_statistics !== false,
+            sequence: rawCriteria.sequence !== false,
+            genderless_mixed: rawCriteria.genderless_mixed !== false,
+            refresh_seed:
+                typeof rawCriteria.refresh_seed === 'number' && rawCriteria.refresh_seed > 0
+                    ? rawCriteria.refresh_seed
+                    : undefined,
+        },
         proposals: Array.isArray(data.proposals) ? data.proposals : [],
         total_eligible: Number(data.total_eligible ?? 0),
         required_per_match: Number(data.required_per_match ?? 2),

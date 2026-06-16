@@ -14,7 +14,7 @@ class QueueingSessionAutoProposalsController extends Controller
         GameSession $gameSession,
         AutoGenerateQueueingSessionMatches $action,
     ): JsonResponse {
-        $result = $action->execute($gameSession);
+        $result = $action->execute($gameSession, $request->criteria());
 
         return response()->json([
             'data' => $result,

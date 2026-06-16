@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     fetchQueueingSessionAutoProposals,
     postCreateQueueingSessionMatch,
@@ -6,9 +6,26 @@ import {
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 
 /**
+ * @typedef {import('../../api/queueingSession.js').AutoMatchCriteria} AutoMatchCriteria
  * @typedef {import('../../api/queueingSession.js').AutoMatchProposal} AutoMatchProposal
  * @typedef {import('../../api/queueingSession.js').AutoProposalsResponse} AutoProposalsResponse
  */
+
+/** @param {AutoMatchCriteria | undefined} criteria */
+function criteriaSummaryChips(criteria) {
+    if (!criteria) return [];
+    /** @type {string[]} */
+    const chips = [];
+    if (criteria.skill_level) {
+        chips.push(
+            criteria.skill_match_mode === 'same_level' ? 'Same skill level' : 'Balanced skill',
+        );
+    }
+    if (criteria.wl_statistics) chips.push('W/L stats');
+    if (criteria.sequence) chips.push('Sequence');
+    if (criteria.genderless_mixed) chips.push('Genderless (mixed)');
+    return chips;
+}
 
 /** @param {AutoMatchProposal['players']} players */
 function groupByTeam(players) {
@@ -61,11 +78,6 @@ function PlayerRow({ p }) {
                     <span className="inline-flex items-center gap-0.5" title="Losses">
                         <MaterialIcon name="arrow_downward" className="text-[12px]! text-red-300/90" />
                         <span className="tabular-nums font-medium text-[#e4e1e6]">{p.losses_count}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-0.5" title="Matches played">
-                        {/* <MaterialIcon name="sports_tennis" className="text-[12px]! text-[#c8c5d2]" /> */}
-                        <span className="text-[#c8c5d2] text-[10px]">Total:</span>
-                        <span className="tabular-nums font-medium text-[#e4e1e6]">{p.matches_played}</span>
                     </span>
                 </div>
             </div>
@@ -170,64 +182,108 @@ function ProposalCard({ proposal, index, busy, matchType, onApprove, onSkip }) {
  * @param {{
  *   open: boolean,
  *   sessionId: number | string | null,
+ *   criteria: AutoMatchCriteria | null,
  *   onClose: () => void,
+ *   onEditCriteria?: () => void,
  *   onApproved?: () => void | Promise<void>,
  * }} props
  */
-export function AutoMatchProposalsModal({ open, sessionId, onClose, onApproved }) {
+export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, onEditCriteria, onApproved }) {
     /** @type {[AutoProposalsResponse | null, (v: AutoProposalsResponse | null) => void]} */
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [skippedIds, setSkippedIds] = useState(/** @type {Set<string>} */ (new Set()));
+    const refreshSeedRef = useRef(0);
 
-    const reload = useCallback(async () => {
-        if (sessionId == null) return;
-        setLoading(true);
-        setError('');
-        try {
-            const res = await fetchQueueingSessionAutoProposals(sessionId);
-            setData(res);
-        } catch (e) {
-            setData({
-                proposals: [],
-                total_eligible: 0,
-                required_per_match: 2,
-                has_stats: false,
-                match_type: 'singles',
-            });
-            setError(e instanceof Error ? e.message : 'Could not load match suggestions.');
-        } finally {
-            setLoading(false);
-        }
-    }, [sessionId]);
+    const reload = useCallback(
+        async ({ bumpRefreshSeed = false } = {}) => {
+            if (sessionId == null || criteria == null) return;
+            if (bumpRefreshSeed) {
+                refreshSeedRef.current += 1;
+            }
+            setLoading(true);
+            setError('');
+            try {
+                const res = await fetchQueueingSessionAutoProposals(sessionId, {
+                    ...criteria,
+                    refresh_seed:
+                        refreshSeedRef.current > 0 ? refreshSeedRef.current : undefined,
+                });
+                setData(res);
+            } catch (e) {
+                setData({
+                    criteria: criteria ?? undefined,
+                    proposals: [],
+                    total_eligible: 0,
+                    required_per_match: 2,
+                    has_stats: false,
+                    match_type: 'singles',
+                });
+                setError(e instanceof Error ? e.message : 'Could not load match suggestions.');
+            } finally {
+                setLoading(false);
+            }
+        },
+        [sessionId, criteria],
+    );
 
     useEffect(() => {
         if (!open) {
             setData(null);
             setError('');
             setSkippedIds(new Set());
+            refreshSeedRef.current = 0;
             return;
         }
         reload();
     }, [open, reload]);
 
     /** @param {AutoMatchProposal} proposal */
-    async function onApprove(proposal) {
+    async function createMatchFromProposal(proposal) {
         if (sessionId == null) return;
+        await postCreateQueueingSessionMatch(sessionId, {
+            lineup: proposal.lineup.map((row) => ({ id: row.id, team: row.team })),
+        });
+    }
+
+    /** @param {AutoMatchProposal} proposal */
+    async function onApprove(proposal) {
         setBusy(true);
         setError('');
         try {
-            await postCreateQueueingSessionMatch(sessionId, {
-                lineup: proposal.lineup.map((row) => ({ id: row.id, team: row.team })),
-            });
+            await createMatchFromProposal(proposal);
             if (onApproved) {
                 await onApproved();
             }
             await reload();
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Could not create match.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /** @param {AutoMatchProposal[]} proposals */
+    async function onApproveAll(proposals) {
+        if (sessionId == null || proposals.length === 0) return;
+        setBusy(true);
+        setError('');
+        try {
+            for (const proposal of proposals) {
+                await createMatchFromProposal(proposal);
+            }
+            if (onApproved) {
+                await onApproved();
+            }
+            await reload();
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Could not create all matches.');
+            if (onApproved) {
+                await onApproved();
+            }
+            await reload();
         } finally {
             setBusy(false);
         }
@@ -244,7 +300,7 @@ export function AutoMatchProposalsModal({ open, sessionId, onClose, onApproved }
 
     function onRefreshClick() {
         setSkippedIds(new Set());
-        reload();
+        void reload({ bumpRefreshSeed: true });
     }
 
     if (!open) return null;
@@ -253,18 +309,41 @@ export function AutoMatchProposalsModal({ open, sessionId, onClose, onApproved }
     const matchType = data?.match_type === 'doubles' ? 'doubles' : 'singles';
     const required = data?.required_per_match ?? (matchType === 'doubles' ? 4 : 2);
     const totalEligible = data?.total_eligible ?? 0;
-    const hasStats = Boolean(data?.has_stats);
+    const activeCriteria = data?.criteria ?? criteria ?? undefined;
+    const chips = criteriaSummaryChips(activeCriteria);
 
     return (
         <div className="rt-end-match-modal-overlay fixed inset-0 z-99 flex items-end justify-center pt-10 sm:items-center">
             <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl sm:rounded-2xl">
                 <div className="border-b border-[#2a2a2d] p-5 pb-4">
-                    <h3 className="text-lg font-bold">Auto-Generate Matches</h3>
+                    <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-lg font-bold">Auto-Generate Matches</h3>
+                        {onEditCriteria ? (
+                            <button
+                                type="button"
+                                disabled={busy || loading}
+                                onClick={onEditCriteria}
+                                className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-2.5 py-1 text-[10px] font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Edit criteria
+                            </button>
+                        ) : null}
+                    </div>
                     <p className="mt-1 text-xs text-[#918f9c]">
-                        {hasStats
-                            ? 'Grouped by win-rate bracket and skill level, then FIFO. Approve a match to add it to the queue, or skip to dismiss.'
-                            : 'Grouped by skill level, then FIFO. Approve a match to add it to the queue, or skip to dismiss.'}
+                        Approve a match to add it to the queue, or skip to dismiss. Priority: Skill → W/L → Sequence.
                     </p>
+                    {chips.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            {chips.map((chip) => (
+                                <span
+                                    key={chip}
+                                    className="rounded-full border border-[#45454a] bg-[#131316] px-2 py-0.5 text-[10px] font-semibold text-[#c8c5d2]"
+                                >
+                                    {chip}
+                                </span>
+                            ))}
+                        </div>
+                    ) : null}
                     <p className="mt-2 text-[11px] text-[#918f9c]">
                         {totalEligible} eligible · {required} player(s) per {matchType} match
                     </p>
@@ -305,14 +384,22 @@ export function AutoMatchProposalsModal({ open, sessionId, onClose, onApproved }
                     )}
                 </div>
 
-                <div className="flex shrink-0 gap-2 border-t border-[#2a2a2d] p-5 pt-4">
+                <div className="flex shrink-0 flex-wrap gap-2 border-t border-[#2a2a2d] p-5 pt-4">
                     <button
                         type="button"
                         disabled={busy || loading}
                         onClick={onRefreshClick}
                         className="flex-1 rounded-lg border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 py-2.5 text-sm font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Refresh suggestions
+                        Refresh
+                    </button>
+                    <button
+                        type="button"
+                        disabled={busy || loading || visibleProposals.length === 0}
+                        onClick={() => void onApproveAll(visibleProposals)}
+                        className="flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        Approve All
                     </button>
                     <button
                         type="button"

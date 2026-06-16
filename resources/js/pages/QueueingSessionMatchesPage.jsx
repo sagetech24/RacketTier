@@ -14,6 +14,11 @@ import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.j
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { AutoMatchProposalsModal } from '../components/queueing/AutoMatchProposalsModal.jsx';
+import {
+    AutoMatchCriteriaModal,
+    loadAutoMatchCriteria,
+    saveAutoMatchCriteria,
+} from '../components/queueing/AutoMatchCriteriaModal.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -253,7 +258,10 @@ export function QueueingSessionMatchesPage() {
     const [matchLineupTeams, setMatchLineupTeams] = useState({ team1: [], team2: [] });
     const [matchLineupSearch, setMatchLineupSearch] = useState('');
     const [stopSessionOpen, setStopSessionOpen] = useState(false);
-    const [autoMatchOpen, setAutoMatchOpen] = useState(false);
+    const [autoMatchCriteriaOpen, setAutoMatchCriteriaOpen] = useState(false);
+    const [autoMatchProposalsOpen, setAutoMatchProposalsOpen] = useState(false);
+    /** @type {import('../api/queueingSession.js').AutoMatchCriteria | null} */
+    const [autoMatchCriteria, setAutoMatchCriteria] = useState(null);
     /** @type {null | { id: number, matchNo: number | null, status: string }} */
     const [removeMatchConfirm, setRemoveMatchConfirm] = useState(null);
 
@@ -739,7 +747,10 @@ export function QueueingSessionMatchesPage() {
                             disabled={busy}
                             onClick={() => {
                                 setActionError('');
-                                setAutoMatchOpen(true);
+                                if (sessionId != null) {
+                                    setAutoMatchCriteria(loadAutoMatchCriteria(sessionId));
+                                }
+                                setAutoMatchCriteriaOpen(true);
                             }}
                             className="relative flex items-center px-4 pb-4 pt-2 justify-center text-[#4ce081] transition-transform disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Auto-generate matches"
@@ -764,10 +775,29 @@ export function QueueingSessionMatchesPage() {
                 </>
             ) : null}
 
+            <AutoMatchCriteriaModal
+                open={autoMatchCriteriaOpen && canManageMatches}
+                initialCriteria={autoMatchCriteria ?? undefined}
+                onClose={() => setAutoMatchCriteriaOpen(false)}
+                onConfirm={(criteria) => {
+                    if (sessionId != null) {
+                        saveAutoMatchCriteria(sessionId, criteria);
+                    }
+                    setAutoMatchCriteria(criteria);
+                    setAutoMatchCriteriaOpen(false);
+                    setAutoMatchProposalsOpen(true);
+                }}
+            />
+
             <AutoMatchProposalsModal
-                open={autoMatchOpen && canManageMatches}
+                open={autoMatchProposalsOpen && canManageMatches}
                 sessionId={sessionId}
-                onClose={() => setAutoMatchOpen(false)}
+                criteria={autoMatchCriteria}
+                onClose={() => setAutoMatchProposalsOpen(false)}
+                onEditCriteria={() => {
+                    setAutoMatchProposalsOpen(false);
+                    setAutoMatchCriteriaOpen(true);
+                }}
                 onApproved={() => reload()}
             />
 
