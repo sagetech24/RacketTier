@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sport;
+use App\Services\ReferenceDataCache;
 use Illuminate\Http\JsonResponse;
 
 class SportsListController extends Controller
 {
+    public function __construct(
+        private ReferenceDataCache $referenceDataCache,
+    ) {}
+
     public function index(): JsonResponse
     {
-        $sports = Sport::query()
-            ->orderBy('id')
-            ->get(['id', 'slug', 'name', 'code', 'icon']);
-
-        return response()->json(['data' => $sports]);
+        return response()->json(['data' => $this->referenceDataCache->sports()]);
     }
 }

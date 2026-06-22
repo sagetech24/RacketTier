@@ -19,7 +19,7 @@ class QueueingSessionMatchesIndexController extends Controller
         ListQueueingSessionMatchesRequest $request,
         GameSession $gameSession,
     ): JsonResponse {
-        $this->queueingSessionState->reconcileStaleActiveSession($gameSession);
+        $this->queueingSessionState->reconcileStaleActiveSessionIfDue($gameSession);
 
         $matches = QueueingSessionMatch::query()
             ->where('game_session_id', $gameSession->id)

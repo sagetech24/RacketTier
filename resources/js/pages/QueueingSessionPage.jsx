@@ -7,6 +7,7 @@ import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.j
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useVisibilityPolling } from '../hooks/useVisibilityPolling.js';
 
 /**
  * @param {import('../api/gameSession.js').GameSessionDetail['players'] extends (infer U)[] | undefined ? U : never} row
@@ -99,13 +100,10 @@ export function QueueingSessionPage() {
         };
     }, [session, sessionId]);
 
-    useEffect(() => {
-        if (!session?.is_active) return undefined;
-        const t = window.setInterval(() => {
-            reload().catch(() => {});
-        }, 4000);
-        return () => window.clearInterval(t);
-    }, [session?.is_active, reload]);
+    useVisibilityPolling(
+        () => reload(),
+        { enabled: Boolean(session?.is_active), intervalMs: 10_000 },
+    );
 
     const leaderboard = useMemo(() => {
         const summaryPlayers = summary?.players;

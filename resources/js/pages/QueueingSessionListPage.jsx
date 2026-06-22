@@ -7,6 +7,7 @@ import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.j
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
 import { canDeleteQueueingSession } from '../lib/queueingSessionPermissions.js';
 import { userIsAdmin } from '../lib/userRoles.js';
@@ -125,7 +126,7 @@ function QueueSessionCardBadges({ row, viewOnly }) {
 }
 
 export function QueueingSessionListPage() {
-    const { user, refreshUser } = useAuth();
+    const { user } = useAuth();
     const isAdmin = userIsAdmin(user);
     const location = useLocation();
     const navPath = normalizedAppPath(location.pathname);
@@ -133,6 +134,7 @@ export function QueueingSessionListPage() {
     const [error, setError] = useState('');
     const [rows, setRows] = useState([]);
     const [q, setQ] = useState('');
+    const debouncedQ = useDebouncedValue(q, 350);
     const [status, setStatus] = useState('all');
     const [mineOnly, setMineOnly] = useState(false);
     const [sort, setSort] = useState('updated_desc');
@@ -220,16 +222,12 @@ export function QueueingSessionListPage() {
     }
 
     useEffect(() => {
-        void refreshUser?.();
-    }, [refreshUser]);
-
-    useEffect(() => {
         let cancelled = false;
         async function load() {
             setLoading(true);
             setError('');
             try {
-                const data = await fetchQueueingSessions({ q, status, mineOnly, sort });
+                const data = await fetchQueueingSessions({ q: debouncedQ, status, mineOnly, sort });
                 if (!cancelled) setRows(data);
             } catch (e) {
                 if (!cancelled) {
@@ -243,7 +241,7 @@ export function QueueingSessionListPage() {
         return () => {
             cancelled = true;
         };
-    }, [q, status, mineOnly, sort]);
+    }, [debouncedQ, status, mineOnly, sort]);
 
     const { activeRows, finishedTodayRows } = useMemo(() => {
         const active = rows.filter((row) => row.is_active);

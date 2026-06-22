@@ -132,9 +132,8 @@ class FinishGameSessionMatch
                         'team' => null,
                     ]);
                 }
-                $this->recompactQueuePositions($locked->id);
+                $this->queueingSessionState->recompactQueuePositions($locked->id);
                 $this->queueingSessionState->clearOrphanPlayingPlayers((int) $locked->id);
-                $this->recompactQueuePositions($locked->id);
 
                 $sessionStatus = $this->queueingSessionState->hasOngoingMatch((int) $locked->id)
                     ? 'ongoing'
@@ -304,16 +303,6 @@ class FinishGameSessionMatch
     ): array {
         $sportId = (int) $session->sport_id;
         $memberUserIds = $playing->pluck('user_id')->filter()->unique()->values()->all();
-
-        foreach ($memberUserIds as $uid) {
-            Ranking::query()->firstOrCreate(
-                [
-                    'user_id' => $uid,
-                    'sport_id' => $sportId,
-                ],
-                ['rating' => 1000],
-            );
-        }
 
         $ratingsBefore = Ranking::query()
             ->where('sport_id', $sportId)
@@ -529,23 +518,6 @@ class FinishGameSessionMatch
         }
 
         return $out;
-    }
-
-    private function recompactQueuePositions(int $sessionId): void
-    {
-        $rows = GameSessionPlayer::query()
-            ->where('game_session_id', $sessionId)
-            ->where('is_waiting', true)
-            ->where('is_playing', false)
-            ->orderBy('queue_position')
-            ->get();
-
-        $pos = 1;
-        foreach ($rows as $row) {
-            GameSessionPlayer::query()->whereKey($row->id)->update([
-                'queue_position' => $pos++,
-            ]);
-        }
     }
 
     /**

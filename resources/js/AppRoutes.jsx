@@ -1,40 +1,49 @@
+import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { RootLayout } from './components/RootLayout.jsx';
-import { CreateMatchPage } from './pages/CreateMatchPage.jsx';
-import { ActivityPage } from './pages/ActivityPage.jsx';
-import { DashboardPage } from './pages/DashboardPage.jsx';
-import { FacilitiesPage } from './pages/FacilitiesPage.jsx';
-import { GameRoomPage } from './pages/GameRoomPage.jsx';
-import { HomePage } from './pages/HomePage.jsx';
-import { LoginPage } from './pages/LoginPage.jsx';
-import { ProfilePage } from './pages/ProfilePage.jsx';
-import { RankingPage } from './pages/RankingPage.jsx';
-import { RegisterPage } from './pages/RegisterPage.jsx';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage.jsx';
-import { ResetPasswordPage } from './pages/ResetPasswordPage.jsx';
-import { VerifyEmailPage } from './pages/VerifyEmailPage.jsx';
-import { CreateQueueingSessionPage } from './pages/CreateQueueingSessionPage.jsx';
-import { QueueingSessionPage } from './pages/QueueingSessionPage.jsx';
-import { QueueingSessionHistoryPage } from './pages/QueueingSessionHistoryPage.jsx';
-import { QueueingSessionListPage } from './pages/QueueingSessionListPage.jsx';
-import { QueueingSessionMatchesPage } from './pages/QueueingSessionMatchesPage.jsx';
-import { QueueingSessionPlayersPage } from './pages/QueueingSessionPlayersPage.jsx';
+import { PageLoader } from './components/PageLoader.jsx';
+
+const CreateMatchPage = lazy(() => import('./pages/CreateMatchPage.jsx').then((m) => ({ default: m.CreateMatchPage })));
+const ActivityPage = lazy(() => import('./pages/ActivityPage.jsx').then((m) => ({ default: m.ActivityPage })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx').then((m) => ({ default: m.DashboardPage })));
+const FacilitiesPage = lazy(() => import('./pages/FacilitiesPage.jsx').then((m) => ({ default: m.FacilitiesPage })));
+const GameRoomPage = lazy(() => import('./pages/GameRoomPage.jsx').then((m) => ({ default: m.GameRoomPage })));
+const HomePage = lazy(() => import('./pages/HomePage.jsx').then((m) => ({ default: m.HomePage })));
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx').then((m) => ({ default: m.LoginPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((m) => ({ default: m.ProfilePage })));
+const RankingPage = lazy(() => import('./pages/RankingPage.jsx').then((m) => ({ default: m.RankingPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx').then((m) => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.jsx').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx').then((m) => ({ default: m.ResetPasswordPage })));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.jsx').then((m) => ({ default: m.VerifyEmailPage })));
+const CreateQueueingSessionPage = lazy(() => import('./pages/CreateQueueingSessionPage.jsx').then((m) => ({ default: m.CreateQueueingSessionPage })));
+const QueueingSessionPage = lazy(() => import('./pages/QueueingSessionPage.jsx').then((m) => ({ default: m.QueueingSessionPage })));
+const QueueingSessionHistoryPage = lazy(() => import('./pages/QueueingSessionHistoryPage.jsx').then((m) => ({ default: m.QueueingSessionHistoryPage })));
+const QueueingSessionListPage = lazy(() => import('./pages/QueueingSessionListPage.jsx').then((m) => ({ default: m.QueueingSessionListPage })));
+const QueueingSessionMatchesPage = lazy(() => import('./pages/QueueingSessionMatchesPage.jsx').then((m) => ({ default: m.QueueingSessionMatchesPage })));
+const QueueingSessionPlayersPage = lazy(() => import('./pages/QueueingSessionPlayersPage.jsx').then((m) => ({ default: m.QueueingSessionPlayersPage })));
+
+function LazyPage({ children }) {
+    return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+}
 
 export function AppRoutes() {
     return (
         <Routes>
             <Route path="/" element={<RootLayout />}>
-                <Route index element={<HomePage />} />
-                <Route path="login" element={<LoginPage />} />
-                <Route path="register" element={<RegisterPage />} />
-                <Route path="forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="password/reset/:token" element={<ResetPasswordPage />} />
+                <Route index element={<LazyPage><HomePage /></LazyPage>} />
+                <Route path="login" element={<LazyPage><LoginPage /></LazyPage>} />
+                <Route path="register" element={<LazyPage><RegisterPage /></LazyPage>} />
+                <Route path="forgot-password" element={<LazyPage><ForgotPasswordPage /></LazyPage>} />
+                <Route path="password/reset/:token" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
                 <Route
                     path="verify-email"
                     element={
                         <ProtectedRoute>
-                            <VerifyEmailPage />
+                            <LazyPage>
+                                <VerifyEmailPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -42,7 +51,9 @@ export function AppRoutes() {
                     path="dashboard"
                     element={
                         <ProtectedRoute>
-                            <DashboardPage />
+                            <LazyPage>
+                                <DashboardPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -50,7 +61,9 @@ export function AppRoutes() {
                     path="activity"
                     element={
                         <ProtectedRoute>
-                            <ActivityPage />
+                            <LazyPage>
+                                <ActivityPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -58,7 +71,9 @@ export function AppRoutes() {
                     path="profile"
                     element={
                         <ProtectedRoute>
-                            <ProfilePage />
+                            <LazyPage>
+                                <ProfilePage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -66,7 +81,9 @@ export function AppRoutes() {
                     path="facilities"
                     element={
                         <ProtectedRoute>
-                            <FacilitiesPage />
+                            <LazyPage>
+                                <FacilitiesPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -74,7 +91,9 @@ export function AppRoutes() {
                     path="facility/:facilityId/create-match"
                     element={
                         <ProtectedRoute>
-                            <CreateMatchPage />
+                            <LazyPage>
+                                <CreateMatchPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -82,7 +101,9 @@ export function AppRoutes() {
                     path="ranking"
                     element={
                         <ProtectedRoute>
-                            <RankingPage />
+                            <LazyPage>
+                                <RankingPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -90,7 +111,9 @@ export function AppRoutes() {
                     path="facility/:facilityId/game-room"
                     element={
                         <ProtectedRoute>
-                            <GameRoomPage />
+                            <LazyPage>
+                                <GameRoomPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -98,7 +121,9 @@ export function AppRoutes() {
                     path="queueing-session"
                     element={
                         <ProtectedRoute>
-                            <QueueingSessionListPage />
+                            <LazyPage>
+                                <QueueingSessionListPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -106,7 +131,9 @@ export function AppRoutes() {
                     path="queueing-session/new"
                     element={
                         <ProtectedRoute>
-                            <CreateQueueingSessionPage />
+                            <LazyPage>
+                                <CreateQueueingSessionPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -114,7 +141,9 @@ export function AppRoutes() {
                     path="queueing-session/history"
                     element={
                         <ProtectedRoute>
-                            <QueueingSessionHistoryPage />
+                            <LazyPage>
+                                <QueueingSessionHistoryPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -122,7 +151,9 @@ export function AppRoutes() {
                     path="queueing-session/:id"
                     element={
                         <ProtectedRoute>
-                            <QueueingSessionPage />
+                            <LazyPage>
+                                <QueueingSessionPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -130,7 +161,9 @@ export function AppRoutes() {
                     path="queueing-session/:id/players"
                     element={
                         <ProtectedRoute>
-                            <QueueingSessionPlayersPage />
+                            <LazyPage>
+                                <QueueingSessionPlayersPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />
@@ -138,7 +171,9 @@ export function AppRoutes() {
                     path="queueing-session/:id/matches"
                     element={
                         <ProtectedRoute>
-                            <QueueingSessionMatchesPage />
+                            <LazyPage>
+                                <QueueingSessionMatchesPage />
+                            </LazyPage>
                         </ProtectedRoute>
                     }
                 />

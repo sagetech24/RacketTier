@@ -25,7 +25,13 @@ class GameSessionResource extends JsonResource
         $eloByUser = [];
         $walletBalanceByUser = [];
         $tierRowsForSport = collect();
-        if ($this->relationLoaded('players') && $this->sport_id) {
+
+        $enrichment = $this->getAttribute('player_enrichment');
+        if (is_array($enrichment)) {
+            $eloByUser = $enrichment['eloByUser'] ?? [];
+            $walletBalanceByUser = $enrichment['walletBalanceByUser'] ?? [];
+            $tierRowsForSport = $enrichment['tierRowsForSport'] ?? collect();
+        } elseif ($this->relationLoaded('players') && $this->sport_id) {
             $uids = $this->players->pluck('user_id')->unique()->filter()->values()->all();
             if ($uids !== []) {
                 $sportId = (int) $this->sport_id;

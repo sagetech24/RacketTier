@@ -40,13 +40,17 @@ class AppServiceProvider extends ServiceProvider
             $user = auth()->user();
             abort_if(! $user, 401);
 
-            $session = GameSession::query()->whereKey($value)->first();
+            $session = GameSession::query()
+                ->whereKey($value)
+                ->withExists([
+                    'players as viewer_is_participant' => function ($query) use ($user): void {
+                        $query->where('user_id', $user->id);
+                    },
+                ])
+                ->first();
             abort_if(! $session, 404);
 
-            $isParticipant = GameSession::query()
-                ->whereKey($value)
-                ->whereUserIsParticipant($user)
-                ->exists();
+            $isParticipant = (bool) $session->viewer_is_participant;
 
             if ($isParticipant) {
                 return $session;

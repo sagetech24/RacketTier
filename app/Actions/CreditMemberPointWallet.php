@@ -17,7 +17,7 @@ class CreditMemberPointWallet
             return;
         }
 
-        $created = MemberPointWallet::query()->firstOrCreate(
+        $wallet = MemberPointWallet::query()->firstOrCreate(
             [
                 'user_id' => $userId,
                 'sport_id' => $sportId,
@@ -25,20 +25,20 @@ class CreditMemberPointWallet
             ['balance' => 0],
         );
 
-        /** @var MemberPointWallet $wallet */
-        $wallet = MemberPointWallet::query()
-            ->whereKey($created->id)
+        /** @var MemberPointWallet $locked */
+        $locked = MemberPointWallet::query()
+            ->whereKey($wallet->id)
             ->lockForUpdate()
             ->firstOrFail();
 
-        $wallet->increment('balance', $delta);
-        $wallet->refresh();
+        $balanceAfter = (int) $locked->balance + $delta;
+        $locked->increment('balance', $delta);
 
         PointWalletTransaction::query()->create([
-            'member_point_wallet_id' => $wallet->id,
+            'member_point_wallet_id' => $locked->id,
             'game_session_id' => $gameSessionId,
             'amount' => $delta,
-            'balance_after' => (int) $wallet->balance,
+            'balance_after' => $balanceAfter,
         ]);
     }
 }

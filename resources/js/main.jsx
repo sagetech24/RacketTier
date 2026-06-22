@@ -2,8 +2,10 @@ import '../css/app.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { AppRoutes } from './AppRoutes.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { queryClient } from './lib/queryClient.js';
 import { initPwa } from './pwa.js';
 
 initPwa();
@@ -15,10 +17,12 @@ if (!el) {
 
 createRoot(el).render(
     <StrictMode>
-        <BrowserRouter>
-            <AuthProvider>
-                <AppRoutes />
-            </AuthProvider>
-        </BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+            <BrowserRouter>
+                <AuthProvider>
+                    <AppRoutes />
+                </AuthProvider>
+            </BrowserRouter>
+        </QueryClientProvider>
     </StrictMode>,
 );

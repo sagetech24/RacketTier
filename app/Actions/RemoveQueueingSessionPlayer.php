@@ -4,10 +4,15 @@ namespace App\Actions;
 
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Services\QueueingSessionState;
 use Illuminate\Support\Facades\DB;
 
 class RemoveQueueingSessionPlayer
 {
+    public function __construct(
+        private QueueingSessionState $queueingSessionState,
+    ) {}
+
     public function execute(GameSession $session, GameSessionPlayer $player): void
     {
         if (! $session->isQueueing()) {
@@ -36,17 +41,7 @@ class RemoveQueueingSessionPlayer
 
             $p->delete();
 
-            $rows = GameSessionPlayer::query()
-                ->where('game_session_id', $locked->id)
-                ->where('is_waiting', true)
-                ->where('is_playing', false)
-                ->orderBy('queue_position')
-                ->get();
-
-            $pos = 1;
-            foreach ($rows as $row) {
-                GameSessionPlayer::query()->whereKey($row->id)->update(['queue_position' => $pos++]);
-            }
+            $this->queueingSessionState->recompactQueuePositions((int) $locked->id);
         });
     }
 }

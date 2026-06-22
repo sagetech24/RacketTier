@@ -70,18 +70,6 @@ export default defineConfig({
                             },
                         },
                     },
-                    {
-                        urlPattern: ({ request }) => request.mode === 'navigate',
-                        handler: 'NetworkFirst',
-                        options: {
-                            cacheName: 'pages',
-                            networkTimeoutSeconds: 10,
-                            expiration: {
-                                maxEntries: 32,
-                                maxAgeSeconds: 60 * 60 * 24,
-                            },
-                        },
-                    },
                 ],
             },
             devOptions: {
@@ -92,6 +80,20 @@ export default defineConfig({
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],
+        },
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router')) {
+                        return 'vendor-react';
+                    }
+                    if (id.includes('node_modules/@tanstack/react-query')) {
+                        return 'vendor-query';
+                    }
+                },
+            },
         },
     },
 });

@@ -116,6 +116,10 @@ class GameSession extends Model
             return true;
         }
 
+        if (isset($this->viewer_is_participant)) {
+            return (bool) $this->viewer_is_participant;
+        }
+
         return $this->players()
             ->where('user_id', $user->id)
             ->exists();

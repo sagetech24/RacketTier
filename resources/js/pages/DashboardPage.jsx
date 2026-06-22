@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchMyActivity } from '../api/activity.js';
-import { fetchDashboardSummary } from '../api/dashboard.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { LogoutButton } from '../components/LogoutButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDefaultGameRoomHref } from '../hooks/useDefaultGameRoomHref.js';
+import { useDashboardSummaryQuery } from '../hooks/queries/useDashboardSummaryQuery.js';
 
 const IMG_PLAY_BG =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuAdeD9jD4wFP5m8jeHYihc9onG4ZLyRfTmD5RvFgsnbJueMquK9TNRW_SyHqXiIDR9B3CH692i5gr4ce_y_Oup803Q_AcpyvX-y5KMaYf_yXfTl5AOu0K8GL2lcpnv7uvGZvNwoLRT4Sf3r-w5mlohM6S-Dtd2AngioMwnLGH8pUY4eXUvZAWvpm65heuxqA3sVBvBmhR6wRxb6rrp4U3yk5rc-MHX2OG0Jp16jur2xfsCeZV090T9-FFgbHyrLZj9mOjaMMqBev_U';
@@ -111,33 +111,10 @@ function ActivityItemMeta({ row }) {
 export function DashboardPage() {
     const { user: authUser } = useAuth();
     const gameRoomHref = useDefaultGameRoomHref();
-    const [summary, setSummary] = useState(null);
+    const { data: summary, isLoading: loading, isError } = useDashboardSummaryQuery();
     const [activityItems, setActivityItems] = useState([]);
     const [activityLoading, setActivityLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        async function load() {
-            setError('');
-            setLoading(true);
-            try {
-                const data = await fetchDashboardSummary();
-                if (!cancelled) setSummary(data);
-            } catch {
-                if (!cancelled) setError('Could not load your dashboard. Refresh and try again.');
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        }
-
-        load();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+    const error = isError ? 'Could not load your dashboard. Refresh and try again.' : '';
 
     useEffect(() => {
         let cancelled = false;
@@ -212,7 +189,9 @@ export function DashboardPage() {
                                     My Rank
                                 </p>
                                 <p className="mt-1 text-lg font-bold leading-snug text-[#e4e1e6] flex items-center gap-1.5">
-                                    <svg fill="#a6a5ed" height="18px" width="18px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 246.001 246.001" xml:space="preserve"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z"></path> </g></svg>
+                                    <svg fill="#a6a5ed" height="18" width="18" viewBox="0 0 246.001 246.001" aria-hidden="true">
+                                        <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z" />
+                                    </svg>
                                     {tierLabel}
                                 </p>
                             </div>
@@ -221,8 +200,8 @@ export function DashboardPage() {
                                     My Points
                                 </p>
                                 <p className="mt-1 text-lg font-bold tabular-nums text-[#e4e1e6] flex items-center gap-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 stroke-[#a6a5ed]">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-5 stroke-[#a6a5ed]" aria-hidden="true">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
                                     </svg>
                                     {totalPointBalance != null ? totalPointBalance.toLocaleString() : '—'}
                                 </p>

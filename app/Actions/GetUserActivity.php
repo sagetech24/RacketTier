@@ -27,9 +27,10 @@ class GetUserActivity
         $limit = max(1, min($limit, self::MAX_LIMIT));
         $since = now()->subDays(7);
         $cursorData = $this->parseCursor($cursor);
+        $fetchLimit = min(($limit + 1) * 5, 100);
 
-        $facilityItems = $this->facilityItems($user, $since);
-        $queueingMatchItems = $this->queueingMatchItems($user, $since);
+        $facilityItems = $this->facilityItems($user, $since, $fetchLimit);
+        $queueingMatchItems = $this->queueingMatchItems($user, $since, $fetchLimit);
 
         $merged = collect()
             ->concat($facilityItems)
@@ -65,7 +66,7 @@ class GetUserActivity
     /**
      * @return Collection<int, array{finished_at: string, finished_at_ts: int, kind: string, entity_id: int, sort_rank: int, payload: array<string, mixed>}>
      */
-    private function facilityItems(User $user, CarbonInterface $since): Collection
+    private function facilityItems(User $user, CarbonInterface $since, int $fetchLimit): Collection
     {
         return GameSession::query()
             ->where('session_context', 'facility')
@@ -75,6 +76,7 @@ class GetUserActivity
             ->whereUserIsParticipant($user)
             ->with(['sport:id,name,slug,code', 'facility:id,name'])
             ->orderByDesc('last_finished_at')
+            ->limit($fetchLimit)
             ->get()
             ->map(function (GameSession $session) use ($user): array {
                 $finishedAt = $session->last_finished_at;
@@ -121,7 +123,7 @@ class GetUserActivity
     /**
      * @return Collection<int, array{finished_at: string, finished_at_ts: int, kind: string, entity_id: int, sort_rank: int, payload: array<string, mixed>}>
      */
-    private function queueingMatchItems(User $user, CarbonInterface $since): Collection
+    private function queueingMatchItems(User $user, CarbonInterface $since, int $fetchLimit): Collection
     {
         return QueueingSessionMatch::query()
             ->where('status', 'finished')
@@ -130,6 +132,7 @@ class GetUserActivity
             ->whereHas('gameSession', fn ($q) => $q->whereUserIsParticipant($user))
             ->with(['gameSession.sport:id,name,slug,code', 'gameSession.facility:id,name'])
             ->orderByDesc('finished_at')
+            ->limit($fetchLimit * 2)
             ->get()
             ->filter(fn (QueueingSessionMatch $match): bool => $this->userParticipatedInBreakdown($match->result_breakdown, $user))
             ->map(function (QueueingSessionMatch $match) use ($user): array {

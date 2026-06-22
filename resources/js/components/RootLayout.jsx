@@ -1,6 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LogoutButton } from './LogoutButton.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
+import { Outlet, useLocation } from 'react-router-dom';
 
 const V2_SHELL_PATHS = new Set(['/dashboard', '/facilities', '/ranking', '/profile', '/activity']);
 
@@ -24,7 +22,6 @@ function isV2DashboardShellPath(pathname) {
 }
 
 export function RootLayout() {
-    const { user } = useAuth();
     const location = useLocation();
     const isLoginPage = location.pathname === '/login';
     const isRegisterPage = location.pathname === '/register';

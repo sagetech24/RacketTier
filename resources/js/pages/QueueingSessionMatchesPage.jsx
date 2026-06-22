@@ -21,6 +21,7 @@ import {
 } from '../components/queueing/AutoMatchCriteriaModal.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
+import { useVisibilityPolling } from '../hooks/useVisibilityPolling.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 function formatTime(iso) {
@@ -304,6 +305,11 @@ export function QueueingSessionMatchesPage() {
         };
     }, [sessionId]);
 
+    useVisibilityPolling(
+        () => reload(),
+        { enabled: Boolean(session?.is_active), intervalMs: 10_000 },
+    );
+
     async function onEndMatch() {
         if (sessionId == null) return;
         const skipScores = Boolean(session?.skip_scores);
@@ -337,7 +343,6 @@ export function QueueingSessionMatchesPage() {
                     queueingSessionMatchId: selectedMatchId ?? undefined,
                 });
             }
-            await reload();
             setFinishOpen(false);
             setSelectedMatchId(null);
             setSelectedMatchNo(null);
@@ -345,6 +350,10 @@ export function QueueingSessionMatchesPage() {
             setT1('');
             setT2('');
             setSelectedWinningTeam(null);
+            if (session) {
+                setSession({ ...session, status: 'queueing' });
+            }
+            void reload();
         } catch (e) {
             setActionError(e instanceof Error ? e.message : 'Could not end match.');
         } finally {

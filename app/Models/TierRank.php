@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ReferenceDataCache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -42,12 +43,10 @@ class TierRank extends Model
      */
     public static function tierForPoints(int $sportId, int $points): ?self
     {
-        return static::query()
-            ->where('sport_id', $sportId)
-            ->where('status', true)
-            ->where('start_point', '<=', $points)
-            ->where('end_point', '>=', $points)
-            ->orderBy('tier_no')
-            ->first();
+        $tiers = app(ReferenceDataCache::class)->tierRanksForSport($sportId);
+
+        return $tiers->first(
+            fn (self $tier): bool => $points >= $tier->start_point && $points <= $tier->end_point,
+        );
     }
 }

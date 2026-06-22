@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import '../../css/dashboard-v2.css';
 import { fetchRankings } from '../api/ranking.js';
-import { fetchSports } from '../api/gameSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
+import { useSportsQuery } from '../hooks/queries/useSportsQuery.js';
 
 const DEFAULT_SPORT_SLUG = 'pickleball';
 const REST_VISIBLE_COUNT = 10;
@@ -22,9 +23,10 @@ function isCurrentUserRow(row, userId) {
 
 export function RankingPage() {
     const { user } = useAuth();
-    const [sports, setSports] = useState([]);
+    const { data: sports = [] } = useSportsQuery();
     const [activeFilter, setActiveFilter] = useState(null);
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 350);
     const [rankings, setRankings] = useState([]);
     const [viewerRanking, setViewerRanking] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -38,29 +40,15 @@ export function RankingPage() {
     }, [sports]);
 
     useEffect(() => {
-        let cancelled = false;
-
-        async function loadSports() {
-            try {
-                const rows = await fetchSports();
-                if (!cancelled) {
-                    setSports(rows);
-                    const defaultSport =
-                        rows.find((sport) => sport.slug === DEFAULT_SPORT_SLUG) ?? rows[0];
-                    if (defaultSport) {
-                        setActiveFilter((current) => current ?? String(defaultSport.id));
-                    }
-                }
-            } catch {
-                // Ranking page still works without sports filter options.
-            }
+        if (sports.length === 0) {
+            return;
         }
-
-        loadSports();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+        const defaultSport =
+            sports.find((sport) => sport.slug === DEFAULT_SPORT_SLUG) ?? sports[0];
+        if (defaultSport) {
+            setActiveFilter((current) => current ?? String(defaultSport.id));
+        }
+    }, [sports]);
 
     useEffect(() => {
         if (!activeFilter) {
@@ -75,7 +63,7 @@ export function RankingPage() {
             try {
                 const { data, viewerRanking: viewerRow } = await fetchRankings({
                     sportId: Number(activeFilter),
-                    search,
+                    search: debouncedSearch,
                     limit: 100,
                 });
                 if (!cancelled) {
@@ -99,7 +87,7 @@ export function RankingPage() {
         return () => {
             cancelled = true;
         };
-    }, [activeFilter, search]);
+    }, [activeFilter, debouncedSearch]);
 
     const topThree = useMemo(() => rankings.slice(0, 3), [rankings]);
     const restTopTen = useMemo(() => rankings.slice(3, 3 + REST_VISIBLE_COUNT), [rankings]);
@@ -230,7 +218,9 @@ export function RankingPage() {
                             >
                                 <div className="flex flex-col items-start">
                                     <div className='min-w-6 text-2xl font-extrabold'>
-                                        <svg className="opacity-70" fill={idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : '#cd7f32'} height="20px" width="20px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 246.001 246.001" xml:space="preserve"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z"></path> </g></svg>
+                                        <svg className="opacity-70" fill={idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : '#cd7f32'} height="20" width="20" viewBox="0 0 246.001 246.001" aria-hidden="true">
+                                            <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z" />
+                                        </svg>
                                     </div>
                                 </div>
                                 <div className="min-w-0 flex-1">

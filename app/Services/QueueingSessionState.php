@@ -5,9 +5,13 @@ namespace App\Services;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class QueueingSessionState
 {
+    private const RECONCILE_THROTTLE_SECONDS = 30;
+
     public function hasOngoingMatch(int $gameSessionId): bool
     {
         return QueueingSessionMatch::query()
@@ -37,19 +41,32 @@ class QueueingSessionState
 
     public function recompactQueuePositions(int $gameSessionId): void
     {
-        $rows = GameSessionPlayer::query()
+        $ids = GameSessionPlayer::query()
             ->where('game_session_id', $gameSessionId)
             ->where('is_waiting', true)
             ->where('is_playing', false)
             ->orderBy('queue_position')
-            ->get();
+            ->pluck('id');
 
-        $pos = 1;
-        foreach ($rows as $row) {
-            GameSessionPlayer::query()->whereKey($row->id)->update([
-                'queue_position' => $pos++,
-            ]);
+        if ($ids->isEmpty()) {
+            return;
         }
+
+        $cases = [];
+        $bindings = [];
+        foreach ($ids->values() as $index => $id) {
+            $cases[] = 'WHEN ? THEN ?';
+            $bindings[] = (int) $id;
+            $bindings[] = $index + 1;
+        }
+
+        $placeholders = implode(',', array_fill(0, $ids->count(), '?'));
+        $caseSql = implode(' ', $cases);
+
+        DB::update(
+            "UPDATE game_session_players SET queue_position = CASE id {$caseSql} END WHERE id IN ({$placeholders})",
+            [...$bindings, ...$ids->all()],
+        );
     }
 
     /**
@@ -103,5 +120,26 @@ class QueueingSessionState
         $this->syncSessionStatus($session);
 
         return true;
+    }
+
+    /**
+     * Throttled reconcile for read paths (e.g. polling) to avoid write storms.
+     */
+    public function reconcileStaleActiveSessionIfDue(GameSession $session): bool
+    {
+        if (! $session->is_active || ! $session->isQueueing()) {
+            return false;
+        }
+
+        $cacheKey = 'queueing_reconcile:'.$session->id;
+
+        if (Cache::has($cacheKey)) {
+            return false;
+        }
+
+        $changed = $this->reconcileStaleActiveSession($session);
+        Cache::put($cacheKey, true, now()->addSeconds(self::RECONCILE_THROTTLE_SECONDS));
+
+        return $changed;
     }
 }

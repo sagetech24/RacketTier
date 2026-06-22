@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchFacilities } from '../api/facilities.js';
 import { fetchFacilityGameRoom } from '../api/facilityGameRoom.js';
 import { fetchGameSession, postFinishGameSessionMatch, postStartGameSessionMatch } from '../api/gameSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useVisibilityPolling } from '../hooks/useVisibilityPolling.js';
 
 /**
  * @param {string} name
@@ -138,8 +138,6 @@ export function GameRoomPage() {
         return Number.isFinite(n) && n > 0 ? n : null;
     }, [facilityIdParam]);
 
-    const [facilityLabel, setFacilityLabel] = useState('');
-
     const [sessionDetail, setSessionDetail] = useState(
         /** @type {import('../api/gameSession.js').GameSessionDetail | null} */ (null),
     );
@@ -232,33 +230,31 @@ export function GameRoomPage() {
         });
     }, [lobby?.finished_sessions]);
 
-    useEffect(() => {
-        if (facilityIdNum == null) {
-            setFacilityLabel('');
+    const reloadSession = useCallback(async () => {
+        if (facilityIdNum == null || !sessionIdParam || !/^\d+$/.test(sessionIdParam)) {
             return;
         }
-        let cancelled = false;
+        const data = await fetchGameSession(sessionIdParam, { facilityId: facilityIdNum });
+        setSessionDetail(data);
+    }, [facilityIdNum, sessionIdParam]);
 
-        async function loadFacilityName() {
-            try {
-                const list = await fetchFacilities();
-                if (cancelled) {
-                    return;
-                }
-                const row = list.find((f) => f.id === facilityIdNum);
-                setFacilityLabel(row?.name ?? '');
-            } catch {
-                if (!cancelled) {
-                    setFacilityLabel('');
-                }
-            }
+    const reloadLobby = useCallback(async () => {
+        if (facilityIdNum == null || sessionIdParam) {
+            return;
         }
+        const room = await fetchFacilityGameRoom(facilityIdNum);
+        setLobby(room);
+    }, [facilityIdNum, sessionIdParam]);
 
-        void loadFacilityName();
-        return () => {
-            cancelled = true;
-        };
-    }, [facilityIdNum]);
+    useVisibilityPolling(
+        () => reloadSession(),
+        { enabled: Boolean(sessionIdParam && sessionDetail?.is_active), intervalMs: 10_000 },
+    );
+
+    useVisibilityPolling(
+        () => reloadLobby(),
+        { enabled: facilityIdNum != null && !sessionIdParam, intervalMs: 10_000 },
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -410,7 +406,7 @@ export function GameRoomPage() {
         : 'GAME ROOM';
 
     const facilityEyebrow =
-        sessionDetail?.facility?.name ?? (facilityLabel.trim() ? facilityLabel : 'Game room');
+        sessionDetail?.facility?.name ?? lobby?.facility?.name ?? 'Game room';
 
     async function handleStartGame() {
         if (!sessionIdParam || !/^\d+$/.test(sessionIdParam) || facilityIdNum == null) {
