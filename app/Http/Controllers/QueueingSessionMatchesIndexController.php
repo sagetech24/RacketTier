@@ -23,7 +23,7 @@ class QueueingSessionMatchesIndexController extends Controller
 
         $matches = QueueingSessionMatch::query()
             ->where('game_session_id', $gameSession->id)
-            ->orderByDesc('match_no')
+            ->orderBy('match_no')
             ->get();
 
         return response()->json([
