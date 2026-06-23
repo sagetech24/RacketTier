@@ -160,21 +160,21 @@ export function DashboardPage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={profileLoading} />
 
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
-                <section className="mb-10">
-                    <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-[#e4e1e6]">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+                <section className="mb-10 md:mb-8">
+                    <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-[#e4e1e6] md:text-4xl">
                         {loading ? (
                             <span className="inline-block h-10 w-56 animate-pulse rounded-lg bg-[#2a2a2d]" />
                         ) : (
                             <>Hello, {displayName}.</>
                         )}
                     </h2>
-                    <p className="font-medium text-[#c8c5d2]/70">Ready to climb the tiers today?</p>
+                    <p className="font-medium text-[#c8c5d2]/70 md:text-base">Ready to climb the tiers today?</p>
                 </section>
 
-                <section className="mb-10 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
+                <section className="mb-10 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 md:p-5">
                     {profileLoading ? (
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-4 sm:grid-cols-2 md:gap-6">
                             {[1, 2].map((n) => (
                                 <div key={n} className="space-y-2">
                                     <div className="h-3 w-20 animate-pulse rounded bg-[#2a2a2d]" />
@@ -183,7 +183,7 @@ export function DashboardPage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="grid gap-6 sm:grid-cols-2 md:gap-8">
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">
                                     My Rank
@@ -220,10 +220,10 @@ export function DashboardPage() {
                     </div>
                 ) : null}
 
-                <div className="mb-10 grid grid-cols-2 gap-4">
+                <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-4">
                     <Link
                         to="/facilities"
-                        className="group relative col-span-2 block h-48 cursor-pointer overflow-hidden rounded-xl bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] transition-transform duration-200 active:scale-95"
+                        className="group relative col-span-2 block h-48 cursor-pointer overflow-hidden rounded-xl bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] transition-transform duration-200 active:scale-95 md:col-span-1 md:h-40"
                     >
                         <div className="absolute inset-0 opacity-20 mix-blend-overlay">
                             <img
@@ -250,7 +250,7 @@ export function DashboardPage() {
 
                     <Link
                         to="/facilities"
-                        className="group flex h-32 cursor-pointer flex-col justify-between rounded-xl bg-[#1b1b1e] p-6 transition-transform active:scale-95"
+                        className="group flex h-32 cursor-pointer flex-col justify-between rounded-xl bg-[#1b1b1e] p-6 transition-transform active:scale-95 md:h-40"
                     >
                         <MaterialIcon name="group_add" className="text-3xl text-[#4ce081]" />
                         <div>
@@ -263,7 +263,7 @@ export function DashboardPage() {
 
                     <Link
                         to="/ranking"
-                        className="group flex h-32 cursor-pointer flex-col justify-between rounded-xl bg-[#1f1f22] p-6 transition-transform active:scale-95"
+                        className="group flex h-32 cursor-pointer flex-col justify-between rounded-xl bg-[#1f1f22] p-6 transition-transform active:scale-95 md:h-40"
                     >
                         <MaterialIcon name="leaderboard" className="text-3xl text-[#c2c1ff]" />
                         <div>
@@ -286,14 +286,14 @@ export function DashboardPage() {
                         </Link>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="rt-dashboard-activity-grid space-y-4 md:space-y-0">
                         {activityLoading ? (
                             <>
-                                <div className="h-16 animate-pulse rounded-xl bg-[#1b1b1e]" />
-                                <div className="h-16 animate-pulse rounded-xl bg-[#1b1b1e]" />
+                                <div className="h-16 animate-pulse rounded-xl bg-[#1b1b1e] md:col-span-2 lg:col-span-3" />
+                                <div className="h-16 animate-pulse rounded-xl bg-[#1b1b1e] md:col-span-2 lg:col-span-3" />
                             </>
                         ) : activityItems.length === 0 ? (
-                            <div className="rounded-xl bg-[#1b1b1e] p-4 text-sm text-[#c8c5d2]">
+                            <div className="rounded-xl bg-[#1b1b1e] p-4 text-sm text-[#c8c5d2] md:col-span-2 lg:col-span-3">
                                 No activity in the last 7 days. Play a facility match or join a queue session to see
                                 results here.
                             </div>
@@ -329,13 +329,13 @@ export function DashboardPage() {
                     </div>
                 </section>
 
-                <section className="relative mt-8 overflow-hidden rounded-xl bg-[#353438] p-6">
+                <section className="relative mt-8 overflow-hidden rounded-xl bg-[#353438] p-6 md:p-8">
                     {/* <div className="absolute left-0 top-0 h-full w-1 bg-[#4ce081]" aria-hidden /> */}
                     <div className="pointer-events-none absolute -right-5 -bottom-18" aria-hidden>
                         <MaterialIcon name="trending_up" className="dashboard-v2-watermark-icon" />
                     </div>
 
-                    <div className="relative z-10 mb-5 grid grid-cols-2 gap-3">
+                    <div className="relative z-10 mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
                         <div className="rounded-lg bg-[#131316]/80 p-3">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">Played</p>
                             <p className="mt-1 text-xl font-extrabold tabular-nums text-[#e4e1e6]">{played}</p>

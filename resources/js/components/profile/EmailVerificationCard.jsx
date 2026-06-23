@@ -9,7 +9,7 @@ import { resendVerificationEmail } from '../../api/profile.js';
  *   onVerified?: () => void,
  * }} props
  */
-export function EmailVerificationCard({ user, initialToast = '', onVerifiedToastDismissed, onVerified }) {
+export function EmailVerificationCard({ user, initialToast = '', onVerifiedToastDismissed, onVerified, className = '' }) {
     const [sending, setSending] = useState(false);
     const [message, setMessage] = useState(initialToast);
     const [error, setError] = useState('');
@@ -39,7 +39,7 @@ export function EmailVerificationCard({ user, initialToast = '', onVerifiedToast
     }
 
     return (
-        <div className="mt-4 rounded-xl bg-[#1b1b1e] border border-zinc-700 p-5">
+        <div className={`rounded-xl border border-zinc-700 bg-[#1b1b1e] p-5 md:p-6 ${className}`}>
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">

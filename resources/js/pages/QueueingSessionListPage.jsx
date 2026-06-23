@@ -35,7 +35,7 @@ function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, 
     const showDelete = canDeleteQueueingSession(row, isAdmin);
     return (
         <article
-            className={`rounded-xl border bg-[#1b1b1e] p-4 ${
+            className={`h-full rounded-xl border bg-[#1b1b1e] p-4 md:p-5 ${
                 viewOnly ? 'border-[#2a2a2d]' : 'border-[#3c3c3e]'
             }`}
         >
@@ -53,25 +53,20 @@ function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, 
             <p className="text-sm text-[#c8c5d2]/90 capitalize">
                 {row.match_type} · Queue Master: {row.created_by?.name ?? 'Unknown'}
             </p>
-            <p className="mt-1 text-xs text-[#918f9c]">
-                Started: {formatTime(row.started_at)}
-                <br />
-                Ended: {formatTime(row.ended_at)}
-                <br />
-                Players: {row.participant_count ?? 0}
+            <p className="mt-1 text-xs text-[#918f9c] md:grid md:grid-cols-2 md:gap-x-4 md:gap-y-0.5">
+                <span>Started: {formatTime(row.started_at)}</span>
+                <span>Ended: {formatTime(row.ended_at)}</span>
+                <span>Players: {row.participant_count ?? 0}</span>
                 {row.completed_matches_count != null ? (
-                    <>
-                        <br />
-                        Matches: {row.completed_matches_count}
-                    </>
+                    <span>Matches: {row.completed_matches_count}</span>
                 ) : null}
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex w-full flex-wrap gap-2 md:gap-4">
                 {!viewOnly && row.can_manage && onEdit ? (
                     <button
                         type="button"
                         onClick={() => onEdit(row)}
-                        className={`${queueingSessionTabClass(false)} text-[#c2c1ff] border-[#c2c1ff]/50`}
+                        className={`${queueingSessionTabClass(false)} text-center text-[#c2c1ff] border-[#c2c1ff]/50 md:flex-1`}
                     >
                         Edit
                     </button>
@@ -81,26 +76,26 @@ function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, 
                         type="button"
                         disabled={deleteSubmitting}
                         onClick={() => onDelete(row)}
-                        className={`${queueingSessionTabClass(false)} text-red-300 border-red-400/50 disabled:opacity-50`}
+                        className={`${queueingSessionTabClass(false)} text-center text-red-300 border-red-400/50 disabled:opacity-50 md:flex-1`}
                     >
                         {row.is_active ? 'Delete' : 'Remove'}
                     </button>
                 ) : null}
                 <Link
                     to={paths.dash}
-                    className={`${queueingSessionTabClass(navPath === paths.dash)} text-white/70 border-white/70`}
+                    className={`${queueingSessionTabClass(navPath === paths.dash)} text-center text-white/70 border-white/70 md:flex-1`}
                 >
                     {viewOnly ? 'Summary' : 'Dashboard'}
                 </Link>
                 <Link
                     to={paths.players}
-                    className={`${queueingSessionTabClass(navPath === paths.players)} text-white/70 border-white/70`}
+                    className={`${queueingSessionTabClass(navPath === paths.players)} text-center text-white/70 border-white/70 md:flex-1`}
                 >
                     Players
                 </Link>
                 <Link
                     to={paths.matches}
-                    className={`${queueingSessionTabClass(navPath === paths.matches)} text-white/70 border-white/70`}
+                    className={`${queueingSessionTabClass(navPath === paths.matches)} text-center text-white/70 border-white/70 md:flex-1`}
                 >
                     Matches
                 </Link>
@@ -261,10 +256,10 @@ export function QueueingSessionListPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36">
-                <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                        <h1 className="text-3xl font-extrabold tracking-tight">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+                <div className="mb-4 flex items-start justify-between gap-3 md:mb-6">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
                             Queueing <span className="text-[#c2c1ff]">Sessions</span>
                         </h1>
                         <p className="text-sm text-[#c8c5d2]/80 mt-2">
@@ -286,7 +281,7 @@ export function QueueingSessionListPage() {
                     </div>
                     <Link
                         to="/queueing-session/new"
-                        className="flex items-center rounded-xl bg-[#4ce081] px-2.5 py-2 text-sm font-semibold text-[#003919] transition hover:brightness-105"
+                        className="flex shrink-0 items-center rounded-xl bg-[#4ce081] px-2.5 py-2 text-sm font-semibold text-[#003919] transition hover:brightness-105 md:px-4 md:py-2.5"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -302,18 +297,18 @@ export function QueueingSessionListPage() {
                     </Link>
                 </div>
 
-                <section className="mb-4 rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4">
-                    <div className="grid gap-3 grid-cols-4">
+                <section className="mb-4 rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4 md:mb-6 md:p-5">
+                    <div className="grid grid-cols-4 gap-3 md:grid-cols-2">
                         <input
                             value={q}
                             onChange={(e) => setQ(e.target.value)}
                             placeholder="Search by queue name, sport, queue master, or queue ID"
-                            className="col-span-4 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm"
+                            className="col-span-4 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm md:col-span-2"
                         />
                         <select
                             value={sort}
                             onChange={(e) => setSort(e.target.value)}
-                            className="col-span-2 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm"
+                            className="col-span-2 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm md:col-span-1"
                         >
                             <option value="updated_desc">Recently Updated</option>
                             <option value="updated_asc">Least Recently Updated</option>
@@ -323,7 +318,7 @@ export function QueueingSessionListPage() {
                         <select
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
-                            className="col-span-2 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm"
+                            className="col-span-2 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm md:col-span-1"
                         >
                             <option value="all">All Statuses</option>
                             <option value="active">Active Only</option>
@@ -353,7 +348,7 @@ export function QueueingSessionListPage() {
                 {showActiveSection && activeRows.length > 0 ? (
                     <section className="mb-6">
                         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Active</h2>
-                        <div className="space-y-3">
+                        <div className="rt-queue-session-cards-grid space-y-3 md:space-y-0">
                             {activeRows.map((row) => (
                                 <QueueingSessionCard
                                     key={row.id}
@@ -380,7 +375,7 @@ export function QueueingSessionListPage() {
                                 ? 'Manage or open summary for finished sessions from today.'
                                 : 'View only — open summary for leaderboard and session stats.'}
                         </p>
-                        <div className="space-y-3">
+                        <div className="rt-queue-session-cards-grid space-y-3 md:space-y-0">
                             {finishedTodayRows.map((row) => (
                                 <QueueingSessionCard
                                     key={row.id}
@@ -399,8 +394,8 @@ export function QueueingSessionListPage() {
             </main>
 
             {editRow ? (
-                <div className="fixed inset-0 z-[99] flex items-end justify-center bg-black/60 sm:items-center">
-                    <div className="w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl sm:rounded-2xl">
+                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 sm:items-center md:p-6">
+                    <div className="rt-end-match-modal-sheet w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg md:rounded-2xl">
                         <h2 className="mb-1 text-lg font-bold">Edit queue</h2>
                         <p className="mb-4 text-xs text-[#918f9c]">
                             Update settings for {editRow.queue_name?.trim() || `session #${editRow.id}`}.
@@ -475,8 +470,8 @@ export function QueueingSessionListPage() {
             ) : null}
 
             {deleteRow ? (
-                <div className="fixed inset-0 z-[99] flex items-end justify-center bg-black/60 sm:items-center">
-                    <div className="w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl sm:rounded-2xl">
+                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 sm:items-center md:p-6">
+                    <div className="rt-end-match-modal-sheet w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg md:rounded-2xl">
                         <h2 className="mb-1 text-lg font-bold text-red-200">
                             {deleteRow.is_active ? 'Delete queue?' : 'Remove finished queue?'}
                         </h2>

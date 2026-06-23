@@ -156,7 +156,7 @@ export function QueueingSessionPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
                 {loading ? <div className="h-32 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="text-red-300">{error}</p> : null}
 
@@ -174,18 +174,18 @@ export function QueueingSessionPage() {
 
                         {isViewOnly ? (
                             <section>
-                                <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
+                                <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                                     Session <span className="text-[#c2c1ff]">Summary</span>
                                 </h1>
                                 {summaryLoading ? (
                                     <div className="h-16 animate-pulse rounded-xl bg-[#2a2a2d]" />
                                 ) : null}
                                 {!summaryLoading && totals ? (
-                                    <dl className="grid grid-cols-3 gap-3 text-sm">
+                                    <dl className="grid grid-cols-3 gap-3 text-sm md:gap-4">
                                         {summaryItems.map((item) => (
                                             <div
                                                 key={item.label}
-                                                className="rounded-lg border border-[#313137] bg-[#1e1e22] px-3 py-2"
+                                                className="rounded-lg border border-[#313137] bg-[#1e1e22] px-3 py-2 md:px-4 md:py-3"
                                             >
                                                 <dt className="text-xs text-[#918f9c]">{item.label}</dt>
                                                 <dd className="mt-0.5 font-bold tabular-nums text-xl">
@@ -206,7 +206,7 @@ export function QueueingSessionPage() {
                             </section>
                         ) : null}
 
-                        <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
+                        <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                             Leader<span className="text-[#c2c1ff]">Board</span>
                         </h1>
                         {isViewOnly ? (
@@ -214,18 +214,18 @@ export function QueueingSessionPage() {
                                 Final Standings after the session ended.
                             </p>
                         ) : null}
-                        <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
+                        <section className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 md:p-6">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
+                                <table className="w-full text-left text-sm md:text-base">
                                     <thead>
-                                        <tr className="text-xs text-[#918f9c]">
-                                            <th className="pb-2 px-2 text-left w-12">#</th>
-                                            <th className="pb-2 text-left">Player</th>
-                                            <th className="pb-2 px-2 text-center">W</th>
-                                            <th className="pb-2 text-center">L</th>
-                                            <th className="pb-2 text-center">TOTAL</th>
-                                            <th className="pb-2 text-center">PTS</th>
-                                            <th className="pb-2 text-right"> Win%</th>
+                                        <tr className="text-xs text-[#918f9c] md:text-sm">
+                                            <th className="w-12 px-2 pb-2 text-left md:px-3">#</th>
+                                            <th className="pb-2 text-left md:pr-4">Player</th>
+                                            <th className="px-2 pb-2 text-center md:px-3">W</th>
+                                            <th className="pb-2 text-center md:px-3">L</th>
+                                            <th className="pb-2 text-center md:px-3">TOTAL</th>
+                                            <th className="pb-2 text-center md:px-3">PTS</th>
+                                            <th className="pb-2 text-right md:pl-3">Win%</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -237,27 +237,27 @@ export function QueueingSessionPage() {
                                             </tr>
                                         ) : (
                                             leaderboard.map((p, idx) => (
-                                                <tr key={p.rank ?? idx} className={`border-t border-[#2a2a2d] ${idx < 4 ? 'text-[#c2c1ff] text-md font-bold' : 'text-[#b2acc5]'}`}>
-                                                    <td className="py-2 text-left">
+                                                <tr key={p.rank ?? idx} className={`border-t border-[#2a2a2d] ${idx < 4 ? 'text-md font-bold text-[#c2c1ff] md:text-base' : 'text-[#b2acc5]'}`}>
+                                                    <td className="px-2 py-2 text-left md:px-3 md:py-2.5">
                                                         {formatRankLabel(p.rank ?? idx + 1)}
                                                     </td>
-                                                    <td className="py-2 text-left font-medium capitalize flex flex-col justify-start items-start">
-                                                        <span className="line-clamp-1 text-md leading-none">{p.name ?? 'Player'}</span>
+                                                    <td className="flex flex-col items-start justify-start py-2 text-left font-medium capitalize md:py-2.5">
+                                                        <span className="line-clamp-1 text-md leading-none md:text-base">{p.name ?? 'Player'}</span>
                                                         {p.is_guest ? (
                                                             <span className="text-[9px] font-normal">
                                                                 (guest)
                                                             </span>
                                                         ) : null}
                                                     </td>
-                                                    <td className="py-2 text-center">{p.wins ?? 0}</td>
-                                                    <td className="py-2 text-center">{p.losses ?? 0}</td>
-                                                    <td className="py-2 text-center">
+                                                    <td className="px-2 py-2 text-center md:px-3 md:py-2.5">{p.wins ?? 0}</td>
+                                                    <td className="py-2 text-center md:py-2.5">{p.losses ?? 0}</td>
+                                                    <td className="py-2 text-center md:py-2.5">
                                                         {p.total_matches ?? (p.wins ?? 0) + (p.losses ?? 0)}
                                                     </td>
-                                                    <td className="py-2 text-center">
+                                                    <td className="py-2 text-center md:py-2.5">
                                                         {p.earned_points ?? 0}
                                                     </td>
-                                                    <td className="py-2 text-right">
+                                                    <td className="py-2 text-right md:py-2.5">
                                                         {winRateLabel(p.wins, p.losses)}
                                                     </td>
                                                 </tr>

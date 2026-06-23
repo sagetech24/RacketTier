@@ -63,33 +63,30 @@ export function QueueingSessionHeader({
                     Points: +{session.win_points ?? 0} win / +{session.loss_points ?? 0} loss
                 </p>
             ) : null}
-            <p className="mt-1 text-xs text-[#918f9c]">
-                Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}
-                <br />
-                Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}
-                <br />
-                Total Players: {session.participant_count ?? 0}
-                <br />
-                Matches Played: {session.completed_matches_count ?? 0}
-            </p>
+            <div className="mt-1 space-y-0.5 text-xs text-[#918f9c] md:grid md:grid-cols-2 md:gap-x-6 md:gap-y-1">
+                <span>Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}</span>
+                <span>Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}</span>
+                <span>Total Players: {session.participant_count ?? 0}</span>
+                <span>Matches Played: {session.completed_matches_count ?? 0}</span>
+            </div>
 
-            <div className="mb-6 mt-3 flex justify-between">
-                <div className="flex flex-wrap gap-2">
+            <div className="mb-6 mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex w-full flex-wrap gap-2 md:gap-4">
                     <Link
                         to={queueingNav.dash}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-white/70 border-white/70`}
+                        className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-center text-white/70 border-white/70 md:flex-1`}
                     >
                         Dashboard
                     </Link>
                     <Link
                         to={queueingNav.players}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-white/70 border-white/70`}
+                        className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-center text-white/70 border-white/70 md:flex-1`}
                     >
                         Players{tabSuffix}
                     </Link>
                     <Link
                         to={queueingNav.matches}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-white/70 border-white/70`}
+                        className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-center text-white/70 border-white/70 md:flex-1`}
                     >
                         Matches{tabSuffix}
                     </Link>

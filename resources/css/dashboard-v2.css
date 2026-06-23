@@ -190,3 +190,76 @@
 .rt-match-tabs-scroller::-webkit-scrollbar {
     display: none;
 }
+
+/* Tablet (768px+): queue session matches — tab panels stack, no horizontal swipe */
+@media (min-width: 768px) {
+    .dashboard-v2-shell {
+        min-height: 100dvh;
+    }
+
+    .rt-match-tabs-scroller {
+        display: block;
+        width: 100%;
+        overflow-x: visible;
+        scroll-snap-type: none;
+        touch-action: auto;
+    }
+
+    .rt-match-tabs-scroller > [role='tabpanel'] {
+        width: 100%;
+    }
+
+    .rt-match-tabs-scroller > [role='tabpanel'][aria-hidden='true'] {
+        display: none;
+    }
+
+    .rt-match-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .rt-match-cards-grid > li {
+        height: 100%;
+    }
+
+    .rt-player-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .rt-player-cards-grid > li {
+        height: 100%;
+    }
+
+    .rt-queue-session-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .rt-queue-session-cards-grid > article {
+        height: 100%;
+    }
+
+    .rt-dashboard-activity-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .rt-player-cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .rt-queue-session-cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .rt-dashboard-activity-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}

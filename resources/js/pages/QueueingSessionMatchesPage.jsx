@@ -189,7 +189,7 @@ function formatLineupSide(names, multiSeparator) {
 
 /** @param {'finished' | 'ongoing' | 'queueing' | string | undefined} status @param {number | null | undefined} winningTeam @param {1 | 2} teamNo */
 function lineupTeamSideClass(status, winningTeam, teamNo) {
-    const base = 'text-xl font-semibold capitalize';
+    const base = 'text-lg font-semibold capitalize md:text-xl';
     if (status !== 'finished' || (winningTeam !== 1 && winningTeam !== 2)) {
         return `${base} text-[#918f9c]`;
     }
@@ -254,14 +254,14 @@ function MatchCardsList({
 }) {
     if (rows.length === 0) {
         return (
-            <p className="flex min-h-18 items-center justify-center rounded-xl border border-[#45454a] bg-[#1b1b1e] text-sm italic text-[#918f9c]">
+            <p className="flex min-h-18 items-center justify-center rounded-xl border border-[#45454a] bg-[#1b1b1e] text-sm italic text-[#918f9c] md:col-span-2">
                 No {sectionTitle(status).toLowerCase()} matches.
             </p>
         );
     }
 
     return (
-        <ul className="space-y-3">
+        <ul className="rt-match-cards-grid space-y-3 md:space-y-0">
             {rows.map((row) => (
                 <li
                     key={row.id}
@@ -279,7 +279,7 @@ function MatchCardsList({
                         </p>
                         <MatchStatusIndicator status={row.status} />
                     </div>
-                    <p className="mb-1 flex flex-col text-xs text-[#918f9c]">
+                    <div className="mb-2 flex flex-col gap-0.5 text-xs text-[#918f9c] md:flex-row md:flex-wrap md:gap-x-4">
                         <span>
                             <span className="font-bold">Started:</span>
                             <span className="font-normal"> {formatTime(row.started_at)}</span>
@@ -288,7 +288,7 @@ function MatchCardsList({
                             <span className="font-bold">Finished:</span>
                             <span className="font-normal"> {formatTime(row.finished_at)}</span>
                         </span>
-                    </p>
+                    </div>
                     <p
                         className={`mt-1 text-sm text-[#c8c5d2] ${
                             row.winning_team == null && (row.team1_score == null || row.team2_score == null)
@@ -374,7 +374,7 @@ function LineupDisplay({ lineup, status, winningTeam }) {
         <>
             <span className={lineupTeamSideClass(status, winningTeam, 1)}>{left}</span>
             {' '}
-            <span className="mx-1.5 text-xl text-[#e4e1e6]">VS</span>
+            <span className="mx-1.5 text-lg text-[#e4e1e6] md:text-xl">VS</span>
             {' '}
             <span className={lineupTeamSideClass(status, winningTeam, 2)}>{right}</span>
         </>
@@ -820,7 +820,7 @@ export function QueueingSessionMatchesPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
                 {loading ? <div className="h-36 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
                 {actionError ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p> : null}
@@ -840,12 +840,12 @@ export function QueueingSessionMatchesPage() {
                 {!loading && !error ? (
                     <div className="space-y-4">
                         <div>
-                            <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
+                            <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                                 {sectionTitle(activeMatchTab ?? 'ongoing')}{' '}
                                 <span className="text-[#c2c1ff]">Matches</span>
                             </h1>
                             <div
-                                className="mb-4 flex rounded-xl border border-[#45454a] bg-[#1b1b1e] p-1"
+                                className="mb-4 flex w-full rounded-xl border border-[#45454a] bg-[#1b1b1e] p-1"
                                 role="tablist"
                                 aria-label="Match status"
                             >
@@ -861,7 +861,7 @@ export function QueueingSessionMatchesPage() {
                                             aria-controls={`match-tab-panel-${tab}`}
                                             id={`match-tab-${tab}`}
                                             onClick={() => setActiveMatchTab(tab)}
-                                            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors ${matchStatusTabClass(isActive)}`}
+                                            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors md:px-3 md:py-2.5 md:text-sm ${matchStatusTabClass(isActive)}`}
                                         >
                                             <span>{MATCH_TAB_LABELS[tab]}</span>
                                             {count > 0 ? (
@@ -875,7 +875,7 @@ export function QueueingSessionMatchesPage() {
 
                         <div
                             ref={tabScrollerRef}
-                            className="rt-match-tabs-scroller flex snap-x snap-mandatory overflow-x-auto scroll-smooth"
+                            className="rt-match-tabs-scroller flex w-full snap-x snap-mandatory overflow-x-auto scroll-smooth"
                             onScroll={handleMatchTabScroll}
                         >
                             {availableMatchTabs.map((status) => (
@@ -885,7 +885,7 @@ export function QueueingSessionMatchesPage() {
                                     role="tabpanel"
                                     aria-labelledby={`match-tab-${status}`}
                                     aria-hidden={status !== activeMatchTab}
-                                    className="w-full shrink-0 snap-start"
+                                    className="w-full min-w-full shrink-0 snap-start"
                                 >
                                     <MatchCardsList
                                         status={status}
@@ -907,7 +907,7 @@ export function QueueingSessionMatchesPage() {
 
             {canManageMatches ? (
                 <>
-                    <div className="rt-kinetic-gradient opacity-90 fixed bottom-24 py-2 right-5 z-40 flex flex-col gap-1 border border-[#2a2a2d] bg-[#1b1b1e] rounded-full">
+                    <div className="rt-kinetic-gradient opacity-90 fixed bottom-24 right-5 z-40 flex flex-col gap-1 rounded-full border border-[#2a2a2d] bg-[#1b1b1e] py-2 md:bottom-8 md:right-8">
                         <span className="absolute z-50 top-[50%] -left-4 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#131316] bg-[#c2c1ff] text-[#131316] shadow-md">
                             <MaterialIcon name="add" className="text-base! font-bold" />
                         </span>
@@ -971,8 +971,8 @@ export function QueueingSessionMatchesPage() {
             />
 
             {matchLineupOpen && session ? (
-                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center pt-10 sm:items-center">
-                    <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl">
+                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 pt-10 sm:items-center md:p-6">
+                    <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl md:max-w-2xl md:rounded-2xl">
                         <div className="border-b border-[#2a2a2d] p-5 pb-4">
                             <h3 className="text-lg font-bold">
                                 {matchLineupMode === 'edit'
@@ -988,9 +988,9 @@ export function QueueingSessionMatchesPage() {
                                 <span className="text-md capitalize">{session.match_type}</span>: {matchLineupMaxPerTeam} player(s) per team.
                             </p>
                         </div>
-                        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-                            <div className="space-y-5">
-                                <div>
+                        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 md:px-6">
+                            <div className="space-y-5 md:grid md:grid-cols-2 md:items-start md:gap-6 md:space-y-0">
+                                <div className="min-w-0">
                                     <label htmlFor="create-match-player-search" className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
                                         Search players
                                     </label>
@@ -1003,7 +1003,7 @@ export function QueueingSessionMatchesPage() {
                                         onChange={(e) => setMatchLineupSearch(e.target.value)}
                                         className="w-full rounded-xl border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-md text-[#e4e1e6] outline-none placeholder:text-[#918f9c] focus:border-[#4ce081]/50"
                                     />
-                                    <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[#2a2a2d] bg-[#131316]">
+                                    <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[#2a2a2d] bg-[#131316] md:max-h-72">
                                         {assignableSessionPlayers.length === 0 ? (
                                             <p className="px-3 py-3 text-xs text-[#918f9c]">
                                                 No eligible players (must be waiting in queue and not in a match). Add players on the Players tab or wait until a match ends.
@@ -1062,9 +1062,9 @@ export function QueueingSessionMatchesPage() {
                                     </div>
                                 </div>
 
-                                <div>
+                                <div className="min-w-0">
                                     <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#918f9c]">Teams</p>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                                         <div className="flex min-h-[140px] flex-col rounded-xl border border-[#4ce081]/35 bg-[#131316] p-3">
                                             <p className="mb-2 border-b border-[#4ce081]/20 pb-2 text-center text-xs font-bold uppercase tracking-wide text-[#4ce081]">
                                                 Team 1 ({matchLineupTeams.team1.length}/{matchLineupMaxPerTeam})
@@ -1156,8 +1156,8 @@ export function QueueingSessionMatchesPage() {
             ) : null}
 
             {finishOpen ? (
-                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center sm:items-center">
-                    <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl">
+                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 sm:items-center md:p-6">
+                    <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg">
                         <h3 className="mb-4 text-lg font-bold">
                             End Match{selectedMatchNo != null ? ` #${selectedMatchNo}` : ''}
                             {session?.skip_scores ? ': Pick Winner' : ': Final Score'}

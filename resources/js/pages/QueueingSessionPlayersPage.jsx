@@ -504,7 +504,7 @@ export function QueueingSessionPlayersPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
                 {loading ? <div className="h-32 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
 
@@ -525,16 +525,17 @@ export function QueueingSessionPlayersPage() {
                             <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p>
                         ) : null}
 
+                        <div className={canManagePlayers ? 'flex flex-col gap-6' : ''}>
                         {canManagePlayers ? (
-                            <section className="rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4">
+                            <section className="rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4 md:p-5">
                                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Add players</h2>
                                 <input
                                     value={playerSearch}
                                     onChange={(e) => setPlayerSearch(e.target.value)}
                                     placeholder="Search members…"
-                                    className="mb-2 w-full rounded-lg border border-[#3c3c3e] bg-[#131316] p-3 text-md focus:ring-[#4ce081] focus:ring-1 outline-none"
+                                    className="mb-2 w-full rounded-lg border border-[#3c3c3e] bg-[#131316] p-3 text-md outline-none focus:ring-1 focus:ring-[#4ce081]"
                                 />
-                                <div className="max-h-60 space-y-4 overflow-y-auto">
+                                <div className="max-h-60 space-y-4 overflow-y-auto md:max-h-[min(28rem,calc(100dvh-22rem))]">
                                     {addablePlayers.map((r) => (
                                         <button
                                             key={r.id}
@@ -580,9 +581,9 @@ export function QueueingSessionPlayersPage() {
                             </section>
                         ) : null}
 
-                        <section>
-                            <div className="mb-4 flex items-center justify-between gap-3">
-                                <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-6xl">
+                        <section className="min-w-0">
+                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                                     Current <span className="text-[#c2c1ff]">Players</span>
                                 </h1>
                                 <div className="flex shrink-0 items-center gap-1.5">
@@ -614,7 +615,7 @@ export function QueueingSessionPlayersPage() {
                                     </button>
                                 </div>
                             </div>
-                            <ul className="space-y-3">
+                            <ul className="rt-player-cards-grid space-y-3 md:space-y-0">
                                 {visibleRosterPlayers.map((p) => {
                                     const canEditPlayer = canManagePlayers && !p.is_playing;
                                     const isPlaying = Boolean(session?.is_active && p.is_playing);
@@ -729,6 +730,7 @@ export function QueueingSessionPlayersPage() {
                                 </div>
                             ) : null}
                         </section>
+                        </div>
                     </div>
                 ) : null}
             </main>

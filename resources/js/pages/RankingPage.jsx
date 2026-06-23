@@ -124,16 +124,16 @@ export function RankingPage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
 
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
-                <section className="mb-10 mt-8">
-                    <h2 className="text-4xl font-extrabold tracking-tighter text-[#e4e1e6]">Rankings</h2>
-                    <p className="mt-4 max-w-[80%] text-sm leading-relaxed text-[#c8c5d2]">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+                <section className="mb-10 mt-8 md:mb-8">
+                    <h2 className="text-4xl font-extrabold tracking-tighter text-[#e4e1e6] md:text-4xl">Rankings</h2>
+                    <p className="mt-4 max-w-[80%] text-sm leading-relaxed text-[#c8c5d2] md:max-w-none md:text-base">
                         Live leaderboard from recorded match ratings.
                     </p>
                 </section>
 
-                <div className="mb-8 flex flex-col gap-4">
-                    <div className="group relative">
+                <div className="mb-8 flex flex-col gap-4 md:mb-6">
+                    <div className="group relative md:flex-1">
                         <div className="pointer-events-none absolute inset-y-0 left-4 z-10 flex items-center text-[#918f9c]">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -156,7 +156,7 @@ export function RankingPage() {
                             aria-label="Search players"
                         />
                     </div>
-                    <div className="rt-scroll-inline flex gap-2 overflow-x-auto pb-2">
+                    <div className="rt-scroll-inline flex gap-2 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">
                         {filterOptions.map((filter) => {
                             const isActive = activeFilter === filter.id;
                             return (
@@ -166,8 +166,8 @@ export function RankingPage() {
                                     onClick={() => setActiveFilter(filter.id)}
                                     className={
                                         isActive
-                                            ? 'shrink-0 rounded-full bg-[#4ce081] px-4 py-2 text-xs font-bold whitespace-nowrap text-[#003919]'
-                                            : 'shrink-0 cursor-pointer rounded-full bg-[#353438] px-4 py-2 text-xs font-medium whitespace-nowrap text-[#e4e1e6] transition-colors hover:bg-[#1f1f22]'
+                                            ? 'shrink-0 rounded-full bg-[#4ce081] px-4 py-2 text-xs font-bold whitespace-nowrap text-[#003919] md:text-sm'
+                                            : 'shrink-0 cursor-pointer rounded-full bg-[#353438] px-4 py-2 text-xs font-medium whitespace-nowrap text-[#e4e1e6] transition-colors hover:bg-[#1f1f22] md:text-sm'
                                     }
                                 >
                                     {filter.label}
@@ -198,7 +198,9 @@ export function RankingPage() {
                         </div>
                     ) : null}
 
-                    {!loading && topThree.map((row, idx) => {
+                    {!loading && topThree.length > 0 ? (
+                        <div className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-3">
+                    {topThree.map((row, idx) => {
                         const isYou = isCurrentUserRow(row, user?.id);
                         return (
                         <div
@@ -214,17 +216,17 @@ export function RankingPage() {
                             }
                         >
                             <div
-                                className={`relative flex items-center gap-4 rounded-xl bg-[#1f1f22] p-4${isYou ? ` ${currentUserHighlight}` : ''}`}
+                                className={`relative flex items-center gap-4 rounded-xl bg-[#1f1f22] p-4 md:h-full md:flex-col md:items-stretch md:gap-3 md:p-5 md:text-center${isYou ? ` ${currentUserHighlight}` : ''}`}
                             >
-                                <div className="flex flex-col items-start">
-                                    <div className='min-w-6 text-2xl font-extrabold'>
+                                <div className="flex flex-col items-start md:items-center">
+                                    <div className="min-w-6 text-2xl font-extrabold">
                                         <svg className="opacity-70" fill={idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : '#cd7f32'} height="20" width="20" viewBox="0 0 246.001 246.001" aria-hidden="true">
                                             <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z" />
                                         </svg>
                                     </div>
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="font-bold text-[#e4e1e6]">
+                                <div className="min-w-0 flex-1 md:flex-none">
+                                    <h3 className="font-bold text-[#e4e1e6] md:text-lg">
                                         {row.user.name}
                                         {isYou ? (
                                             <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#c2c1ff]">
@@ -236,7 +238,7 @@ export function RankingPage() {
                                         {`${row.tier?.name ?? 'Zero'} Level`}
                                     </p>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right md:text-center">
                                     <div className="text-xl font-extrabold text-[#c2c1ff] italic">
                                         {formatRating(row.rating)}
                                     </div>
@@ -248,14 +250,16 @@ export function RankingPage() {
                         </div>
                         );
                     })}
+                        </div>
+                    ) : null}
 
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 md:gap-3">
                         {!loading && restTopTen.map((row) => {
                             const isYou = isCurrentUserRow(row, user?.id);
                             return (
                             <div
                                 key={`${row.user.id}-${row.sport.id}-${row.rank}`}
-                                className={`group flex items-center gap-4 rounded-xl p-4 transition-colors hover:bg-[#1b1b1e]${isYou ? ` ${currentUserHighlight}` : ''}`}
+                                className={`group flex items-center gap-4 rounded-xl border border-[#2a2a2d] bg-[#1f1f22] p-4 transition-colors hover:border-[#45454a] hover:bg-[#1b1b1e] md:px-5 md:py-4${isYou ? ` ${currentUserHighlight}` : ''}`}
                             >
                                 <div className="w-6 shrink-0 text-center font-bold text-[#c8c5d2] transition-colors group-hover:text-[#c2c1ff]">
                                     <span className="font-extrabold italic text-[#c8c5d2] text-2xl">
@@ -304,7 +308,7 @@ export function RankingPage() {
                                 </div>
                                 <div
                                     key={`${appendCurrentUser.user.id}-${appendCurrentUser.sport.id}-${appendCurrentUser.rank}-you`}
-                                    className={`group flex items-center gap-4 rounded-xl p-4 ${currentUserHighlight}`}
+                                    className={`group flex items-center gap-4 rounded-xl border border-[#2a2a2d] bg-[#1f1f22] p-4 md:px-5 md:py-4 ${currentUserHighlight}`}
                                 >
                                     <div className="w-6 shrink-0 text-center font-bold text-[#c2c1ff]">
                                         <span className="text-2xl font-extrabold italic">

@@ -75,9 +75,9 @@ export function ProfilePage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={loading && !summary} />
 
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
-                <div className="mb-6 flex items-center justify-between">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-[#e4e1e6]">Profile</h2>
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+                <div className="mb-6 flex items-center justify-between md:mb-8">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-[#e4e1e6] md:text-4xl">Profile</h2>
                 </div>
 
                 {error ? (
@@ -86,11 +86,12 @@ export function ProfilePage() {
                     </div>
                 ) : null}
 
-                <div className="rounded-xl bg-[#1b1b1e] border border-zinc-700 p-5">
-                    <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-4 md:gap-6">
+                <div className="rounded-xl border border-zinc-700 bg-[#1b1b1e] p-5 md:p-6">
+                    <div className="flex items-start justify-between gap-3 md:gap-4">
                         <div className="min-w-0">
-                            <div className="mt-1 text-lg font-bold text-[#e4e1e6] truncate">{user?.name ?? 'User'}</div>
-                            <div className="text-sm text-[#c8c5d2] truncate">{user?.email ?? ''}</div>
+                            <div className="mt-1 truncate text-lg font-bold text-[#e4e1e6] md:text-xl">{user?.name ?? 'User'}</div>
+                            <div className="truncate text-sm text-[#c8c5d2] md:text-base">{user?.email ?? ''}</div>
                             <div className="mt-2 flex flex-wrap gap-2">
                                 {user?.pronoun ? (
                                     <span className="rounded-full border border-[#3a3a40] bg-[#26262a] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">
@@ -112,13 +113,14 @@ export function ProfilePage() {
                         <button
                             type="button"
                             onClick={() => setEditOpen(true)}
-                            className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#c2c1ff] transition-colors hover:bg-[#c2c1ff]/20"
+                            className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#c2c1ff] transition-colors hover:bg-[#c2c1ff]/20 md:px-4 md:py-1.5 md:text-xs"
                         >
                             Edit
                         </button>
                     </div>
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2 md:gap-4">
                 <EmailVerificationCard
                     user={user}
                     initialToast={justVerified ? 'Email verified successfully.' : ''}
@@ -126,7 +128,7 @@ export function ProfilePage() {
                     onVerified={() => void refreshUser()}
                 />
 
-                <div className="mt-4 rounded-xl bg-[#1b1b1e] border border-zinc-700 p-5">
+                <div className="rounded-xl border border-zinc-700 bg-[#1b1b1e] p-5 md:p-6">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">
@@ -151,25 +153,27 @@ export function ProfilePage() {
                                 setPasswordToast('');
                                 setPasswordOpen(true);
                             }}
-                            className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#c2c1ff] transition-colors hover:bg-[#c2c1ff]/20"
+                            className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#c2c1ff] transition-colors hover:bg-[#c2c1ff]/20 md:px-4 md:py-1.5 md:text-xs"
                         >
                             Change
                         </button>
                     </div>
                 </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                    <div className="rounded-xl bg-[#1f1f22] border border-zinc-700 p-4">
-                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">Current Rating</div>
-                        <div className="mt-1 text-2xl font-extrabold">{formatCurrentRating(stats?.rating)}</div>
-                    </div>
-                    <div className="rounded-xl bg-[#1f1f22] border border-zinc-700 p-4">
-                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">Matches</div>
-                        <div className="mt-1 text-2xl font-extrabold">{stats?.matches_played ?? 0}</div>
-                    </div>
                 </div>
 
-                <div className="mt-8 flex justify-center">
+                <div className="grid grid-cols-2 gap-4 md:gap-6">
+                    <div className="rounded-xl border border-zinc-700 bg-[#1f1f22] p-4 md:p-5">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2] md:text-xs">Current Rating</div>
+                        <div className="mt-1 text-2xl font-extrabold md:text-3xl">{formatCurrentRating(stats?.rating)}</div>
+                    </div>
+                    <div className="rounded-xl border border-zinc-700 bg-[#1f1f22] p-4 md:p-5">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2] md:text-xs">Matches</div>
+                        <div className="mt-1 text-2xl font-extrabold md:text-3xl">{stats?.matches_played ?? 0}</div>
+                    </div>
+                </div>
+                </div>
+
+                <div className="mt-8 flex justify-center md:mt-10">
                     <LogoutButton className="text-xs font-medium uppercase border border-zinc-500 rounded-full px-4 py-2 tracking-wider text-[#c8c5d2]/80 underline-offset-4 transition hover:text-[#e4e1e6]" />
                 </div>
             </main>
