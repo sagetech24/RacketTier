@@ -33,17 +33,17 @@ function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
     const paths = queueingSessionNavPaths(row.id);
     const showRemove = canDeleteQueueingSession(row, isAdmin);
     return (
-        <article className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4">
+        <article className="h-full rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 md:p-5">
             <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="flex items-center gap-2 text-base font-bold">
+                <h2 className="flex min-w-0 items-center gap-2 text-base font-bold md:text-lg">
                     <SportIcon icon={row.sport?.icon} className="text-[#4ce081]" />
-                    <Link to={`/queueing-session/${row.id}`}>
+                    <Link to={`/queueing-session/${row.id}`} className="truncate">
                         {row.queue_name?.trim()
                             ? row.queue_name.trim()
                             : `${row.sport?.name ?? 'Sport'} Queue`}
                     </Link>
                 </h2>
-                <span className="capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]">
+                <span className="shrink-0 capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]">
                     finished
                 </span>
             </div>
@@ -55,45 +55,40 @@ function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
                     </span>
                 ) : null}
             </p>
-            <p className="mt-1 text-xs text-[#918f9c]">
-                Started: {formatTime(row.started_at)}
-                <br />
-                Ended: {formatTime(row.ended_at)}
-                <br />
-                Players: {row.participant_count ?? 0}
+            <p className="mt-1 text-xs text-[#918f9c] md:grid md:grid-cols-2 md:gap-x-4 md:gap-y-0.5">
+                <span>Started: {formatTime(row.started_at)}</span>
+                <span>Ended: {formatTime(row.ended_at)}</span>
+                <span>Players: {row.participant_count ?? 0}</span>
                 {row.completed_matches_count != null ? (
-                    <>
-                        <br />
-                        Matches: {row.completed_matches_count}
-                    </>
+                    <span>Matches: {row.completed_matches_count}</span>
                 ) : null}
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex w-full flex-wrap gap-2 md:gap-4">
                 {showRemove && onRemove ? (
                     <button
                         type="button"
                         disabled={removeSubmitting}
                         onClick={() => onRemove(row)}
-                        className={`${queueingSessionTabClass(false)} text-red-300 border-red-400/50 disabled:opacity-50`}
+                        className={`${queueingSessionTabClass(false)} text-center text-red-300 border-red-400/50 disabled:opacity-50 md:flex-1`}
                     >
                         Remove
                     </button>
                 ) : null}
                 <Link
                     to={paths.dash}
-                    className={`${queueingSessionTabClass(false)} text-white/70 border-white/70`}
+                    className={`${queueingSessionTabClass(false)} text-center text-white/70 border-white/70 md:flex-1`}
                 >
                     Summary
                 </Link>
                 <Link
                     to={paths.players}
-                    className={`${queueingSessionTabClass(false)} text-white/70 border-white/70`}
+                    className={`${queueingSessionTabClass(false)} text-center text-white/70 border-white/70 md:flex-1`}
                 >
                     Players
                 </Link>
                 <Link
                     to={paths.matches}
-                    className={`${queueingSessionTabClass(false)} text-white/70 border-white/70`}
+                    className={`${queueingSessionTabClass(false)} text-center text-white/70 border-white/70 md:flex-1`}
                 >
                     Matches
                 </Link>
@@ -223,37 +218,39 @@ export function QueueingSessionHistoryPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36">
-                <div className="mb-4">
-                    <h1 className="text-3xl font-extrabold tracking-tight">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+                <div className="mb-4 md:mb-6">
+                    <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
                         {isAdmin ? (
                             <>Session <span className="text-[#c2c1ff]">History</span></>
                         ) : (
                             <>My Session <span className="text-[#c2c1ff]">History</span></>
                         )}
                     </h1>
-                    <p className="mt-2 text-sm text-[#c8c5d2]/80">
+                    <p className="mt-2 text-sm text-[#c8c5d2]/80 md:max-w-2xl md:text-base">
                         {isAdmin
                             ? 'All finished queueing sessions across the platform.'
                             : 'Every queueing session you hosted or joined.'}
                     </p>
                 </div>
 
-                <section className="mb-4 rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4">
-                    <input
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        placeholder="Search by queue name, sport, or queue master"
-                        className="w-full rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm"
-                    />
-                    <label className="mt-1 flex items-center gap-2 px-3 py-3 text-sm">
+                <section className="mb-4 rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4 md:mb-6 md:p-5">
+                    <div className="md:flex md:items-center md:gap-4">
                         <input
-                            type="checkbox"
-                            checked={mineOnly}
-                            onChange={(e) => setMineOnly(e.target.checked)}
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            placeholder="Search by queue name, sport, or queue master"
+                            className="w-full rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm md:flex-1"
                         />
-                        My queues only
-                    </label>
+                        <label className="mt-1 flex shrink-0 items-center gap-2 px-3 py-3 text-sm md:mt-0">
+                            <input
+                                type="checkbox"
+                                checked={mineOnly}
+                                onChange={(e) => setMineOnly(e.target.checked)}
+                            />
+                            My queues only
+                        </label>
+                    </div>
                 </section>
 
                 {error ? (
@@ -266,7 +263,7 @@ export function QueueingSessionHistoryPage() {
                 ) : null}
 
                 {loading ? (
-                    <div className="space-y-3">
+                    <div className="rt-queue-session-cards-grid space-y-3 md:space-y-0">
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
@@ -278,7 +275,7 @@ export function QueueingSessionHistoryPage() {
                             : "You haven't joined a queueing session yet."}
                     </p>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="rt-queue-session-cards-grid space-y-3 md:space-y-0">
                         {items.map((row) => (
                             <HistoryCard
                                 key={row.id}
