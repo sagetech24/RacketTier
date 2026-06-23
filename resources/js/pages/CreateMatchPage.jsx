@@ -803,9 +803,9 @@ export function CreateMatchPage() {
                     MATCH SUMMARY
                 </h2>
                 <div
-                    className={`flex flex-col items-stretch justify-between gap-8 border-t border-[#474651]/10 pt-4 md:flex-row md:items-end ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}
+                    className={`flex flex-col items-stretch gap-6 border-t border-[#474651]/10 pt-4 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}
                 >
-                    <div className="w-full max-w-md min-w-0 flex-1 space-y-4 rounded-xl border border-[#474651]/25 bg-[#1b1b1e] p-5">
+                    <div className="w-full min-w-0 space-y-4 rounded-xl border border-[#474651]/25 bg-[#1b1b1e] p-5">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4ce081]">Match summary</p>
                         <dl className="space-y-3 text-sm">
                             <div className="flex items-start justify-between gap-4">
@@ -903,7 +903,7 @@ export function CreateMatchPage() {
                                           : undefined
                                 : undefined
                         }
-                        className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
+                        className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         {submitting ? 'Creating…' : 'Create Match'}
                     </button>

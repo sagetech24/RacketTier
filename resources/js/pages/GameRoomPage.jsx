@@ -461,27 +461,27 @@ export function GameRoomPage() {
         <div className="min-h-screen bg-[#131316] text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
 
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
                 <section className="mb-8">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#4ce081]">
                         {facilityEyebrow}
                     </p>
-                    <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="flex items-start gap-3 sm:gap-4 md:gap-5">
                         {sessionDetail ? (
                             <SportIcon
                                 icon={sessionDetail.sport?.icon ?? 'tennis.png'}
-                                imgClassName="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
-                                materialClassName="text-5xl text-[#c2c1ff]"
+                                imgClassName="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14 md:h-16 md:w-16"
+                                materialClassName="text-5xl text-[#c2c1ff] md:text-6xl"
                                 className="mt-1 shrink-0"
                             />
                         ) : null}
-                        <h1 className={`text-5xl font-extrabold tracking-tight ${sessionDetail ? 'min-w-0 flex-1' : ''}`}>
+                        <h1 className={`text-5xl font-extrabold tracking-tight md:text-6xl ${sessionDetail ? 'min-w-0 flex-1' : ''}`}>
                             {sessionHeadline}
                         </h1>
                     </div>
                     {sessionDetail ? (
                         <>
-                            <dl className="mt-4 space-y-1 text-sm text-[#c8c5d2]">
+                            <dl className="mt-4 space-y-1 text-sm text-[#c8c5d2] md:grid md:grid-cols-2 md:gap-x-6 md:gap-y-2">
                                 {sessionDetail.facility ? (
                                     <div className="flex justify-between gap-4">
                                         <dt className="shrink-0 text-[#918f9c]">Facility</dt>
@@ -516,52 +516,64 @@ export function GameRoomPage() {
                                     </dd>
                                 </div>
                             </dl>
-                            {sessionDetail.last_match ? (
-                                <div className="mt-4 rounded-xl border border-[#474651]/40 bg-[#1b1b1e] p-4">
-                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c2c1ff]">
-                                        Last match result
-                                    </h3>
-                                    <p className="mt-2 text-sm font-semibold text-[#e4e1e6]">
-                                        Team 1 : {sessionDetail.last_match.team1_score} — Team 2: {sessionDetail.last_match.team2_score}
-                                    </p>
-                                    {sessionDetail.last_match.winning_team != null ? (
-                                        <p className="font-bold text-[#4ce081]">
-                                            Winner: Team {sessionDetail.last_match.winning_team}
-                                        </p>
-                                    ) : null}
-                                    {sessionDetail.last_match.players?.length ? (
-                                        <ul className="mt-3 space-y-2 border-t border-white/5 pt-3 text-xs text-[#c8c5d2]">
-                                            {sessionDetail.last_match.players.map((p) => (
-                                                <li key={p.user_id} className="flex justify-between gap-3">
-                                                    <span className="min-w-0 truncate font-medium text-[#e4e1e6]">
-                                                        {p.name}
-                                                        {p.won ? (
-                                                            <span className="ml-1.5 text-[#4ce081]">W</span>
-                                                        ) : (
-                                                            <span className="ml-1.5 text-[#918f9c]">L</span>
-                                                        )}
-                                                        <span className={p.rating_change >= 0 ? 'text-[#4ce081] ml-1' : 'text-[#ffb4ab] ml-1'}>
-                                                            ({p.rating_change >= 0 ? '+' : ''}
-                                                            {p.rating_change} rating)
-                                                        </span>
-                                                    </span>
-                                                    <span className="shrink-0 text-right tabular-nums">
-                                                        <span className="text-[#c2c1ff]">+{p.session_points_earned} pts</span>
-                                                    </span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : null}
-                                </div>
-                            ) : null}
                         </>
                     ) : (
-                        <p className="mt-4 text-sm leading-relaxed text-[#c8c5d2]">
+                        <p className="mt-4 text-sm leading-relaxed text-[#c8c5d2] md:max-w-2xl md:text-base">
                             Active sessions and everyone on the roster at this facility. Open a session for full queue
                             details, or refresh to update the list.
                         </p>
                     )}
                 </section>
+
+                <div className={sessionDetail ? 'rt-game-room-session-layout' : undefined}>
+                {sessionDetail ? (
+                    <div className="mb-6 md:mb-0 md:sticky md:top-36">
+                        {sessionDetail.last_match ? (
+                            <div className="rounded-xl border border-[#474651]/40 bg-[#1b1b1e] p-4 md:p-5">
+                                <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c2c1ff]">
+                                    Last match result
+                                </h3>
+                                <p className="mt-2 text-sm font-semibold text-[#e4e1e6]">
+                                    Team 1 : {sessionDetail.last_match.team1_score} — Team 2: {sessionDetail.last_match.team2_score}
+                                </p>
+                                {sessionDetail.last_match.winning_team != null ? (
+                                    <p className="font-bold text-[#4ce081]">
+                                        Winner: Team {sessionDetail.last_match.winning_team}
+                                    </p>
+                                ) : null}
+                                {sessionDetail.last_match.players?.length ? (
+                                    <ul className="mt-3 space-y-2 border-t border-white/5 pt-3 text-xs text-[#c8c5d2]">
+                                        {sessionDetail.last_match.players.map((p) => (
+                                            <li key={p.user_id} className="flex justify-between gap-3">
+                                                <span className="min-w-0 truncate font-medium text-[#e4e1e6]">
+                                                    {p.name}
+                                                    {p.won ? (
+                                                        <span className="ml-1.5 text-[#4ce081]">W</span>
+                                                    ) : (
+                                                        <span className="ml-1.5 text-[#918f9c]">L</span>
+                                                    )}
+                                                    <span className={p.rating_change >= 0 ? 'text-[#4ce081] ml-1' : 'text-[#ffb4ab] ml-1'}>
+                                                        ({p.rating_change >= 0 ? '+' : ''}
+                                                        {p.rating_change} rating)
+                                                    </span>
+                                                </span>
+                                                <span className="shrink-0 text-right tabular-nums">
+                                                    <span className="text-[#c2c1ff]">+{p.session_points_earned} pts</span>
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : null}
+                            </div>
+                        ) : (
+                            <p className="rounded-xl border border-[#474651]/40 bg-[#1b1b1e] px-4 py-4 text-sm text-[#918f9c]">
+                                No completed match in this session yet.
+                            </p>
+                        )}
+                    </div>
+                ) : null}
+
+                <div className={sessionDetail ? 'min-w-0' : undefined}>
 
                 {error ? (
                     <div
@@ -599,7 +611,8 @@ export function GameRoomPage() {
                 ) : null}
 
                 {!sessionIdParam && !error ? (
-                    <section className="mb-8 space-y-3">
+                    <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
+                    <section className="space-y-3">
                         <h2 className="text-lg font-bold text-[#e4e1e6]">Active Matches</h2>
                         {loading ? (
                             <div className="space-y-2">
@@ -608,7 +621,7 @@ export function GameRoomPage() {
                                 ))}
                             </div>
                         ) : lobby && sortedLobbySessions.length > 0 ? (
-                            <ul className="space-y-2.5">
+                            <ul className="rt-facility-session-list-grid space-y-2.5 md:space-y-0">
                                 {sortedLobbySessions.map((s) => {
                                     const statusMeta = facilitySessionListStatus(s);
                                     const matchLabel =
@@ -672,10 +685,8 @@ export function GameRoomPage() {
                             </p>
                         )}
                     </section>
-                ) : null}
 
-                {!sessionIdParam && !error ? (
-                    <section className="mb-8 space-y-3">
+                    <section className="space-y-3">
                         <h2 className="text-lg font-bold text-[#e4e1e6]">Finished Today</h2>
                         {loading ? (
                             <div className="space-y-2">
@@ -684,7 +695,7 @@ export function GameRoomPage() {
                                 ))}
                             </div>
                         ) : lobby && finishedLobbySessions.length > 0 ? (
-                            <ul className="space-y-2.5">
+                            <ul className="rt-facility-session-list-grid space-y-2.5 md:space-y-0">
                                 {finishedLobbySessions.map((s) => {
                                     const matchLabel =
                                         s.match_type === 'doubles'
@@ -761,6 +772,7 @@ export function GameRoomPage() {
                             </p>
                         )}
                     </section>
+                    </div>
                 ) : null}
 
                 <section className="mb-6">
@@ -844,7 +856,7 @@ export function GameRoomPage() {
                                 : 'No players from sessions created today at this facility yet.'}
                         </p>
                     ) : (
-                        <div className="space-y-3">
+                        <div className="rt-player-cards-grid space-y-3 md:space-y-0">
                             {playersToRender.map((player) => (
                                 <article
                                     key={player.key}
@@ -944,6 +956,8 @@ export function GameRoomPage() {
                         </div>
                     ) : null}
                 </section>
+                </div>
+                </div>
             </main>
 
             {showFinishModal ? (

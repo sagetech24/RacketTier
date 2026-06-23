@@ -55,6 +55,12 @@ export function DashboardV2Header({ user, profileLoading = false }) {
                         Rankings
                     </Link>
                     <Link
+                        to="/queueing-session"
+                        className="text-sm font-medium uppercase tracking-wider text-[#c2c1ff] transition-opacity hover:opacity-80"
+                    >
+                        Queue
+                    </Link>
+                    <Link
                         to="/facilities"
                         className="text-sm font-medium uppercase tracking-wider text-[#c2c1ff] transition-opacity hover:opacity-80"
                     >

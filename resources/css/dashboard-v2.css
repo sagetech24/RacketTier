@@ -233,6 +233,27 @@
         height: 100%;
     }
 
+    .rt-player-cards-grid > article {
+        height: 100%;
+    }
+
+    .rt-facility-session-list-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .rt-facility-session-list-grid > li {
+        height: 100%;
+    }
+
+    .rt-game-room-session-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+        gap: 2rem;
+        align-items: start;
+    }
+
     .rt-queue-session-cards-grid {
         display: grid;
         grid-template-columns: repeat(1, minmax(0, 1fr));
