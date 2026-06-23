@@ -84,11 +84,11 @@ export function CreateQueueingSessionPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen max-w-md px-6 pb-32 pt-36">
-                <h1 className="mb-2 text-2xl font-extrabold tracking-tight">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+                <h1 className="mb-2 text-2xl font-extrabold tracking-tight md:text-3xl lg:text-4xl">
                     Create <span className="text-[#c2c1ff]">New Queue</span>
                 </h1>
-                <p className="mb-8 text-sm text-[#c8c5d2]/80">
+                <p className="mb-8 text-sm text-[#c8c5d2]/80 md:max-w-2xl md:text-base">
                     You will be the queue master. Add players on the next screen, then start matches when the roster is ready.
                 </p>
 
@@ -97,7 +97,7 @@ export function CreateQueueingSessionPage() {
                 ) : null}
 
                 {loading ? (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                         {Array.from({ length: 4 }).map((_, i) => (
                             <div
                                 key={i}
@@ -108,7 +108,9 @@ export function CreateQueueingSessionPage() {
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit}>
-                        <div className="space-y-6 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 mb-4">
+                        <div className="mb-4 space-y-6 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 md:p-6 lg:p-8">
+                            <div className="md:grid md:grid-cols-2 md:items-start md:gap-8">
+                                <div className="space-y-6">
                             <div>
                                 <label htmlFor="queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
                                     Name of the queue
@@ -121,7 +123,7 @@ export function CreateQueueingSessionPage() {
                                     maxLength={120}
                                     placeholder="e.g. Friday night doubles"
                                     autoComplete="off"
-                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60"
+                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60 md:py-3 md:text-base"
                                 />
                             </div>
                             <div>
@@ -143,6 +145,8 @@ export function CreateQueueingSessionPage() {
                                     </div>
                                 )}
                             </div>
+                                </div>
+                                <div className="mt-6 space-y-6 md:mt-0">
                             <div>
                                 <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
                                 <div className="flex gap-2">
@@ -190,12 +194,13 @@ export function CreateQueueingSessionPage() {
                             {submitError ? (
                                 <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{submitError}</p>
                             ) : null}
+                                </div>
+                            </div>
                         </div>
                         <button
                             type="submit"
                             disabled={submitting}
-                            // className="w-full rounded-xl bg-[#4ce081] py-3 text-sm font-bold text-[#003919] disabled:opacity-50"
-                            className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
+                            className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             {submitting ? 'Creating…' : 'Create Queue'}
                         </button>
