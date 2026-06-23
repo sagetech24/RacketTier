@@ -180,3 +180,13 @@
     background-color: rgb(27 203 77);
     animation: rt-match-status-blink 1.2s ease-in-out infinite;
 }
+
+.rt-match-tabs-scroller {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    touch-action: pan-x;
+}
+
+.rt-match-tabs-scroller::-webkit-scrollbar {
+    display: none;
+}
