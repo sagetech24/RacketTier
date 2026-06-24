@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../dashboard/SportIcon.jsx';
 import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../../lib/queueingSessionNav.js';
 
@@ -86,37 +87,35 @@ export function QueueingSessionHeader({
                 </div>
             </div>
 
-            <div className="mb-6 mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex w-full flex-wrap gap-2 md:gap-4">
-                    <Link
-                        to={queueingNav.dash}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.dash, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
+            <div className="mb-6 mt-3 flex flex-wrap items-center gap-2 md:gap-4">
+                <Link
+                    to={queueingNav.dash}
+                    className={`${queueingSessionTabClass(navPath === queueingNav.dash, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
+                >
+                    Dashboard
+                </Link>
+                <Link
+                    to={queueingNav.players}
+                    className={`${queueingSessionTabClass(navPath === queueingNav.players, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
+                >
+                    Players{tabSuffix}
+                </Link>
+                <Link
+                    to={queueingNav.matches}
+                    className={`${queueingSessionTabClass(navPath === queueingNav.matches, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
+                >
+                    Matches{tabSuffix}
+                </Link>
+                {canStopSession && onEndSessionClick ? (
+                    <button
+                        type="button"
+                        disabled={endSessionBusy}
+                        onClick={onEndSessionClick}
+                        className="ml-auto flex shrink-0 items-center rounded-lg border border-red-200 bg-red-400/70 px-2 py-1.5 text-sm font-bold text-red-200 transition-transform enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm lg:text-base"
                     >
-                        Dashboard
-                    </Link>
-                    <Link
-                        to={queueingNav.players}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.players, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
-                    >
-                        Players{tabSuffix}
-                    </Link>
-                    <Link
-                        to={queueingNav.matches}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.matches, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
-                    >
-                        Matches{tabSuffix}
-                    </Link>
-                    {canStopSession && onEndSessionClick ? (
-                        <button
-                            type="button"
-                            disabled={endSessionBusy}
-                            onClick={onEndSessionClick}
-                            className="rounded-lg border border-red-200 bg-red-400/70 px-3 py-1 text-sm font-bold text-red-200 transition-transform enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm lg:text-base"
-                        >
-                            End Session
-                        </button>
-                    ) : null}
-                </div>
+                        <MaterialIcon name="power_settings_new" className="text-md" />
+                    </button>
+                ) : null}
             </div>
         </article>
     );
