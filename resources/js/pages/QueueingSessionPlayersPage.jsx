@@ -14,6 +14,7 @@ import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueueingSessionPlayerModal.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
+import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const ROSTER_PAGE_SIZE = 10;
@@ -280,6 +281,17 @@ export function QueueingSessionPlayersPage() {
 
     const isHost = Boolean(session?.is_host);
     const canManagePlayers = Boolean(session?.can_manage) && Boolean(session?.is_active);
+    const canManageMatches = canManagePlayers;
+
+    const reload = useCallback(async () => {
+        if (sessionId == null) return;
+        const [data, matchRows] = await Promise.all([
+            fetchGameSession(String(sessionId)),
+            fetchQueueingSessionMatches(sessionId).catch(() => []),
+        ]);
+        setSession(data);
+        setMatches(matchRows);
+    }, [sessionId]);
 
     const reservedPlayerIds = useMemo(() => {
         const ids = new Set();
@@ -525,10 +537,21 @@ export function QueueingSessionPlayersPage() {
                             <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p>
                         ) : null}
 
-                        <div className={canManagePlayers ? 'flex flex-col gap-6' : ''}>
+                        <div className={canManagePlayers ? 'flex flex-col gap-6 mt-4' : ''}>
                         {canManagePlayers ? (
                             <section className="rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4 md:p-5">
-                                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Add players</h2>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h2 className="flex-1 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Add players</h2>
+                                    <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => setAddPlayerModal({ mode: 'guest', intent: 'add' })}
+                                        className="flex items-center justify-center gap-1 text-sm font-semibold text-[#cacaca] border border-[#505050] rounded-md px-2.5 py-1"
+                                    >
+                                        <MaterialIcon name="person_add" className="text-[15px]! text-[#4ce081]" />
+                                        Add a Guest Player
+                                    </button>    
+                                </div>
                                 <input
                                     value={playerSearch}
                                     onChange={(e) => setPlayerSearch(e.target.value)}
@@ -569,19 +592,10 @@ export function QueueingSessionPlayersPage() {
                                         </button>
                                     ))}
                                 </div>
-                                <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={() => setAddPlayerModal({ mode: 'guest', intent: 'add' })}
-                                    className="mt-8 flex w-full items-center justify-center gap-2 rounded-lg border border-[#514c53] bg-[#2a2a2d] px-4 py-3 text-md font-bold text-[#e4e1e6] transition-colors hover:border-[#4ce081]/50 disabled:opacity-60"
-                                >
-                                    <MaterialIcon name="person_add" className="text-[18px]! text-[#4ce081]" />
-                                    Add a Guest Player
-                                </button>
                             </section>
                         ) : null}
 
-                        <section className="min-w-0">
+                        <section className="mt-10 min-w-0">
                             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                                     Current <span className="text-[#c2c1ff]">Players</span>
@@ -763,6 +777,14 @@ export function QueueingSessionPlayersPage() {
                 onConfirm={() => {
                     onConfirmRemove();
                 }}
+            />
+            <QueueingSessionMatchFabPanel
+                session={session}
+                sessionId={sessionId}
+                canManage={canManageMatches}
+                matches={matches}
+                onReload={reload}
+                onActionError={setActionError}
             />
             <DashboardMobileNav />
         </div>

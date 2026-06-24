@@ -23,6 +23,7 @@ export function QueueingSessionHeader({
     const location = useLocation();
     const navPath = normalizedAppPath(location.pathname);
     const queueingNav = queueingSessionNavPaths(session.id);
+    const tabTextSize = 'text-base md:text-lg lg:text-xl';
 
     return (
         <article className={className}>
@@ -54,39 +55,54 @@ export function QueueingSessionHeader({
                     )}
                 </div>
             </div>
-            <p className="text-sm text-[#c8c5d2]/90 capitalize">Game Type: {session.match_type}</p>
-            <p className="text-sm text-[#c8c5d2]/90 capitalize">
-                Queue Master: {session.created_by?.name ?? 'Unknown'}
-            </p>
-            {session.win_points != null || session.loss_points != null ? (
-                <p className="text-sm text-[#c8c5d2]/90">
-                    Points: +{session.win_points ?? 0} win / +{session.loss_points ?? 0} loss
-                </p>
-            ) : null}
-            <div className="mt-1 space-y-0.5 text-xs text-[#918f9c] md:grid md:grid-cols-2 md:gap-x-6 md:gap-y-1">
-                <span>Started: {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}</span>
-                <span>Ended: {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}</span>
-                <span>Total Players: {session.participant_count ?? 0}</span>
-                <span>Matches Played: {session.completed_matches_count ?? 0}</span>
+            <div className="mt-4 mb-10 flex flex-col gap-2 md:gap-4 lg:gap-6 md:flex-row">
+                <div className="space-y-1">
+                    <p className="text-sm text-[#c8c5d2]/90 capitalize">
+                        <span className="font-bold">Game Type:</span> {session.match_type}</p>
+                    <p className="text-sm text-[#c8c5d2]/90 capitalize">
+                        <span className="font-bold">Queue Master:</span> {session.created_by?.name ?? 'Unknown'}
+                    </p>
+                    {session.win_points != null || session.loss_points != null ? (
+                        <p className="text-sm text-[#c8c5d2]/90">
+                            <span className="font-bold">Points:</span> +{session.win_points ?? 0} win / +{session.loss_points ?? 0} loss
+                        </p>
+                    ) : null}
+                </div>
+                <div className="space-y-1 flex-1">
+                    <p className="text-sm text-[#c8c5d2]/90">
+                        <span className="font-bold">Started:</span> {session.started_at ? new Date(session.started_at).toLocaleString() : 'N/A'}
+                    </p>
+                    {!session.is_active ? (
+                        <p className="text-sm text-[#c8c5d2]/90">
+                            <span className="font-bold">Ended:</span> {session.ended_at ? new Date(session.ended_at).toLocaleString() : 'N/A'}
+                        </p>
+                    ) : null}
+                    <p className="text-sm text-[#c8c5d2]/90">
+                        <span className="font-bold">Total Players:</span> {session.participant_count ?? 0}
+                    </p>
+                    <p className="text-sm text-[#c8c5d2]/90">
+                        <span className="font-bold">Matches Played:</span> {session.completed_matches_count ?? 0}
+                    </p>
+                </div>
             </div>
 
             <div className="mb-6 mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex w-full flex-wrap gap-2 md:gap-4">
                     <Link
                         to={queueingNav.dash}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.dash)} text-center text-white/70 border-white/70 md:flex-1`}
+                        className={`${queueingSessionTabClass(navPath === queueingNav.dash, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
                     >
                         Dashboard
                     </Link>
                     <Link
                         to={queueingNav.players}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.players)} text-center text-white/70 border-white/70 md:flex-1`}
+                        className={`${queueingSessionTabClass(navPath === queueingNav.players, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
                     >
                         Players{tabSuffix}
                     </Link>
                     <Link
                         to={queueingNav.matches}
-                        className={`${queueingSessionTabClass(navPath === queueingNav.matches)} text-center text-white/70 border-white/70 md:flex-1`}
+                        className={`${queueingSessionTabClass(navPath === queueingNav.matches, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
                     >
                         Matches{tabSuffix}
                     </Link>
@@ -95,7 +111,7 @@ export function QueueingSessionHeader({
                             type="button"
                             disabled={endSessionBusy}
                             onClick={onEndSessionClick}
-                            className="rounded-lg border border-red-200 bg-red-400/70 px-3 py-1 text-xs font-bold text-red-200 transition-transform enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="rounded-lg border border-red-200 bg-red-400/70 px-3 py-1 text-sm font-bold text-red-200 transition-transform enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm lg:text-base"
                         >
                             End Session
                         </button>

@@ -263,7 +263,7 @@ export function QueueingSessionHistoryPage() {
                 ) : null}
 
                 {loading ? (
-                    <div className="rt-queue-session-cards-grid space-y-3 md:space-y-0">
+                    <div className="rt-queue-session-cards-grid">
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
@@ -275,7 +275,7 @@ export function QueueingSessionHistoryPage() {
                             : "You haven't joined a queueing session yet."}
                     </p>
                 ) : (
-                    <div className="rt-queue-session-cards-grid space-y-3 md:space-y-0">
+                    <div className="rt-queue-session-cards-grid">
                         {items.map((row) => (
                             <HistoryCard
                                 key={row.id}

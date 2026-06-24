@@ -348,7 +348,7 @@ export function QueueingSessionListPage() {
                 {showActiveSection && activeRows.length > 0 ? (
                     <section className="mb-6">
                         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Active</h2>
-                        <div className="rt-queue-session-cards-grid space-y-3 md:space-y-0">
+                        <div className="rt-queue-session-cards-grid">
                             {activeRows.map((row) => (
                                 <QueueingSessionCard
                                     key={row.id}
@@ -375,7 +375,7 @@ export function QueueingSessionListPage() {
                                 ? 'Manage or open summary for finished sessions from today.'
                                 : 'View only — open summary for leaderboard and session stats.'}
                         </p>
-                        <div className="rt-queue-session-cards-grid space-y-3 md:space-y-0">
+                        <div className="rt-queue-session-cards-grid">
                             {finishedTodayRows.map((row) => (
                                 <QueueingSessionCard
                                     key={row.id}

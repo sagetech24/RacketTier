@@ -1,8 +1,8 @@
-/** @param {boolean} active */
-export function queueingSessionTabClass(active) {
+/** @param {boolean} active @param {string} [textSize] */
+export function queueingSessionTabClass(active, textSize = 'text-xs') {
     return active
-        ? 'rounded-lg border border-white/40 bg-[#c2c1ff]/50 px-3 py-1.5 text-xs font-semibold text-white'
-        : 'rounded-lg border border-[#818184] bg-[#353438] px-3 py-1.5 text-xs font-semibold text-[#818184] hover:border-[#4ce081]/60';
+        ? `rounded-lg border border-white/40 bg-[#c2c1ff]/50 px-3 py-1.5 ${textSize} font-semibold text-white`
+        : `rounded-lg border border-[#818184] bg-[#353438] px-3 py-1.5 ${textSize} font-semibold text-[#818184] hover:border-[#4ce081]/60`;
 }
 
 /** @param {string} pathname */
