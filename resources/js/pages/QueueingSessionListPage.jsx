@@ -51,15 +51,19 @@ function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, 
                 <QueueSessionCardBadges row={row} viewOnly={viewOnly} />
             </div>
             <p className="text-sm text-[#c8c5d2]/90 capitalize">
-                {row.match_type} · Queue Master: {row.created_by?.name ?? 'Unknown'}
+                QM: {row.created_by?.name ?? 'Unknown'} <span className="ml-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">{row.match_type}</span>
             </p>
-            <p className="mt-1 text-xs text-[#918f9c] md:grid md:grid-cols-2 md:gap-x-4 md:gap-y-0.5">
-                <span>Started: {formatTime(row.started_at)}</span>
-                <span>Ended: {formatTime(row.ended_at)}</span>
-                <span>Players: {row.participant_count ?? 0}</span>
-                {row.completed_matches_count != null ? (
-                    <span>Matches: {row.completed_matches_count}</span>
-                ) : null}
+            <p className="mt-3 text-xs text-[#918f9c] md:grid md:grid-cols-1 md:gap-x-4 md:gap-y-0.5">
+                <span className="space-y-1">
+                    <p>Started: {formatTime(row.started_at)}</p>
+                    <p>Ended: {formatTime(row.ended_at)}</p>
+                </span>
+                <span className="space-y-1">
+                    <p>Players: {row.participant_count ?? 0}</p>
+                    {row.completed_matches_count != null ? (
+                        <p>Matches: {row.completed_matches_count}</p>
+                    ) : null}
+                </span>
             </p>
             <div className="mt-3 flex w-full flex-wrap gap-2 md:gap-4">
                 {!viewOnly && row.can_manage && onEdit ? (
@@ -348,7 +352,7 @@ export function QueueingSessionListPage() {
                 {showActiveSection && activeRows.length > 0 ? (
                     <section className="mb-6">
                         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Active</h2>
-                        <div className="rt-queue-session-cards-grid">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                             {activeRows.map((row) => (
                                 <QueueingSessionCard
                                     key={row.id}
@@ -375,7 +379,7 @@ export function QueueingSessionListPage() {
                                 ? 'Manage or open summary for finished sessions from today.'
                                 : 'View only — open summary for leaderboard and session stats.'}
                         </p>
-                        <div className="rt-queue-session-cards-grid">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                             {finishedTodayRows.map((row) => (
                                 <QueueingSessionCard
                                     key={row.id}

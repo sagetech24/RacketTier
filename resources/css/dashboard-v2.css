@@ -281,10 +281,6 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
-    .rt-queue-session-cards-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
     .rt-dashboard-activity-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }

@@ -43,25 +43,31 @@ function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
                             : `${row.sport?.name ?? 'Sport'} Queue`}
                     </Link>
                 </h2>
-                <span className="shrink-0 capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]">
+                <span className="shrink-0 capitalize rounded-full bg-[#0f8d47] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]">
                     finished
                 </span>
             </div>
-            <p className="text-sm text-[#c8c5d2]/90 capitalize">
-                {row.match_type} · Queue Master: {row.created_by?.name ?? 'Unknown'}
+            <p className="flex justify-between items-center text-sm text-[#c8c5d2]/90 capitalize">
+                <span className="inline-flex items-center gap-1">
+                    QM: {row.created_by?.name ?? 'Unknown'} <span className="ml-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">{row.match_type}</span>
+                </span>
                 {row.is_host ? (
-                    <span className="ml-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">
+                    <span className="inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">
                         Host
                     </span>
                 ) : null}
             </p>
-            <p className="mt-1 text-xs text-[#918f9c] md:grid md:grid-cols-2 md:gap-x-4 md:gap-y-0.5">
-                <span>Started: {formatTime(row.started_at)}</span>
-                <span>Ended: {formatTime(row.ended_at)}</span>
-                <span>Players: {row.participant_count ?? 0}</span>
-                {row.completed_matches_count != null ? (
-                    <span>Matches: {row.completed_matches_count}</span>
-                ) : null}
+            <p className="mt-3 text-xs text-[#918f9c] md:grid md:grid-cols-1 md:gap-x-4 md:gap-y-0.5">
+                <span className="space-y-1">
+                    <p>Started: {formatTime(row.started_at)}</p>
+                    <p>Ended: {formatTime(row.ended_at)}</p>
+                </span>
+                <span className="space-y-1">
+                    <p>Players: {row.participant_count ?? 0}</p>
+                    {row.completed_matches_count != null ? (
+                        <p>Matches: {row.completed_matches_count}</p>
+                    ) : null}
+                </span>
             </p>
             <div className="mt-3 flex w-full flex-wrap gap-2 md:gap-4">
                 {showRemove && onRemove ? (
@@ -263,7 +269,7 @@ export function QueueingSessionHistoryPage() {
                 ) : null}
 
                 {loading ? (
-                    <div className="rt-queue-session-cards-grid">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
                         <div className="h-32 animate-pulse rounded-xl bg-[#1b1b1e]" />
@@ -275,7 +281,7 @@ export function QueueingSessionHistoryPage() {
                             : "You haven't joined a queueing session yet."}
                     </p>
                 ) : (
-                    <div className="rt-queue-session-cards-grid">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                         {items.map((row) => (
                             <HistoryCard
                                 key={row.id}
@@ -289,7 +295,7 @@ export function QueueingSessionHistoryPage() {
                         {hasMore ? (
                             <div
                                 ref={loadMoreRef}
-                                className="flex justify-center py-4"
+                                className="col-span-full flex justify-center py-4"
                                 aria-hidden={loadingMore}
                             >
                                 {loadingMore ? (
