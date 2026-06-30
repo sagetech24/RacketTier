@@ -577,7 +577,7 @@ export function QueueingSessionPlayersPage() {
                         ) : null}
 
                         <section className="mt-10 min-w-0">
-                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="mb-4 flex items-center justify-between">
                                 <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                                     Current <span className="text-[#c2c1ff]">Players</span>
                                 </h1>
