@@ -267,7 +267,7 @@ export function RankingPage() {
                                     </span>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h4 className="text-sm font-semibold text-[#e4e1e6]">
+                                    <h4 className="text-sm font-semibold text-[#e4e1e6] capitalize">
                                         {row.user.name}
                                         {isYou ? (
                                             <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#c2c1ff]">
@@ -281,10 +281,6 @@ export function RankingPage() {
                                         </span>
                                     </div>
                                 </div>
-                                {/* <div className="pr-2 text-right">
-                                    <div className="text-sm font-bold text-[#e4e1e6]">{row.tier?.name ?? 'Unranked'}</div>
-                                    <div className="text-[10px] text-[#c8c5d2]">{row.wallet_balance.toLocaleString()} pts</div>
-                                </div> */}
                                 <div className="text-right">
                                     <div className="text-xl font-extrabold text-[#c2c1ff] italic">
                                         {formatRating(row.rating)}
