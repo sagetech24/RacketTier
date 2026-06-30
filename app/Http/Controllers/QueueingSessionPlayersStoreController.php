@@ -3,13 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Actions\AddQueueingSessionPlayer;
+use App\Http\Controllers\Concerns\PreparesQueueingSessionResponse;
 use App\Http\Requests\StoreQueueingSessionPlayerRequest;
-use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
 use Illuminate\Http\JsonResponse;
 
 class QueueingSessionPlayersStoreController extends Controller
 {
+    use PreparesQueueingSessionResponse;
+
     public function store(
         StoreQueueingSessionPlayerRequest $request,
         GameSession $gameSession,
@@ -33,16 +35,7 @@ class QueueingSessionPlayersStoreController extends Controller
         }
 
         $gameSession->refresh();
-        $gameSession->load([
-            'sport',
-            'creator:id,name,email',
-            'players' => fn ($q) => $q->orderByDesc('is_playing')->orderBy('queue_position'),
-            'players.user:id,name,email',
-        ]);
-        $gameSession->loadCount('players');
 
-        return response()->json([
-            'data' => new GameSessionResource($gameSession),
-        ]);
+        return $this->queueingSessionJson($gameSession);
     }
 }

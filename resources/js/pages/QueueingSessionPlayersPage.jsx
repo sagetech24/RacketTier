@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchFacilityPlayers, fetchGameSession } from '../api/gameSession.js';
+import { fetchFacilityPlayers } from '../api/gameSession.js';
 import {
     deleteQueueingSessionPlayer,
-    fetchQueueingSessionMatches,
     patchUpdateQueueingSessionPlayer,
     postAddQueueingSessionPlayer,
 } from '../api/queueingSession.js';
@@ -16,6 +15,11 @@ import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueuein
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import {
+    useInvalidateQueueingSession,
+    useQueueingSessionMatchesQuery,
+    useQueueingSessionQuery,
+} from '../hooks/queries/useQueueingSessionQuery.js';
 
 const ROSTER_PAGE_SIZE = 10;
 
@@ -202,15 +206,23 @@ export function QueueingSessionPlayersPage() {
     const { id: idParam } = useParams();
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
+    const invalidateQueueingSession = useInvalidateQueueingSession();
+    const {
+        data: session = null,
+        isLoading: loading,
+        isError,
+        refetch: refetchSession,
+    } = useQueueingSessionQuery(sessionId);
+    const { data: matches = [], refetch: refetchMatches } = useQueueingSessionMatchesQuery(sessionId, {
+        session,
+        enabled: sessionId != null,
+    });
 
-    const [session, setSession] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const error = sessionId == null ? 'Invalid session.' : isError ? 'Could not load session.' : '';
     const [busy, setBusy] = useState(false);
     const [actionError, setActionError] = useState('');
     const [playerSearch, setPlayerSearch] = useState('');
     const [searchRows, setSearchRows] = useState([]);
-    const [matches, setMatches] = useState(/** @type {Array<{ status?: string, lineup?: unknown }>} */ ([]));
     const [visibleRosterCount, setVisibleRosterCount] = useState(ROSTER_PAGE_SIZE);
     const [loadingMoreRoster, setLoadingMoreRoster] = useState(false);
     const [rosterSortField, setRosterSortField] = useState('status');
@@ -227,36 +239,6 @@ export function QueueingSessionPlayersPage() {
     const [removeTarget, setRemoveTarget] = useState(
         /** @type {{ id: number, name: string, isGuest: boolean } | null} */ (null),
     );
-
-    useEffect(() => {
-        if (sessionId == null) {
-            setError('Invalid session.');
-            setLoading(false);
-            return;
-        }
-        let cancelled = false;
-        (async () => {
-            setLoading(true);
-            setError('');
-            try {
-                const [data, matchRows] = await Promise.all([
-                    fetchGameSession(String(sessionId)),
-                    fetchQueueingSessionMatches(sessionId).catch(() => []),
-                ]);
-                if (!cancelled) {
-                    setSession(data);
-                    setMatches(matchRows);
-                }
-            } catch {
-                if (!cancelled) setError('Could not load session.');
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [sessionId]);
 
     useEffect(() => {
         let cancelled = false;
@@ -285,13 +267,9 @@ export function QueueingSessionPlayersPage() {
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
-        const [data, matchRows] = await Promise.all([
-            fetchGameSession(String(sessionId)),
-            fetchQueueingSessionMatches(sessionId).catch(() => []),
-        ]);
-        setSession(data);
-        setMatches(matchRows);
-    }, [sessionId]);
+        invalidateQueueingSession(sessionId);
+        await Promise.all([refetchSession(), refetchMatches()]);
+    }, [invalidateQueueingSession, refetchMatches, refetchSession, sessionId]);
 
     const reservedPlayerIds = useMemo(() => {
         const ids = new Set();
@@ -453,12 +431,13 @@ export function QueueingSessionPlayersPage() {
                     : {
                           skill_level: payload.skill_level,
                       };
-                const data = await patchUpdateQueueingSessionPlayer(
+                await patchUpdateQueueingSessionPlayer(
                     sessionId,
                     addPlayerModal.playerRowId,
                     body,
                 );
-                setSession(data);
+                invalidateQueueingSession(sessionId);
+                await refetchSession();
                 setAddPlayerModal(null);
                 return;
             }
@@ -473,8 +452,9 @@ export function QueueingSessionPlayersPage() {
                       user_id: addPlayerModal.member?.id,
                       skill_level: payload.skill_level,
                   };
-            const data = await postAddQueueingSessionPlayer(sessionId, body);
-            setSession(data);
+            await postAddQueueingSessionPlayer(sessionId, body);
+            invalidateQueueingSession(sessionId);
+            await refetchSession();
             if (addPlayerModal.mode === 'member') {
                 setPlayerSearch('');
                 setAddPlayerModal(null);
@@ -492,8 +472,9 @@ export function QueueingSessionPlayersPage() {
         setActionError('');
         setBusy(true);
         try {
-            const data = await deleteQueueingSessionPlayer(sessionId, playerRowId);
-            setSession(data);
+            await deleteQueueingSessionPlayer(sessionId, playerRowId);
+            invalidateQueueingSession(sessionId);
+            await refetchSession();
         } catch (e) {
             setActionError(e instanceof Error ? e.message : 'Could not remove player.');
         } finally {

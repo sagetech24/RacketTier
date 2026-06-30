@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchGameSession } from '../api/gameSession.js';
 import { fetchQueueingSessionSummary } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
@@ -9,7 +8,10 @@ import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useVisibilityPolling } from '../hooks/useVisibilityPolling.js';
+import {
+    useInvalidateQueueingSession,
+    useQueueingSessionQuery,
+} from '../hooks/queries/useQueueingSessionQuery.js';
 
 /**
  * @param {import('../api/gameSession.js').GameSessionDetail['players'] extends (infer U)[] | undefined ? U : never} row
@@ -84,46 +86,28 @@ export function QueueingSessionPage() {
     const { id: idParam } = useParams();
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
+    const invalidateQueueingSession = useInvalidateQueueingSession();
+    const {
+        data: session = null,
+        isLoading: loading,
+        isError,
+        refetch,
+    } = useQueueingSessionQuery(sessionId);
 
-    const [session, setSession] = useState(/** @type {import('../api/gameSession.js').GameSessionDetail | null} */ (null));
     const [summary, setSummary] = useState(/** @type {Record<string, unknown> | null} */ (null));
-    const [loading, setLoading] = useState(true);
     const [summaryLoading, setSummaryLoading] = useState(false);
-    const [error, setError] = useState('');
     const [actionError, setActionError] = useState('');
+
+    const error = sessionId == null ? 'Invalid session.' : isError ? 'Could not load this session.' : '';
 
     const isViewOnly = Boolean(session && !session.is_active);
     const canManageMatches = Boolean(session?.can_manage) && Boolean(session?.is_active);
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
-        const data = await fetchGameSession(String(sessionId));
-        setSession(data);
-    }, [sessionId]);
-
-    useEffect(() => {
-        if (sessionId == null) {
-            setError('Invalid session.');
-            setLoading(false);
-            return;
-        }
-        let cancelled = false;
-        (async () => {
-            setError('');
-            setLoading(true);
-            try {
-                const data = await fetchGameSession(String(sessionId));
-                if (!cancelled) setSession(data);
-            } catch {
-                if (!cancelled) setError('Could not load this session.');
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [sessionId]);
+        invalidateQueueingSession(sessionId);
+        await refetch();
+    }, [invalidateQueueingSession, refetch, sessionId]);
 
     useEffect(() => {
         if (!session || session.is_active) {
@@ -146,11 +130,6 @@ export function QueueingSessionPage() {
             cancelled = true;
         };
     }, [session, sessionId]);
-
-    useVisibilityPolling(
-        () => reload(),
-        { enabled: Boolean(session?.is_active), intervalMs: 10_000 },
-    );
 
     const leaderboard = useMemo(() => {
         const summaryPlayers = summary?.players;

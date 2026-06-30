@@ -5,6 +5,9 @@ namespace App\Actions;
 use App\Data\AutoMatchCriteria;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Services\QueueingSessionDraftHydrator;
+use App\Services\QueueingSessionDraftLineup;
+use App\Services\QueueingSessionDraftStore;
 use App\Services\QueueingSessionMatchLineup;
 use Illuminate\Support\Collection;
 
@@ -21,6 +24,9 @@ class AutoGenerateQueueingSessionMatches
 
     public function __construct(
         private QueueingSessionMatchLineup $lineup,
+        private QueueingSessionDraftStore $draftStore,
+        private QueueingSessionDraftLineup $draftLineup,
+        private QueueingSessionDraftHydrator $hydrator,
     ) {}
 
     /**
@@ -54,17 +60,29 @@ class AutoGenerateQueueingSessionMatches
         $matchType = $session->match_type === 'doubles' ? 'doubles' : 'singles';
         $required = $matchType === 'doubles' ? 4 : 2;
 
-        $reserved = $this->lineup->reservedPlayerIds((int) $session->id);
+        if ($session->isDraft()) {
+            $draft = $this->draftStore->load((int) $session->id);
+            $reserved = $this->draftLineup->reservedPlayerIds($draft);
+            $hydrated = $this->hydrator->hydrate($session);
+            /** @var Collection<int, GameSessionPlayer> $eligible */
+            $eligible = $hydrated->players
+                ->filter(fn (GameSessionPlayer $p): bool => $p->is_waiting && ! $p->is_playing)
+                ->when($reserved !== [], fn ($c) => $c->reject(fn (GameSessionPlayer $p): bool => in_array((int) $p->id, $reserved, true)))
+                ->sortBy('queue_position')
+                ->values();
+        } else {
+            $reserved = $this->lineup->reservedPlayerIds((int) $session->id);
 
-        /** @var Collection<int, GameSessionPlayer> $eligible */
-        $eligible = GameSessionPlayer::query()
-            ->with('user:id,name')
-            ->where('game_session_id', $session->id)
-            ->where('is_waiting', true)
-            ->where('is_playing', false)
-            ->when($reserved !== [], fn ($q) => $q->whereNotIn('id', $reserved))
-            ->orderBy('queue_position')
-            ->get();
+            /** @var Collection<int, GameSessionPlayer> $eligible */
+            $eligible = GameSessionPlayer::query()
+                ->with('user:id,name')
+                ->where('game_session_id', $session->id)
+                ->where('is_waiting', true)
+                ->where('is_playing', false)
+                ->when($reserved !== [], fn ($q) => $q->whereNotIn('id', $reserved))
+                ->orderBy('queue_position')
+                ->get();
+        }
 
         $totalEligible = $eligible->count();
 

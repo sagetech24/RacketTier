@@ -16,6 +16,12 @@ export const queryKeys = {
     dashboardSummary: ['dashboard', 'summary'],
     facilities: (q = '') => ['facilities', { q }],
     gameSession: (sessionId, facilityId) => ['game-session', sessionId, facilityId ?? null],
+    queueingSession: (sessionId) => ['queueing-session', sessionId],
+    queueingSessionMatches: (sessionId, draftVersion = null) => [
+        'queueing-session-matches',
+        sessionId,
+        draftVersion,
+    ],
     rankings: (sportId, search) => ['rankings', sportId, search],
     queueingSessions: (params) => ['queueing-sessions', params],
 };

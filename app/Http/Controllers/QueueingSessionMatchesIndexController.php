@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PreparesQueueingSessionResponse;
 use App\Http\Requests\ListQueueingSessionMatchesRequest;
-use App\Http\Resources\QueueingSessionMatchResource;
 use App\Models\GameSession;
-use App\Models\QueueingSessionMatch;
 use App\Services\QueueingSessionState;
 use Illuminate\Http\JsonResponse;
 
 class QueueingSessionMatchesIndexController extends Controller
 {
+    use PreparesQueueingSessionResponse;
+
     public function __construct(
         private QueueingSessionState $queueingSessionState,
     ) {}
@@ -19,15 +20,10 @@ class QueueingSessionMatchesIndexController extends Controller
         ListQueueingSessionMatchesRequest $request,
         GameSession $gameSession,
     ): JsonResponse {
-        $this->queueingSessionState->reconcileStaleActiveSessionIfDue($gameSession);
+        if (! $gameSession->isDraft()) {
+            $this->queueingSessionState->reconcileStaleActiveSessionIfDue($gameSession);
+        }
 
-        $matches = QueueingSessionMatch::query()
-            ->where('game_session_id', $gameSession->id)
-            ->orderBy('match_no')
-            ->get();
-
-        return response()->json([
-            'data' => QueueingSessionMatchResource::collection($matches),
-        ]);
+        return $this->queueingMatchesJson($gameSession);
     }
 }

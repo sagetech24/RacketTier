@@ -4,11 +4,20 @@ namespace App\Actions;
 
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Services\QueueingSessionDraftLineup;
+use App\Services\QueueingSessionDraftState;
+use App\Services\QueueingSessionDraftStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class UpdateQueueingSessionPlayer
 {
+    public function __construct(
+        private QueueingSessionDraftStore $draftStore,
+        private QueueingSessionDraftLineup $draftLineup,
+        private QueueingSessionDraftState $draftState,
+    ) {}
+
     public function executeGuest(
         GameSession $session,
         GameSessionPlayer $player,
@@ -34,6 +43,23 @@ class UpdateQueueingSessionPlayer
         }
 
         $resolvedPronoun = $pronoun !== null && trim($pronoun) !== '' ? trim($pronoun) : null;
+
+        if ($session->isDraft()) {
+            $this->draftStore->mutate($session, function ($draft) use ($player, $guestName, $resolvedPronoun, $skillLevel) {
+                if ($this->draftLineup->guestNameExists($draft, $guestName, (int) $player->id)) {
+                    abort(422, 'A guest with that name is already on the roster.');
+                }
+                $this->draftState->updatePlayerInDraft($draft, (int) $player->id, [
+                    'guest_name' => $guestName,
+                    'pronoun' => $resolvedPronoun,
+                    'skill_level' => $skillLevel,
+                ]);
+
+                return $draft;
+            });
+
+            return;
+        }
 
         DB::transaction(function () use ($session, $player, $guestName, $resolvedPronoun, $skillLevel): void {
             $locked = GameSession::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
@@ -71,6 +97,18 @@ class UpdateQueueingSessionPlayer
 
         if ($player->isGuest()) {
             abort(422, 'Member fields only apply to registered players.');
+        }
+
+        if ($session->isDraft()) {
+            $this->draftStore->mutate($session, function ($draft) use ($player, $skillLevel) {
+                $this->draftState->updatePlayerInDraft($draft, (int) $player->id, [
+                    'skill_level' => $skillLevel,
+                ]);
+
+                return $draft;
+            });
+
+            return;
         }
 
         DB::transaction(function () use ($session, $player, $skillLevel): void {

@@ -34,6 +34,7 @@ class QueueingGameSessionStoreTest extends TestCase
         $this->assertNotNull($id);
         $session = GameSession::query()->findOrFail($id);
         $this->assertTrue($session->isQueueing());
+        $this->assertTrue($session->isDraft());
         $this->assertNull($session->facility_id);
         $this->assertSame('Friday Night Smash', $session->queue_name);
         $this->assertFalse($session->skip_scores);

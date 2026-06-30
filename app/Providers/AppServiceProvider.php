@@ -51,6 +51,12 @@ class AppServiceProvider extends ServiceProvider
             abort_if(! $session, 404);
 
             $isParticipant = (bool) $session->viewer_is_participant;
+            if (! $isParticipant && $session->isDraft()) {
+                $participants = is_array($session->draft_participant_user_ids)
+                    ? $session->draft_participant_user_ids
+                    : [];
+                $isParticipant = in_array((int) $user->id, array_map('intval', $participants), true);
+            }
 
             if ($isParticipant) {
                 return $session;
@@ -82,6 +88,46 @@ class AppServiceProvider extends ServiceProvider
             }
 
             abort(404);
+        });
+
+        Route::bind('gameSessionPlayer', function (string $value, $route): \App\Models\GameSessionPlayer {
+            $session = $route->parameter('gameSession');
+            if (! $session instanceof GameSession) {
+                abort(404);
+            }
+
+            if ($session->isDraft()) {
+                return app(\App\Services\QueueingSessionDraftHydrator::class)
+                    ->hydratePlayer($session, (int) $value);
+            }
+
+            $player = \App\Models\GameSessionPlayer::query()
+                ->whereKey($value)
+                ->where('game_session_id', $session->id)
+                ->first();
+            abort_if(! $player, 404);
+
+            return $player;
+        });
+
+        Route::bind('queueingSessionMatch', function (string $value, $route): \App\Models\QueueingSessionMatch {
+            $session = $route->parameter('gameSession');
+            if (! $session instanceof GameSession) {
+                abort(404);
+            }
+
+            if ($session->isDraft()) {
+                return app(\App\Services\QueueingSessionDraftHydrator::class)
+                    ->hydrateMatch($session, (int) $value);
+            }
+
+            $match = \App\Models\QueueingSessionMatch::query()
+                ->whereKey($value)
+                ->where('game_session_id', $session->id)
+                ->first();
+            abort_if(! $match, 404);
+
+            return $match;
         });
     }
 }

@@ -2,13 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesQueueingSessionLineup;
 use App\Models\GameSession;
-use App\Models\GameSessionPlayer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
 class StoreQueueingSessionMatchRequest extends FormRequest
 {
+    use ValidatesQueueingSessionLineup;
+
     public function authorize(): bool
     {
         $user = $this->user();
@@ -26,9 +28,12 @@ class StoreQueueingSessionMatchRequest extends FormRequest
      */
     public function rules(): array
     {
+        /** @var GameSession $session */
+        $session = $this->route('gameSession');
+
         return [
             'lineup' => ['required', 'array'],
-            'lineup.*.id' => ['required', 'integer', 'exists:game_session_players,id'],
+            'lineup.*.id' => $this->lineupIdRules($session),
             'lineup.*.team' => ['nullable', 'integer', 'in:1,2'],
         ];
     }
@@ -41,25 +46,7 @@ class StoreQueueingSessionMatchRequest extends FormRequest
                 return;
             }
 
-            $lineup = $this->input('lineup');
-            if (! is_array($lineup)) {
-                return;
-            }
-
-            foreach ($lineup as $row) {
-                $pid = (int) ($row['id'] ?? 0);
-                if ($pid <= 0) {
-                    continue;
-                }
-                $exists = GameSessionPlayer::query()
-                    ->whereKey($pid)
-                    ->where('game_session_id', $session->id)
-                    ->exists();
-                if (! $exists) {
-                    $validator->errors()->add('lineup', 'Each lineup player must belong to this session.');
-                    break;
-                }
-            }
+            $this->validateLineupBelongsToSession($validator, $session, $this->input('lineup'));
         });
     }
 }

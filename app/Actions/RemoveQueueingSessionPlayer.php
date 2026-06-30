@@ -4,6 +4,8 @@ namespace App\Actions;
 
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Services\QueueingSessionDraftState;
+use App\Services\QueueingSessionDraftStore;
 use App\Services\QueueingSessionState;
 use Illuminate\Support\Facades\DB;
 
@@ -11,6 +13,8 @@ class RemoveQueueingSessionPlayer
 {
     public function __construct(
         private QueueingSessionState $queueingSessionState,
+        private QueueingSessionDraftStore $draftStore,
+        private QueueingSessionDraftState $draftState,
     ) {}
 
     public function execute(GameSession $session, GameSessionPlayer $player): void
@@ -21,6 +25,23 @@ class RemoveQueueingSessionPlayer
 
         if ((int) $player->game_session_id !== (int) $session->id) {
             abort(404);
+        }
+
+        if ($session->isDraft()) {
+            $this->draftStore->mutate($session, function ($draft) use ($player) {
+                $row = $draft->findPlayer((int) $player->id);
+                if ($row === null) {
+                    abort(404);
+                }
+                if ($row['is_playing'] ?? false) {
+                    abort(422, 'Cannot remove a player who is currently in a match.');
+                }
+                $this->draftState->removePlayer($draft, (int) $player->id);
+
+                return $draft;
+            });
+
+            return;
         }
 
         DB::transaction(function () use ($session, $player): void {

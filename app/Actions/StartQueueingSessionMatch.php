@@ -5,6 +5,10 @@ namespace App\Actions;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
+use App\Services\QueueingSessionDraftHydrator;
+use App\Services\QueueingSessionDraftLineup;
+use App\Services\QueueingSessionDraftState;
+use App\Services\QueueingSessionDraftStore;
 use App\Services\QueueingSessionMatchLineup;
 use Illuminate\Support\Facades\DB;
 
@@ -12,6 +16,10 @@ class StartQueueingSessionMatch
 {
     public function __construct(
         private QueueingSessionMatchLineup $lineup,
+        private QueueingSessionDraftStore $draftStore,
+        private QueueingSessionDraftLineup $draftLineup,
+        private QueueingSessionDraftState $draftState,
+        private QueueingSessionDraftHydrator $hydrator,
     ) {}
 
     public function execute(GameSession $session, QueueingSessionMatch $match): GameSession
@@ -29,6 +37,27 @@ class StartQueueingSessionMatch
         }
 
         $required = $session->match_type === 'doubles' ? 4 : 2;
+
+        if ($session->isDraft()) {
+            return $this->draftStore->mutate($session, function ($draft) use ($session, $match, $required) {
+                $matchRow = $draft->findMatch((int) $match->id);
+                if ($matchRow === null || ($matchRow['status'] ?? '') !== 'queueing') {
+                    abort(422, 'This match is not in the queue.');
+                }
+
+                $picked = $this->draftLineup->playersFromStoredLineup($session, $matchRow, $required, $draft);
+                $this->draftState->markPlayersPlaying($draft, $picked);
+
+                $this->draftState->updateMatchInDraft($draft, (int) $match->id, [
+                    'status' => 'ongoing',
+                    'lineup' => $this->draftLineup->buildSnapshot($picked),
+                    'started_at' => now()->toIso8601String(),
+                ]);
+                $this->draftState->syncSessionMetaStatus($draft);
+
+                return $draft;
+            });
+        }
 
         return DB::transaction(function () use ($session, $match, $required): GameSession {
             /** @var GameSession $locked */

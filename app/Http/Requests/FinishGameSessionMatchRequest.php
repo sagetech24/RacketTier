@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\GameSession;
+use App\Services\QueueingSessionDraftStore;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -36,7 +37,9 @@ class FinishGameSessionMatchRequest extends FormRequest
 
         $base = [
             'facility_id' => ['sometimes', 'integer', 'exists:facilities,id'],
-            'queueing_session_match_id' => ['sometimes', 'integer', 'exists:queueing_session_matches,id'],
+            'queueing_session_match_id' => $session instanceof GameSession && $session->isDraft()
+                ? ['sometimes', 'integer', 'min:1']
+                : ['sometimes', 'integer', 'exists:queueing_session_matches,id'],
         ];
 
         if ($skipScores) {
@@ -64,6 +67,14 @@ class FinishGameSessionMatchRequest extends FormRequest
             $fid = $this->input('facility_id');
             if ($fid !== null && $fid !== '' && $session->facility_id !== null && (int) $fid !== (int) $session->facility_id) {
                 $validator->errors()->add('facility_id', 'Session does not belong to this facility.');
+            }
+
+            $matchId = $this->input('queueing_session_match_id');
+            if ($session->isDraft() && $matchId !== null && $matchId !== '') {
+                $draft = app(QueueingSessionDraftStore::class)->load((int) $session->id);
+                if ($draft->findMatch((int) $matchId) === null) {
+                    $validator->errors()->add('queueing_session_match_id', 'The selected queueing session match id is invalid.');
+                }
             }
         });
     }

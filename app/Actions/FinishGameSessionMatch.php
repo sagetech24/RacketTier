@@ -5,9 +5,11 @@ namespace App\Actions;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
-use App\Models\Ranking;
-use App\Models\RatingHistory;
-use App\Services\EloCalculator;
+use App\Services\MatchResultProcessor;
+use App\Services\QueueingSessionDraftHydrator;
+use App\Services\QueueingSessionDraftLineup;
+use App\Services\QueueingSessionDraftState;
+use App\Services\QueueingSessionDraftStore;
 use App\Services\QueueingSessionState;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +17,12 @@ use Illuminate\Support\Facades\DB;
 class FinishGameSessionMatch
 {
     public function __construct(
-        private EloCalculator $elo,
-        private CreditMemberPointWallet $creditMemberPointWallet,
+        private MatchResultProcessor $matchResultProcessor,
         private QueueingSessionState $queueingSessionState,
+        private QueueingSessionDraftStore $draftStore,
+        private QueueingSessionDraftLineup $draftLineup,
+        private QueueingSessionDraftState $draftState,
+        private QueueingSessionDraftHydrator $hydrator,
     ) {}
 
     public function execute(
@@ -29,6 +34,10 @@ class FinishGameSessionMatch
     ): GameSession {
         if (! $session->is_active) {
             abort(422, 'This session is not active.');
+        }
+
+        if ($session->isQueueing() && $session->isDraft()) {
+            return $this->finishDraftMatch($session, $team1Score, $team2Score, $queueingSessionMatchId, $winningTeamOverride);
         }
 
         $required = $session->match_type === 'doubles' ? 4 : 2;
@@ -44,28 +53,12 @@ class FinishGameSessionMatch
                 abort(422, 'No match is in progress for this session.');
             }
 
-            $useWinnerOnly = $locked->isQueueing() && (bool) $locked->skip_scores;
-
-            if ($useWinnerOnly) {
-                if (! in_array($winningTeamOverride, [1, 2], true)) {
-                    abort(422, 'Select the winning team.');
-                }
-                $winningTeam = $winningTeamOverride;
-                $storedTeam1Score = null;
-                $storedTeam2Score = null;
-                $margin = 0;
-            } else {
-                if ($team1Score === null || $team2Score === null) {
-                    abort(422, 'Enter both final scores.');
-                }
-                if ($team1Score === $team2Score) {
-                    abort(422, 'Scores cannot be tied.');
-                }
-                $winningTeam = $team1Score > $team2Score ? 1 : 2;
-                $storedTeam1Score = $team1Score;
-                $storedTeam2Score = $team2Score;
-                $margin = abs($team1Score - $team2Score);
-            }
+            [$winningTeam, $storedTeam1Score, $storedTeam2Score, $margin] = $this->resolveScores(
+                $locked,
+                $team1Score,
+                $team2Score,
+                $winningTeamOverride,
+            );
 
             $playing = collect();
             $teamMap = [];
@@ -105,7 +98,7 @@ class FinishGameSessionMatch
                 $teamMap = $this->resolveTeams($playing, $locked->match_type);
             }
 
-            $breakdown = $this->applyResults(
+            $breakdown = $this->matchResultProcessor->processMatch(
                 $locked,
                 $playing,
                 $teamMap,
@@ -113,6 +106,7 @@ class FinishGameSessionMatch
                 $margin,
                 $storedTeam1Score,
                 $storedTeam2Score,
+                persistGlobalEffects: true,
             );
 
             if ($locked->isQueueing()) {
@@ -166,6 +160,138 @@ class FinishGameSessionMatch
 
             return $locked->fresh();
         });
+    }
+
+    private function finishDraftMatch(
+        GameSession $session,
+        ?int $team1Score,
+        ?int $team2Score,
+        ?int $queueingSessionMatchId,
+        ?int $winningTeamOverride,
+    ): GameSession {
+        $required = $session->match_type === 'doubles' ? 4 : 2;
+
+        return $this->draftStore->mutate($session, function ($draft) use ($session, $team1Score, $team2Score, $queueingSessionMatchId, $winningTeamOverride, $required) {
+            if (($draft->sessionMeta['status'] ?? 'queueing') !== 'ongoing' && ! $draft->hasOngoingMatch()) {
+                abort(422, 'No match is in progress for this session.');
+            }
+
+            [$winningTeam, $storedTeam1Score, $storedTeam2Score, $margin] = $this->resolveScores(
+                $session,
+                $team1Score,
+                $team2Score,
+                $winningTeamOverride,
+            );
+
+            $targetMatch = collect($draft->matches)
+                ->filter(fn (array $m): bool => ($m['status'] ?? '') === 'ongoing')
+                ->when($queueingSessionMatchId !== null, fn ($c) => $c->where('id', $queueingSessionMatchId))
+                ->sortByDesc('id')
+                ->first();
+
+            if ($targetMatch === null) {
+                abort(422, 'No ongoing queueing match found to finish.');
+            }
+
+            $pickedArrays = $this->draftLineup->playersFromOngoingLineup($session, $targetMatch, $required, $draft);
+            $playing = $this->hydrator->hydrate($session)->players
+                ->filter(fn (GameSessionPlayer $p): bool => collect($pickedArrays)->pluck('id')->contains($p->id))
+                ->values();
+
+            if ($playing->count() !== $required) {
+                $playing = collect($pickedArrays)->map(function (array $row) use ($session): GameSessionPlayer {
+                    $player = new GameSessionPlayer([
+                        'game_session_id' => $session->id,
+                        'user_id' => $row['user_id'] ?? null,
+                        'guest_name' => $row['guest_name'] ?? null,
+                        'queue_position' => (int) ($row['queue_position'] ?? 0),
+                        'team' => $row['team'] ?? null,
+                    ]);
+                    $player->id = (int) $row['id'];
+                    $player->exists = true;
+
+                    return $player;
+                });
+            }
+
+            $teamMap = [];
+            foreach ($playing->values() as $index => $player) {
+                if ($session->match_type === 'singles') {
+                    $teamMap[$player->id] = $index === 0 ? 1 : 2;
+                } else {
+                    $teamMap[$player->id] = (int) $player->team;
+                }
+            }
+
+            $breakdown = $this->matchResultProcessor->processMatch(
+                $session,
+                $playing,
+                $teamMap,
+                $winningTeam,
+                $margin,
+                $storedTeam1Score,
+                $storedTeam2Score,
+                persistGlobalEffects: false,
+            );
+
+            $this->matchResultProcessor->applyBreakdownToDraftPlayers($draft->players, $teamMap, $breakdown);
+
+            $matchId = (int) $targetMatch['id'];
+            $playerIds = $playing->pluck('id')->map(fn ($id): int => (int) $id)->all();
+            $this->draftState->returnPlayersToQueue($draft, $playerIds);
+
+            $this->draftState->updateMatchInDraft($draft, $matchId, [
+                'status' => 'finished',
+                'team1_score' => $storedTeam1Score,
+                'team2_score' => $storedTeam2Score,
+                'winning_team' => $winningTeam,
+                'finished_at' => now()->toIso8601String(),
+                'result_breakdown' => $breakdown,
+            ]);
+
+            $draft->sessionMeta['completed_matches_count'] = (int) ($draft->sessionMeta['completed_matches_count'] ?? 0) + 1;
+            $draft->sessionMeta['last_team1_score'] = $storedTeam1Score;
+            $draft->sessionMeta['last_team2_score'] = $storedTeam2Score;
+            $draft->sessionMeta['last_winning_team'] = $winningTeam;
+            $draft->sessionMeta['last_finished_at'] = now()->toIso8601String();
+            $draft->sessionMeta['last_result_breakdown'] = $breakdown;
+
+            $this->draftState->clearOrphanPlayingPlayers($draft);
+            $this->draftState->syncSessionMetaStatus($draft);
+
+            return $draft;
+        });
+    }
+
+    /**
+     * @return array{0: int, 1: ?int, 2: ?int, 3: int}
+     */
+    private function resolveScores(
+        GameSession $session,
+        ?int $team1Score,
+        ?int $team2Score,
+        ?int $winningTeamOverride,
+    ): array {
+        $useWinnerOnly = $session->isQueueing() && (bool) $session->skip_scores;
+
+        if ($useWinnerOnly) {
+            if (! in_array($winningTeamOverride, [1, 2], true)) {
+                abort(422, 'Select the winning team.');
+            }
+
+            return [$winningTeamOverride, null, null, 0];
+        }
+
+        if ($team1Score === null || $team2Score === null) {
+            abort(422, 'Enter both final scores.');
+        }
+        if ($team1Score === $team2Score) {
+            abort(422, 'Scores cannot be tied.');
+        }
+
+        $winningTeam = $team1Score > $team2Score ? 1 : 2;
+
+        return [$winningTeam, $team1Score, $team2Score, abs($team1Score - $team2Score)];
     }
 
     /**
@@ -287,242 +413,6 @@ class FinishGameSessionMatch
         return $playing->mapWithKeys(fn (GameSessionPlayer $p): array => [$p->id => (int) $p->team])->all();
     }
 
-    /**
-     * @param  Collection<int, GameSessionPlayer>  $playing
-     * @param  array<int, int>  $teamMap
-     * @return array<string, mixed>
-     */
-    private function applyResults(
-        GameSession $session,
-        Collection $playing,
-        array $teamMap,
-        int $winningTeam,
-        int $margin,
-        ?int $team1Score,
-        ?int $team2Score,
-    ): array {
-        $sportId = (int) $session->sport_id;
-        $memberUserIds = $playing->pluck('user_id')->filter()->unique()->values()->all();
-
-        $ratingsBefore = Ranking::query()
-            ->where('sport_id', $sportId)
-            ->whereIn('user_id', $memberUserIds)
-            ->orderBy('user_id')
-            ->lockForUpdate()
-            ->get()
-            ->mapWithKeys(fn (Ranking $r): array => [(int) $r->user_id => (int) $r->rating])
-            ->all();
-
-        $deltas = $session->match_type === 'doubles'
-            ? $this->computeDoublesDeltas($playing, $teamMap, $winningTeam, $ratingsBefore)
-            : $this->computeSinglesDeltas($playing, $teamMap, $winningTeam, $ratingsBefore);
-
-        $rows = [];
-        foreach ($playing as $player) {
-            $playerTeam = $teamMap[$player->id];
-            $won = $playerTeam === $winningTeam;
-            $pk = $player->id;
-            $isGuest = $player->isGuest();
-
-            if ($isGuest) {
-                $sessionPointsEarned = $this->resolveSessionPointsEarned($session, $won, $margin);
-
-                if ($won) {
-                    GameSessionPlayer::query()->whereKey($pk)->increment('wins_count');
-                } else {
-                    GameSessionPlayer::query()->whereKey($pk)->increment('losses_count');
-                }
-
-                GameSessionPlayer::query()->whereKey($pk)->increment('session_points', $sessionPointsEarned);
-
-                $rows[] = [
-                    'user_id' => null,
-                    'guest_name' => $player->guest_name,
-                    'name' => $player->displayName(),
-                    'team' => $playerTeam,
-                    'won' => $won,
-                    'rating_before' => null,
-                    'rating_after' => null,
-                    'rating_change' => null,
-                    'session_points_earned' => $sessionPointsEarned,
-                ];
-
-                continue;
-            }
-
-            $uid = (int) $player->user_id;
-            $delta = $deltas[$uid] ?? 0;
-            $before = $ratingsBefore[$uid] ?? 1000;
-            $after = $before + $delta;
-
-            $sessionPointsEarned = $this->resolveSessionPointsEarned($session, $won, $margin);
-
-            Ranking::query()->updateOrCreate(
-                [
-                    'user_id' => $uid,
-                    'sport_id' => $sportId,
-                ],
-                ['rating' => $after],
-            );
-
-            RatingHistory::query()->create([
-                'user_id' => $uid,
-                'sport_id' => $sportId,
-                'game_session_id' => $session->id,
-                'rating_before' => $before,
-                'rating_after' => $after,
-                'rating_change' => $after - $before,
-            ]);
-
-            GameSessionPlayer::query()->whereKey($pk)->increment('session_points', $sessionPointsEarned);
-            $this->creditMemberPointWallet->execute(
-                $uid,
-                $sportId,
-                $sessionPointsEarned,
-                (int) $session->id,
-            );
-            if ($won) {
-                GameSessionPlayer::query()->whereKey($pk)->increment('wins_count');
-            } else {
-                GameSessionPlayer::query()->whereKey($pk)->increment('losses_count');
-            }
-
-            $rows[] = [
-                'user_id' => $uid,
-                'name' => $player->user?->name ?? 'Player',
-                'team' => $playerTeam,
-                'won' => $won,
-                'rating_before' => $before,
-                'rating_after' => $after,
-                'rating_change' => $after - $before,
-                'session_points_earned' => $sessionPointsEarned,
-            ];
-        }
-
-        return [
-            'winning_team' => $winningTeam,
-            'team1_score' => $team1Score,
-            'team2_score' => $team2Score,
-            'players' => $rows,
-        ];
-    }
-
-    private function resolveSessionPointsEarned(GameSession $session, bool $won, int $margin): int
-    {
-        if ($session->isQueueing()) {
-            $w = (int) ($session->win_points ?? 30);
-            $l = (int) ($session->loss_points ?? 8);
-
-            return $won ? $w : $l;
-        }
-
-        return $won
-            ? 25 + min(10, $margin)
-            : 8;
-    }
-
-    /**
-     * @param  array<int, int>  $teamMap
-     * @param  array<int, int>  $ratingsBefore  user_id => rating
-     * @return array<int, int> user_id => delta
-     */
-    private function computeSinglesDeltas(
-        Collection $playing,
-        array $teamMap,
-        int $winningTeam,
-        array $ratingsBefore,
-    ): array {
-        $sorted = $playing->sortBy('queue_position')->values();
-        $a = $sorted[0];
-        $b = $sorted[1];
-
-        if ($a->user_id === null && $b->user_id === null) {
-            return [];
-        }
-
-        $out = [];
-
-        if ($a->user_id !== null) {
-            $uid = (int) $a->user_id;
-            $rSelf = (float) ($ratingsBefore[$uid] ?? 1000);
-            $oppRating = $b->user_id !== null
-                ? (float) ($ratingsBefore[(int) $b->user_id] ?? 1000)
-                : 1000.0;
-            $scoreA = $teamMap[$a->id] === $winningTeam ? 1.0 : 0.0;
-            $out[$uid] = $this->elo->delta($rSelf, $oppRating, $scoreA);
-        }
-
-        if ($b->user_id !== null) {
-            $uid = (int) $b->user_id;
-            $rSelf = (float) ($ratingsBefore[$uid] ?? 1000);
-            $oppRating = $a->user_id !== null
-                ? (float) ($ratingsBefore[(int) $a->user_id] ?? 1000)
-                : 1000.0;
-            $scoreB = $teamMap[$b->id] === $winningTeam ? 1.0 : 0.0;
-            $out[$uid] = $this->elo->delta($rSelf, $oppRating, $scoreB);
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param  array<int, int>  $teamMap
-     * @param  array<int, int>  $ratingsBefore
-     * @return array<int, int>
-     */
-    private function computeDoublesDeltas(
-        Collection $playing,
-        array $teamMap,
-        int $winningTeam,
-        array $ratingsBefore,
-    ): array {
-        $team1 = $playing->filter(fn (GameSessionPlayer $p): bool => $teamMap[$p->id] === 1)->values();
-        $team2 = $playing->filter(fn (GameSessionPlayer $p): bool => $teamMap[$p->id] === 2)->values();
-
-        $avg = function (Collection $group) use ($ratingsBefore): float {
-            $sum = 0.0;
-            $n = 0;
-            foreach ($group as $p) {
-                if ($p->user_id === null) {
-                    $sum += 1000.0;
-                } else {
-                    $sum += (float) ($ratingsBefore[(int) $p->user_id] ?? 1000);
-                }
-                $n++;
-            }
-
-            return $n > 0 ? $sum / $n : 1000.0;
-        };
-
-        $rOpp1 = $avg($team2);
-        $rOpp2 = $avg($team1);
-
-        $out = [];
-        foreach ($team1 as $p) {
-            if ($p->user_id === null) {
-                continue;
-            }
-            $uid = (int) $p->user_id;
-            $rSelf = (float) ($ratingsBefore[$uid] ?? 1000);
-            $won = $winningTeam === 1;
-            $out[$uid] = $this->elo->delta($rSelf, $rOpp1, $won ? 1.0 : 0.0);
-        }
-        foreach ($team2 as $p) {
-            if ($p->user_id === null) {
-                continue;
-            }
-            $uid = (int) $p->user_id;
-            $rSelf = (float) ($ratingsBefore[$uid] ?? 1000);
-            $won = $winningTeam === 2;
-            $out[$uid] = $this->elo->delta($rSelf, $rOpp2, $won ? 1.0 : 0.0);
-        }
-
-        return $out;
-    }
-
-    /**
-     * Session ends after the final scored match; clear court and queue flags for all roster rows.
-     */
     private function releasePlayersAfterSessionEnded(int $sessionId): void
     {
         GameSessionPlayer::query()
@@ -531,26 +421,5 @@ class FinishGameSessionMatch
                 'is_playing' => false,
                 'is_waiting' => false,
             ]);
-    }
-
-    /**
-     * @param  Collection<int, GameSessionPlayer>  $players
-     * @param  array<int, int>  $teamMap
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildLineupSnapshot(Collection $players, array $teamMap): array
-    {
-        return $players
-            ->map(function (GameSessionPlayer $p) use ($teamMap): array {
-                return [
-                    'game_session_player_id' => (int) $p->id,
-                    'user_id' => $p->user_id !== null ? (int) $p->user_id : null,
-                    'guest_name' => $p->guest_name,
-                    'name' => $p->displayName(),
-                    'team' => isset($teamMap[$p->id]) ? (int) $teamMap[$p->id] : null,
-                ];
-            })
-            ->values()
-            ->all();
     }
 }

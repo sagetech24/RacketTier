@@ -4,10 +4,15 @@ namespace App\Actions;
 
 use App\Models\GameSession;
 use App\Models\User;
+use App\Services\QueueingSessionDraftStore;
 use Illuminate\Support\Facades\DB;
 
 class DeleteQueueingGameSession
 {
+    public function __construct(
+        private QueueingSessionDraftStore $draftStore,
+    ) {}
+
     public function execute(User $user, GameSession $session): void
     {
         if (! $session->isQueueing()) {
@@ -19,6 +24,9 @@ class DeleteQueueingGameSession
         }
 
         DB::transaction(function () use ($session): void {
+            if ($session->isDraft()) {
+                $this->draftStore->delete((int) $session->id);
+            }
             $session->delete();
         });
     }

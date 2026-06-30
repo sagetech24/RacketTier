@@ -4,7 +4,6 @@ import '../../css/dashboard-v2.css';
 import { fetchGameSession, postFinishGameSessionMatch } from '../api/gameSession.js';
 import {
     deleteQueueingSessionMatch,
-    fetchQueueingSessionMatches,
     patchUpdateQueueingSessionMatch,
     postEndQueueingSession,
     postStartQueueingSessionMatch,
@@ -12,11 +11,16 @@ import {
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
+import { QueueingSessionEndLoadingOverlay } from '../components/queueing/QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { QueueingSessionMatchLineupModal } from '../components/queueing/QueueingSessionMatchLineupModal.jsx';
 import { lineupToTeams } from '../lib/queueingMatchLineup.js';
-import { useVisibilityPolling } from '../hooks/useVisibilityPolling.js';
+import {
+    useInvalidateQueueingSession,
+    useQueueingSessionMatchesQuery,
+    useQueueingSessionQuery,
+} from '../hooks/queries/useQueueingSessionQuery.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 function formatTime(iso) {
@@ -288,10 +292,27 @@ export function QueueingSessionMatchesPage() {
     const scrollRafRef = useRef(null);
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
-    const [session, setSession] = useState(null);
-    const [matches, setMatches] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const invalidateQueueingSession = useInvalidateQueueingSession();
+    const {
+        data: session = null,
+        isLoading: sessionLoading,
+        isError: sessionError,
+        refetch: refetchSession,
+    } = useQueueingSessionQuery(sessionId);
+    const {
+        data: matches = [],
+        isLoading: matchesLoading,
+        isError: matchesError,
+        refetch: refetchMatches,
+    } = useQueueingSessionMatchesQuery(sessionId, { session });
+
+    const loading = sessionLoading || matchesLoading;
+    const error =
+        sessionId == null
+            ? 'Invalid session.'
+            : sessionError || matchesError
+              ? 'Could not load session matches.'
+              : '';
     const [busy, setBusy] = useState(false);
     const [actionError, setActionError] = useState('');
     const [finishOpen, setFinishOpen] = useState(false);
@@ -307,52 +328,15 @@ export function QueueingSessionMatchesPage() {
     const [editingMatchNo, setEditingMatchNo] = useState(null);
     const [editInitialTeams, setEditInitialTeams] = useState({ team1: [], team2: [] });
     const [stopSessionOpen, setStopSessionOpen] = useState(false);
+    const [endingSession, setEndingSession] = useState(false);
     /** @type {null | { id: number, matchNo: number | null, status: string }} */
     const [removeMatchConfirm, setRemoveMatchConfirm] = useState(null);
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
-        const [sessionData, matchRows] = await Promise.all([
-            fetchGameSession(String(sessionId)),
-            fetchQueueingSessionMatches(sessionId),
-        ]);
-        setSession(sessionData);
-        setMatches(matchRows);
-    }, [sessionId]);
-
-    useEffect(() => {
-        if (sessionId == null) {
-            setError('Invalid session.');
-            setLoading(false);
-            return;
-        }
-        let cancelled = false;
-        (async () => {
-            setLoading(true);
-            setError('');
-            try {
-                const [sessionData, matchRows] = await Promise.all([fetchGameSession(String(sessionId)), fetchQueueingSessionMatches(sessionId)]);
-                if (!cancelled) {
-                    setSession(sessionData);
-                    setMatches(matchRows);
-                }
-            } catch (e) {
-                if (!cancelled) {
-                    setError(e instanceof Error ? e.message : 'Could not load session matches.');
-                }
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [sessionId]);
-
-    useVisibilityPolling(
-        () => reload(),
-        { enabled: Boolean(session?.is_active), intervalMs: 10_000 },
-    );
+        invalidateQueueingSession(sessionId);
+        await Promise.all([refetchSession(), refetchMatches()]);
+    }, [invalidateQueueingSession, refetchMatches, refetchSession, sessionId]);
 
     async function onEndMatch() {
         if (sessionId == null) return;
@@ -395,7 +379,7 @@ export function QueueingSessionMatchesPage() {
             setT2('');
             setSelectedWinningTeam(null);
             if (session) {
-                setSession({ ...session, status: 'queueing' });
+                invalidateQueueingSession(sessionId);
             }
             void reload();
         } catch (e) {
@@ -491,17 +475,16 @@ export function QueueingSessionMatchesPage() {
     }
 
     async function onStopQueueSession() {
-        if (sessionId == null) return;
+        if (sessionId == null || endingSession) return;
         setActionError('');
-        setBusy(true);
+        setStopSessionOpen(false);
+        setEndingSession(true);
         try {
             await postEndQueueingSession(sessionId);
-            setStopSessionOpen(false);
             navigate(`/queueing-session/${sessionId}`);
         } catch (e) {
+            setEndingSession(false);
             setActionError(e instanceof Error ? e.message : 'Could not stop session.');
-        } finally {
-            setBusy(false);
         }
     }
 
@@ -851,7 +834,7 @@ export function QueueingSessionMatchesPage() {
                 confirmLabel={canForceEndSession ? 'Force stop session' : 'Stop session'}
                 confirmBusyLabel={canForceEndSession ? 'Force stopping…' : 'Stopping…'}
                 onCancel={() => setStopSessionOpen(false)}
-                onConfirm={() => onStopQueueSession()}
+                onConfirm={() => void onStopQueueSession()}
             >
                 {blockEndSession ? (
                     <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
@@ -869,6 +852,12 @@ export function QueueingSessionMatchesPage() {
                     </p>
                 ) : null}
             </ConfirmActionModal>
+
+            <QueueingSessionEndLoadingOverlay
+                open={endingSession}
+                queueName={session?.queue_name ?? session?.sport?.name}
+            />
+
             <DashboardMobileNav />
         </div>
     );

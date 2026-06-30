@@ -12,6 +12,10 @@ class GameSession extends Model
     protected $fillable = [
         'facility_id',
         'session_context',
+        'persistence_state',
+        'draft_version',
+        'draft_participant_user_ids',
+        'draft_snapshot',
         'queue_name',
         'win_points',
         'loss_points',
@@ -48,6 +52,9 @@ class GameSession extends Model
             'ended_at' => 'datetime',
             'last_finished_at' => 'datetime',
             'last_result_breakdown' => 'array',
+            'draft_participant_user_ids' => 'array',
+            'draft_snapshot' => 'array',
+            'draft_version' => 'integer',
         ];
     }
 
@@ -110,10 +117,23 @@ class GameSession extends Model
         return $this->session_context === 'queueing';
     }
 
+    public function isDraft(): bool
+    {
+        return $this->isQueueing() && ($this->persistence_state ?? 'persisted') === 'draft';
+    }
+
     public function userCanView(User $user): bool
     {
         if ($this->userCanManage($user)) {
             return true;
+        }
+
+        if ($this->isDraft()) {
+            $participants = is_array($this->draft_participant_user_ids)
+                ? $this->draft_participant_user_ids
+                : [];
+
+            return in_array((int) $user->id, array_map('intval', $participants), true);
         }
 
         if (isset($this->viewer_is_participant)) {

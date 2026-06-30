@@ -6,6 +6,8 @@ use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
 use App\Models\User;
+use App\Services\QueueingSessionDraftState;
+use App\Services\QueueingSessionDraftStore;
 use App\Services\QueueingSessionState;
 use Illuminate\Support\Facades\DB;
 
@@ -13,12 +15,19 @@ class EndQueueingGameSession
 {
     public function __construct(
         private QueueingSessionState $state,
+        private PersistQueueingSession $persistQueueingSession,
+        private QueueingSessionDraftStore $draftStore,
+        private QueueingSessionDraftState $draftState,
     ) {}
 
     public function execute(GameSession $session, ?User $actingUser = null): GameSession
     {
         if (! $session->isQueueing()) {
             abort(422, 'This action only applies to queueing sessions.');
+        }
+
+        if ($session->isDraft()) {
+            return $this->endDraftSession($session, $actingUser);
         }
 
         return DB::transaction(function () use ($session, $actingUser): GameSession {
@@ -61,5 +70,30 @@ class EndQueueingGameSession
 
             return $locked->fresh();
         });
+    }
+
+    private function endDraftSession(GameSession $session, ?User $actingUser): GameSession
+    {
+        $forceAsAdmin = $actingUser !== null && $actingUser->isAdmin();
+        $draft = $this->draftStore->load((int) $session->id);
+
+        if ($draft->hasOngoingMatch()) {
+            if (! $forceAsAdmin) {
+                abort(422, 'End or finish the in-progress match before closing the session.');
+            }
+
+            $this->draftStore->mutate($session, function ($draft) {
+                $draft->matches = array_values(array_filter(
+                    $draft->matches,
+                    fn (array $m): bool => ! in_array($m['status'] ?? '', ['ongoing', 'queueing'], true),
+                ));
+                $this->draftState->clearOrphanPlayingPlayers($draft);
+                $this->draftState->syncSessionMetaStatus($draft);
+
+                return $draft;
+            });
+        }
+
+        return $this->persistQueueingSession->execute($session);
     }
 }

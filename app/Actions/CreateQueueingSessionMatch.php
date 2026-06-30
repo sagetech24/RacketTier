@@ -5,6 +5,9 @@ namespace App\Actions;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
+use App\Services\QueueingSessionDraftHydrator;
+use App\Services\QueueingSessionDraftLineup;
+use App\Services\QueueingSessionDraftStore;
 use App\Services\QueueingSessionMatchLineup;
 use Illuminate\Support\Facades\DB;
 
@@ -12,6 +15,9 @@ class CreateQueueingSessionMatch
 {
     public function __construct(
         private QueueingSessionMatchLineup $lineup,
+        private QueueingSessionDraftStore $draftStore,
+        private QueueingSessionDraftLineup $draftLineup,
+        private QueueingSessionDraftHydrator $hydrator,
     ) {}
 
     /**
@@ -28,6 +34,30 @@ class CreateQueueingSessionMatch
         }
 
         $required = $session->match_type === 'doubles' ? 4 : 2;
+
+        if ($session->isDraft()) {
+            $matchId = null;
+            $hydrated = $this->draftStore->mutate($session, function ($draft) use ($session, $manualLineup, $required, &$matchId) {
+                $picked = $this->draftLineup->resolveManualLineup($session, $draft, $manualLineup, $required);
+                $matchId = $draft->allocateMatchId();
+                $draft->matches[] = [
+                    'id' => $matchId,
+                    'match_no' => $draft->nextMatchNo(),
+                    'status' => 'queueing',
+                    'lineup' => $this->draftLineup->buildSnapshot($picked),
+                    'team1_score' => null,
+                    'team2_score' => null,
+                    'winning_team' => null,
+                    'started_at' => null,
+                    'finished_at' => null,
+                    'result_breakdown' => null,
+                ];
+
+                return $draft;
+            });
+
+            return $this->hydrator->hydrateMatch($hydrated, (int) $matchId);
+        }
 
         return DB::transaction(function () use ($session, $manualLineup, $required): QueueingSessionMatch {
             /** @var GameSession $locked */

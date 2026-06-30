@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\EnrichGameSessionPlayers;
-use App\Http\Resources\GameSessionResource;
+use App\Http\Controllers\Concerns\PreparesQueueingSessionResponse;
 use App\Models\GameSession;
+use App\Services\QueueingSessionDraftHydrator;
 use App\Services\QueueingSessionState;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class GameSessionShowController extends Controller
 {
+    use PreparesQueueingSessionResponse;
+
     public function __construct(
         private QueueingSessionState $queueingSessionState,
-        private EnrichGameSessionPlayers $enrichGameSessionPlayers,
     ) {}
 
     public function show(Request $request, GameSession $gameSession): JsonResponse
@@ -44,22 +45,10 @@ class GameSessionShowController extends Controller
 
     private function sessionResponse(GameSession $gameSession): JsonResponse
     {
-        if ($this->queueingSessionState->reconcileStaleActiveSessionIfDue($gameSession)) {
+        if (! $gameSession->isDraft() && $this->queueingSessionState->reconcileStaleActiveSessionIfDue($gameSession)) {
             $gameSession->refresh();
         }
 
-        $gameSession->load([
-            'sport',
-            'facility',
-            'creator:id,name,email',
-            'players' => fn ($q) => $q->orderByDesc('is_playing')->orderBy('queue_position'),
-            'players.user:id,name,email',
-        ]);
-        $gameSession->loadCount('players');
-        $this->enrichGameSessionPlayers->apply($gameSession);
-
-        return response()->json([
-            'data' => new GameSessionResource($gameSession),
-        ]);
+        return $this->queueingSessionJson($gameSession);
     }
 }

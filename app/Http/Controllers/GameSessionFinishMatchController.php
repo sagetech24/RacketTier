@@ -3,13 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Actions\FinishGameSessionMatch;
+use App\Http\Controllers\Concerns\PreparesQueueingSessionResponse;
 use App\Http\Requests\FinishGameSessionMatchRequest;
-use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
 use Illuminate\Http\JsonResponse;
 
 class GameSessionFinishMatchController extends Controller
 {
+    use PreparesQueueingSessionResponse;
+
     public function __invoke(
         FinishGameSessionMatchRequest $request,
         GameSession $gameSession,
@@ -21,7 +23,7 @@ class GameSessionFinishMatchController extends Controller
             : null;
 
         if ($gameSession->isQueueing() && (bool) $gameSession->skip_scores) {
-            $finishGameSessionMatch->execute(
+            $gameSession = $finishGameSessionMatch->execute(
                 $gameSession,
                 null,
                 null,
@@ -29,7 +31,7 @@ class GameSessionFinishMatchController extends Controller
                 (int) $validated['winning_team'],
             );
         } else {
-            $finishGameSessionMatch->execute(
+            $gameSession = $finishGameSessionMatch->execute(
                 $gameSession,
                 (int) $validated['team1_score'],
                 (int) $validated['team2_score'],
@@ -37,18 +39,10 @@ class GameSessionFinishMatchController extends Controller
             );
         }
 
-        $gameSession->refresh();
-        $gameSession->load([
-            'sport',
-            'facility',
-            'creator:id,name,email',
-            'players' => fn ($q) => $q->orderByDesc('is_playing')->orderBy('queue_position'),
-            'players.user:id,name,email',
-        ]);
-        $gameSession->loadCount('players');
+        if (! $gameSession->isDraft()) {
+            $gameSession->refresh();
+        }
 
-        return response()->json([
-            'data' => new GameSessionResource($gameSession),
-        ]);
+        return $this->queueingSessionJson($gameSession);
     }
 }

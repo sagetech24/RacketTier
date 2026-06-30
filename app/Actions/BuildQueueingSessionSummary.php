@@ -5,9 +5,16 @@ namespace App\Actions;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\RatingHistory;
+use App\Services\QueueingSessionDraftHydrator;
+use App\Services\QueueingSessionDraftStore;
 
 class BuildQueueingSessionSummary
 {
+    public function __construct(
+        private QueueingSessionDraftStore $draftStore,
+        private QueueingSessionDraftHydrator $hydrator,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -15,6 +22,10 @@ class BuildQueueingSessionSummary
     {
         if (! $session->isQueueing()) {
             abort(422, 'Summary is only available for queueing sessions.');
+        }
+
+        if ($session->isDraft() && $session->is_active) {
+            return $this->summaryFromDraft($session);
         }
 
         $players = GameSessionPlayer::query()
@@ -25,13 +36,39 @@ class BuildQueueingSessionSummary
             ->orderBy('id')
             ->get();
 
+        return $this->buildSummary($session, $players);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function summaryFromDraft(GameSession $session): array
+    {
+        $hydrated = $this->hydrator->hydrate($session);
+        $players = $hydrated->players->sortBy([
+            ['session_points', 'desc'],
+            ['wins_count', 'desc'],
+            ['id', 'asc'],
+        ])->values();
+
+        return $this->buildSummary($hydrated, $players, eloDeltaSum: 0);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, GameSessionPlayer>  $players
+     * @return array<string, mixed>
+     */
+    private function buildSummary(GameSession $session, $players, ?int $eloDeltaSum = null): array
+    {
         $totalWins = (int) $players->sum('wins_count');
         $totalLosses = (int) $players->sum('losses_count');
         $pointsAwardedSum = (int) $players->sum('session_points');
 
-        $eloDeltaSum = (int) RatingHistory::query()
-            ->where('game_session_id', $session->id)
-            ->sum('rating_change');
+        if ($eloDeltaSum === null) {
+            $eloDeltaSum = (int) RatingHistory::query()
+                ->where('game_session_id', $session->id)
+                ->sum('rating_change');
+        }
 
         $ranked = $players->values()->map(function (GameSessionPlayer $p, int $idx): array {
             $isGuest = $p->isGuest();

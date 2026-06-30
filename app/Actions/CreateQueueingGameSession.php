@@ -5,10 +5,15 @@ namespace App\Actions;
 use App\Models\GameSession;
 use App\Models\Sport;
 use App\Models\User;
+use App\Services\QueueingSessionDraftStore;
 use Illuminate\Support\Facades\DB;
 
 class CreateQueueingGameSession
 {
+    public function __construct(
+        private QueueingSessionDraftStore $draftStore,
+    ) {}
+
     /**
      * @return array{session: GameSession}
      */
@@ -27,6 +32,9 @@ class CreateQueueingGameSession
             $session = GameSession::query()->create([
                 'facility_id' => null,
                 'session_context' => 'queueing',
+                'persistence_state' => 'draft',
+                'draft_version' => 0,
+                'draft_participant_user_ids' => [],
                 'queue_name' => $queueName,
                 'win_points' => $winPoints,
                 'loss_points' => $lossPoints,
@@ -41,6 +49,8 @@ class CreateQueueingGameSession
                 'court_preference' => null,
                 'started_at' => now(),
             ]);
+
+            $this->draftStore->initialize($session);
 
             $session->load(['sport', 'creator']);
 

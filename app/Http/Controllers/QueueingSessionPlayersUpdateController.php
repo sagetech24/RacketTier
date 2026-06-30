@@ -3,14 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Actions\UpdateQueueingSessionPlayer;
+use App\Http\Controllers\Concerns\PreparesQueueingSessionResponse;
 use App\Http\Requests\UpdateQueueingSessionPlayerRequest;
-use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use Illuminate\Http\JsonResponse;
 
 class QueueingSessionPlayersUpdateController extends Controller
 {
+    use PreparesQueueingSessionResponse;
+
     public function __invoke(
         UpdateQueueingSessionPlayerRequest $request,
         GameSession $gameSession,
@@ -37,16 +39,7 @@ class QueueingSessionPlayersUpdateController extends Controller
         }
 
         $gameSession->refresh();
-        $gameSession->load([
-            'sport',
-            'creator:id,name,email',
-            'players' => fn ($q) => $q->orderByDesc('is_playing')->orderBy('queue_position'),
-            'players.user:id,name,email',
-        ]);
-        $gameSession->loadCount('players');
 
-        return response()->json([
-            'data' => new GameSessionResource($gameSession),
-        ]);
+        return $this->queueingSessionJson($gameSession);
     }
 }

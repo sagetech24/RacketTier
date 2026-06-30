@@ -63,6 +63,8 @@ class GameSessionResource extends JsonResource
             'loss_points' => $this->loss_points !== null ? (int) $this->loss_points : null,
             'skip_scores' => (bool) ($this->skip_scores ?? false),
             'completed_matches_count' => (int) ($this->completed_matches_count ?? 0),
+            'persistence_state' => $this->persistence_state ?? 'persisted',
+            'draft_version' => (int) ($this->draft_version ?? 0),
             'facility' => $this->when(
                 $this->relationLoaded('facility') && $this->facility_id !== null,
                 fn (): array => [
