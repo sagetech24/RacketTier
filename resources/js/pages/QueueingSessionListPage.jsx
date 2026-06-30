@@ -53,18 +53,18 @@ function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, 
             <p className="text-sm text-[#c8c5d2]/90 capitalize">
                 QM: {row.created_by?.name ?? 'Unknown'} <span className="ml-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">{row.match_type}</span>
             </p>
-            <p className="mt-3 text-xs text-[#918f9c] md:grid md:grid-cols-1 md:gap-x-4 md:gap-y-0.5">
-                <span className="space-y-1">
-                    <p>Started: {formatTime(row.started_at)}</p>
-                    <p>Ended: {formatTime(row.ended_at)}</p>
-                </span>
-                <span className="space-y-1">
-                    <p>Players: {row.participant_count ?? 0}</p>
+            <div className="mt-3 text-xs text-[#918f9c] md:grid md:grid-cols-1 md:gap-x-4 md:gap-y-0.5">
+                <div className="space-y-1">
+                    <div>Started: {formatTime(row.started_at)}</div>
+                    <div>Ended: {formatTime(row.ended_at)}</div>
+                </div>
+                <div className="space-y-1">
+                    <div>Players: {row.participant_count ?? 0}</div>
                     {row.completed_matches_count != null ? (
-                        <p>Matches: {row.completed_matches_count}</p>
+                        <div>Matches: {row.completed_matches_count}</div>
                     ) : null}
-                </span>
-            </p>
+                </div>
+            </div>
             <div className="mt-3 flex w-full flex-wrap gap-2 md:gap-4">
                 {!viewOnly && row.can_manage && onEdit ? (
                     <button

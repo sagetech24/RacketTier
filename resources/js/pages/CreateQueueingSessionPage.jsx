@@ -89,7 +89,7 @@ export function CreateQueueingSessionPage() {
                     Create <span className="text-[#c2c1ff]">New Queue</span>
                 </h1>
                 <p className="mb-8 text-sm text-[#c8c5d2]/80 md:max-w-2xl md:text-base">
-                    You will be the queue master. Add players on the next screen, then start matches when the roster is ready.
+                    You will be the queue master. After creating the session, you can add players and start matches when the players are ready.
                 </p>
 
                 {loadError ? (
@@ -108,30 +108,13 @@ export function CreateQueueingSessionPage() {
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit}>
-                        <div className="mb-4 space-y-6 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 md:p-6 lg:p-8">
-                            <div className="md:grid md:grid-cols-2 md:items-start md:gap-8">
-                                <div className="space-y-6">
-                            <div>
-                                <label htmlFor="queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                    Name of the queue
-                                </label>
-                                <input
-                                    id="queue-name"
-                                    type="text"
-                                    value={queueName}
-                                    onChange={(e) => setQueueName(e.target.value)}
-                                    maxLength={120}
-                                    placeholder="e.g. Friday night doubles"
-                                    autoComplete="off"
-                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60 md:py-3 md:text-base"
-                                />
-                            </div>
+                        <div className="mb-4 space-y-6 rounded-xl border border-[#484848] bg-[#1b1b1e] p-5 md:p-6 lg:p-8">
                             <div>
                                 <label className="mb-4 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Sport</label>
                                 {sports.length === 0 ? (
                                     <p className="text-sm text-[#918f9c]">No sports configured. Run database migrations.</p>
                                 ) : (
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                                         {sports.map((s) => (
                                             <SportCard
                                                 key={s.id}
@@ -145,11 +128,24 @@ export function CreateQueueingSessionPage() {
                                     </div>
                                 )}
                             </div>
-                                </div>
-                                <div className="mt-6 space-y-6 md:mt-0">
+                            <div>
+                                <label htmlFor="queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
+                                    Queue Name
+                                </label>
+                                <input
+                                    id="queue-name"
+                                    type="text"
+                                    value={queueName}
+                                    onChange={(e) => setQueueName(e.target.value)}
+                                    maxLength={120}
+                                    placeholder="e.g. Friday night doubles"
+                                    autoComplete="off"
+                                    className="w-full rounded-lg border border-[#484848] bg-[#131316] outline-none focus:ring-1 focus:ring-green-400 px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60 md:py-3 md:text-base"
+                                />
+                            </div>
                             <div>
                                 <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
-                                <div className="flex gap-2">
+                                <div className="flex">
                                     {(['singles', 'doubles']).map((t) => (
                                         <button
                                             key={t}
@@ -157,9 +153,14 @@ export function CreateQueueingSessionPage() {
                                             onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
                                             className={
                                                 matchType === t
-                                                    ? 'flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
-                                                    : 'flex-1 rounded-lg border border-[#2a2a2d] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
+                                                    ? 'flex-1 rounded-full rounded-l-none bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
+                                                    : 'flex-1 rounded-full rounded-r-none border border-[#484848] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
                                             }
+                                            style={{
+                                                borderRadius: t === 'singles' ? '10px 0 0 10px' : '0 10px 10px 0',
+                                                borderLeft: t === 'singles' ? 'none' : '1px solid #2a2a2d',
+                                                borderRight: t === 'singles' ? '1px solid #2a2a2d' : 'none',
+                                            }}
                                         >
                                             {t === 'singles' ? 'Singles' : 'Doubles'}
                                         </button>
@@ -175,7 +176,7 @@ export function CreateQueueingSessionPage() {
                                         max={30}
                                         value={winPoints}
                                         onChange={(e) => setWinPoints(e.target.value)}
-                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                        className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-sm"
                                     />
                                 </div>
                                 <div>
@@ -186,7 +187,7 @@ export function CreateQueueingSessionPage() {
                                         max={15}
                                         value={lossPoints}
                                         onChange={(e) => setLossPoints(e.target.value)}
-                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                        className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-sm"
                                     />
                                 </div>
                             </div>
@@ -194,8 +195,6 @@ export function CreateQueueingSessionPage() {
                             {submitError ? (
                                 <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{submitError}</p>
                             ) : null}
-                                </div>
-                            </div>
                         </div>
                         <button
                             type="submit"

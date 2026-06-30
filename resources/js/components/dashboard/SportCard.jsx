@@ -36,8 +36,8 @@ export function SportCard({ name, icon, symbol, selected = false, onClick }) {
             <h3
                 className={
                     selected
-                        ? 'text-lg font-extrabold tracking-tight text-[#003919] lg:text-xl'
-                        : 'text-lg font-extrabold tracking-tight text-[#c8c5d2] group-hover:text-[#c2c1ff] lg:text-xl'
+                        ? 'whitespace-nowrap text-base font-extrabold tracking-tight text-[#003919] md:text-sm lg:text-lg xl:text-xl'
+                        : 'whitespace-nowrap text-base font-extrabold tracking-tight text-[#c8c5d2] group-hover:text-[#c2c1ff] md:text-sm lg:text-lg xl:text-xl'
                 }
             >
                 {name}

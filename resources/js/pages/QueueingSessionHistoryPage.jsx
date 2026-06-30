@@ -57,18 +57,18 @@ function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
                     </span>
                 ) : null}
             </p>
-            <p className="mt-3 text-xs text-[#918f9c] md:grid md:grid-cols-1 md:gap-x-4 md:gap-y-0.5">
-                <span className="space-y-1">
-                    <p>Started: {formatTime(row.started_at)}</p>
-                    <p>Ended: {formatTime(row.ended_at)}</p>
-                </span>
-                <span className="space-y-1">
-                    <p>Players: {row.participant_count ?? 0}</p>
+            <div className="mt-3 text-xs text-[#918f9c] md:grid md:grid-cols-1 md:gap-x-4 md:gap-y-0.5">
+                <div className="space-y-1">
+                    <div>Started: {formatTime(row.started_at)}</div>
+                    <div>Ended: {formatTime(row.ended_at)}</div>
+                </div>
+                <div className="space-y-1">
+                    <div>Players: {row.participant_count ?? 0}</div>
                     {row.completed_matches_count != null ? (
-                        <p>Matches: {row.completed_matches_count}</p>
+                        <div>Matches: {row.completed_matches_count}</div>
                     ) : null}
-                </span>
-            </p>
+                </div>
+            </div>
             <div className="mt-3 flex w-full flex-wrap gap-2 md:gap-4">
                 {showRemove && onRemove ? (
                     <button
