@@ -97,6 +97,8 @@ export function postCreateGameSession(payload) {
  *   queue_name?: string | null,
  *   win_points?: number | null,
  *   loss_points?: number | null,
+ *   skip_scores?: boolean,
+ *   auto_match_criteria?: import('./queueingSession.js').AutoMatchCriteria,
  *   completed_matches_count?: number,
  *   facility?: { id: number, name: string, address: string | null },
  *   sport: { id?: number, slug: string, name: string, code: string, icon?: string },

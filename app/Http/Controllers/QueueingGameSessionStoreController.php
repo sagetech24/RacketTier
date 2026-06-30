@@ -22,6 +22,7 @@ class QueueingGameSessionStoreController extends Controller
             (int) $request->validated('win_points'),
             (int) $request->validated('loss_points'),
             (bool) $request->boolean('skip_scores'),
+            $request->autoMatchCriteria(),
         );
 
         $session = $result['session'];

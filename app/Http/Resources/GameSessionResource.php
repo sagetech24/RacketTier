@@ -62,6 +62,10 @@ class GameSessionResource extends JsonResource
             'win_points' => $this->win_points !== null ? (int) $this->win_points : null,
             'loss_points' => $this->loss_points !== null ? (int) $this->loss_points : null,
             'skip_scores' => (bool) ($this->skip_scores ?? false),
+            'auto_match_criteria' => $this->when(
+                $this->isQueueing(),
+                fn (): array => $this->resolveAutoMatchCriteria()->toStoredArray(),
+            ),
             'completed_matches_count' => (int) ($this->completed_matches_count ?? 0),
             'persistence_state' => $this->persistence_state ?? 'persisted',
             'draft_version' => (int) ($this->draft_version ?? 0),

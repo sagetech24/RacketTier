@@ -20,6 +20,29 @@ readonly class AutoMatchCriteria
     /**
      * @param  array<string, mixed>  $validated
      */
+    public static function defaults(): self
+    {
+        return new self;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $stored
+     */
+    public static function fromStored(?array $stored): self
+    {
+        if ($stored === null || $stored === []) {
+            return self::defaults();
+        }
+
+        return new self(
+            skillLevel: self::parseBool($stored['skill_level'] ?? true),
+            skillMatchMode: self::parseSkillMatchMode($stored['skill_match_mode'] ?? self::SKILL_MODE_BALANCED),
+            wlStatistics: self::parseBool($stored['wl_statistics'] ?? true),
+            sequence: self::parseBool($stored['sequence'] ?? true),
+            genderlessMixed: self::parseBool($stored['genderless_mixed'] ?? true),
+        );
+    }
+
     public static function fromRequest(array $validated): self
     {
         return new self(
@@ -30,6 +53,28 @@ readonly class AutoMatchCriteria
             genderlessMixed: self::parseBool($validated['genderless_mixed'] ?? true),
             refreshSeed: self::parseRefreshSeed($validated['refresh_seed'] ?? null),
         );
+    }
+
+    /**
+     * @return array<string, bool|string>
+     */
+    public function toStoredArray(): array
+    {
+        return [
+            'skill_level' => $this->skillLevel,
+            'skill_match_mode' => $this->skillMatchMode,
+            'wl_statistics' => $this->wlStatistics,
+            'sequence' => $this->sequence,
+            'genderless_mixed' => $this->genderlessMixed,
+        ];
+    }
+
+    public function hasAnyCriterion(): bool
+    {
+        return $this->skillLevel
+            || $this->wlStatistics
+            || $this->sequence
+            || $this->genderlessMixed;
     }
 
     /**

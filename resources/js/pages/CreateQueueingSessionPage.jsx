@@ -7,6 +7,12 @@ import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.j
 import { SportCard } from '../components/dashboard/SportCard.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
+import {
+    DEFAULT_AUTO_MATCH_CRITERIA,
+    QueueingSessionAutoMatchCriteriaField,
+    autoMatchCriteriaHasAny,
+    normalizeAutoMatchCriteria,
+} from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export function CreateQueueingSessionPage() {
@@ -21,6 +27,7 @@ export function CreateQueueingSessionPage() {
     const [winPoints, setWinPoints] = useState('30');
     const [lossPoints, setLossPoints] = useState('8');
     const [skipScores, setSkipScores] = useState(false);
+    const [autoMatchCriteria, setAutoMatchCriteria] = useState(DEFAULT_AUTO_MATCH_CRITERIA);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
 
@@ -63,8 +70,13 @@ export function CreateQueueingSessionPage() {
             setSubmitError('Enter a name for this queue.');
             return;
         }
+        if (!autoMatchCriteriaHasAny(autoMatchCriteria)) {
+            setSubmitError('Select at least one auto-match criterion.');
+            return;
+        }
         setSubmitting(true);
         try {
+            const normalizedCriteria = normalizeAutoMatchCriteria(autoMatchCriteria);
             const data = await postCreateQueueingSession({
                 queue_name: name,
                 sport_slug: sportSlug,
@@ -72,6 +84,7 @@ export function CreateQueueingSessionPage() {
                 win_points: w,
                 loss_points: l,
                 skip_scores: skipScores,
+                ...normalizedCriteria,
             });
             navigate(`/queueing-session/${data.id}`, { replace: true });
         } catch (err) {
@@ -192,6 +205,11 @@ export function CreateQueueingSessionPage() {
                                 </div>
                             </div>
                             <QueueingSessionSkipScoresField checked={skipScores} onChange={setSkipScores} disabled={submitting} />
+                            <QueueingSessionAutoMatchCriteriaField
+                                value={autoMatchCriteria}
+                                onChange={setAutoMatchCriteria}
+                                disabled={submitting}
+                            />
                             {submitError ? (
                                 <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{submitError}</p>
                             ) : null}

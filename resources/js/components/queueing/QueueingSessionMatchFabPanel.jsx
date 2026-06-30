@@ -6,11 +6,7 @@ import {
 } from '../../api/queueingSession.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { AutoMatchProposalsModal } from './AutoMatchProposalsModal.jsx';
-import {
-    AutoMatchCriteriaModal,
-    loadAutoMatchCriteria,
-    saveAutoMatchCriteria,
-} from './AutoMatchCriteriaModal.jsx';
+import { parseAutoMatchCriteria } from './QueueingSessionAutoMatchCriteriaField.jsx';
 import { QueueingSessionMatchLineupModal } from './QueueingSessionMatchLineupModal.jsx';
 
 /**
@@ -37,7 +33,6 @@ export function QueueingSessionMatchFabPanel({
     const [matches, setMatches] = useState(matchesProp ?? []);
     const [localSession, setLocalSession] = useState(session);
     const [createMatchOpen, setCreateMatchOpen] = useState(false);
-    const [autoMatchCriteriaOpen, setAutoMatchCriteriaOpen] = useState(false);
     const [autoMatchProposalsOpen, setAutoMatchProposalsOpen] = useState(false);
     /** @type {import('../../api/queueingSession.js').AutoMatchCriteria | null} */
     const [autoMatchCriteria, setAutoMatchCriteria] = useState(null);
@@ -102,12 +97,12 @@ export function QueueingSessionMatchFabPanel({
         setMenuOpen((open) => !open);
     }
 
-    async function handleOpenAutoMatch() {
-        if (sessionId == null) return;
+    function handleOpenAutoMatch() {
+        if (sessionId == null || localSession == null) return;
         closeMenu();
         onActionError?.('');
-        setAutoMatchCriteria(loadAutoMatchCriteria(sessionId));
-        setAutoMatchCriteriaOpen(true);
+        setAutoMatchCriteria(parseAutoMatchCriteria(localSession.auto_match_criteria));
+        setAutoMatchProposalsOpen(true);
     }
 
     async function handleOpenCreateMatch() {
@@ -226,29 +221,11 @@ export function QueueingSessionMatchFabPanel({
                 </button>
             </div>
 
-            <AutoMatchCriteriaModal
-                open={autoMatchCriteriaOpen}
-                initialCriteria={autoMatchCriteria ?? undefined}
-                onClose={() => setAutoMatchCriteriaOpen(false)}
-                onConfirm={(criteria) => {
-                    if (sessionId != null) {
-                        saveAutoMatchCriteria(sessionId, criteria);
-                    }
-                    setAutoMatchCriteria(criteria);
-                    setAutoMatchCriteriaOpen(false);
-                    setAutoMatchProposalsOpen(true);
-                }}
-            />
-
             <AutoMatchProposalsModal
                 open={autoMatchProposalsOpen}
                 sessionId={sessionId}
                 criteria={autoMatchCriteria}
                 onClose={() => setAutoMatchProposalsOpen(false)}
-                onEditCriteria={() => {
-                    setAutoMatchProposalsOpen(false);
-                    setAutoMatchCriteriaOpen(true);
-                }}
                 onApproved={() => handleAutoMatchApproved()}
             />
 

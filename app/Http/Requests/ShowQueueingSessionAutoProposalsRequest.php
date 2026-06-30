@@ -39,8 +39,11 @@ class ShowQueueingSessionAutoProposalsRequest extends FormRequest
         ];
     }
 
-    public function criteria(): AutoMatchCriteria
+    public function criteria(GameSession $session): AutoMatchCriteria
     {
-        return AutoMatchCriteria::fromRequest($this->validated());
+        $base = $session->resolveAutoMatchCriteria()->toStoredArray();
+        $overrides = $this->validated();
+
+        return AutoMatchCriteria::fromRequest(array_merge($base, $overrides));
     }
 }

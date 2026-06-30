@@ -3,6 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchQueueingSessions, patchUpdateQueueingSession, deleteQueueingSession } from '../api/queueingSession.js';
 import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
+import {
+    DEFAULT_AUTO_MATCH_CRITERIA,
+    QueueingSessionAutoMatchCriteriaField,
+    autoMatchCriteriaHasAny,
+    normalizeAutoMatchCriteria,
+    parseAutoMatchCriteria,
+} from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
@@ -143,6 +150,7 @@ export function QueueingSessionListPage() {
     const [editWinPoints, setEditWinPoints] = useState('30');
     const [editLossPoints, setEditLossPoints] = useState('8');
     const [editSkipScores, setEditSkipScores] = useState(false);
+    const [editAutoMatchCriteria, setEditAutoMatchCriteria] = useState(DEFAULT_AUTO_MATCH_CRITERIA);
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [editError, setEditError] = useState('');
     /** @type {import('../api/gameSession.js').GameSessionDetail | null} */
@@ -156,6 +164,7 @@ export function QueueingSessionListPage() {
         setEditWinPoints(String(row.win_points ?? 30));
         setEditLossPoints(String(row.loss_points ?? 8));
         setEditSkipScores(Boolean(row.skip_scores));
+        setEditAutoMatchCriteria(parseAutoMatchCriteria(row.auto_match_criteria));
         setEditError('');
     }
 
@@ -177,14 +186,20 @@ export function QueueingSessionListPage() {
             setEditError('Enter valid point numbers.');
             return;
         }
+        if (!autoMatchCriteriaHasAny(editAutoMatchCriteria)) {
+            setEditError('Select at least one auto-match criterion.');
+            return;
+        }
         setEditSubmitting(true);
         setEditError('');
         try {
+            const normalizedCriteria = normalizeAutoMatchCriteria(editAutoMatchCriteria);
             const updated = await patchUpdateQueueingSession(editRow.id, {
                 queue_name: name,
                 win_points: w,
                 loss_points: l,
                 skip_scores: editSkipScores,
+                ...normalizedCriteria,
             });
             setRows((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
             closeEditModal();
@@ -445,6 +460,11 @@ export function QueueingSessionListPage() {
                             <QueueingSessionSkipScoresField
                                 checked={editSkipScores}
                                 onChange={setEditSkipScores}
+                                disabled={editSubmitting}
+                            />
+                            <QueueingSessionAutoMatchCriteriaField
+                                value={editAutoMatchCriteria}
+                                onChange={setEditAutoMatchCriteria}
                                 disabled={editSubmitting}
                             />
                             {editError ? (

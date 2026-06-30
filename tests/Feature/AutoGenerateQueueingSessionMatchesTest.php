@@ -345,6 +345,32 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $this->assertStringStartsWith('auto-1-', $refreshed['proposals'][0]['proposal_id']);
     }
 
+    public function test_auto_proposals_endpoint_uses_session_stored_criteria_when_no_query_params(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+        $session->update([
+            'auto_match_criteria' => [
+                'skill_level' => true,
+                'skill_match_mode' => AutoMatchCriteria::SKILL_MODE_SAME_LEVEL,
+                'wl_statistics' => false,
+                'sequence' => true,
+                'genderless_mixed' => true,
+            ],
+        ]);
+        $this->addPlayer($session, 1, 4);
+        $this->addPlayer($session, 2, 4);
+
+        $response = $this->actingAs($host)->getJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/auto-proposals',
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('data.criteria.skill_match_mode', 'same_level');
+        $response->assertJsonPath('data.criteria.wl_statistics', false);
+        $response->assertJsonPath('data.proposals.0.bracket_label', 'Level 4 — Sempai');
+    }
+
     public function test_auto_proposals_endpoint_accepts_refresh_seed(): void
     {
         $host = User::factory()->create();

@@ -25,6 +25,7 @@ class QueueingGameSessionUpdateController extends Controller
             (int) $request->validated('win_points'),
             (int) $request->validated('loss_points'),
             (bool) $request->boolean('skip_scores'),
+            $request->hasAnyAutoMatchCriteriaInput() ? $request->autoMatchCriteria() : null,
         );
 
         $session->load([

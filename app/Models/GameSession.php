@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Data\AutoMatchCriteria;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,7 @@ class GameSession extends Model
         'win_points',
         'loss_points',
         'skip_scores',
+        'auto_match_criteria',
         'completed_matches_count',
         'sport_id',
         'match_type',
@@ -45,6 +47,7 @@ class GameSession extends Model
         return [
             'is_active' => 'boolean',
             'skip_scores' => 'boolean',
+            'auto_match_criteria' => 'array',
             'win_points' => 'integer',
             'loss_points' => 'integer',
             'completed_matches_count' => 'integer',
@@ -165,5 +168,12 @@ class GameSession extends Model
         }
 
         return $this->userCanManage($user);
+    }
+
+    public function resolveAutoMatchCriteria(): AutoMatchCriteria
+    {
+        $stored = is_array($this->auto_match_criteria) ? $this->auto_match_criteria : null;
+
+        return AutoMatchCriteria::fromStored($stored);
     }
 }

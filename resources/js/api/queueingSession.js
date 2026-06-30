@@ -6,6 +6,11 @@ import { deleteJson, patchJson, postJson } from '../lib/http.js';
  *   win_points: number,
  *   loss_points: number,
  *   skip_scores?: boolean,
+ *   skill_level?: boolean,
+ *   skill_match_mode?: 'balanced' | 'same_level',
+ *   wl_statistics?: boolean,
+ *   sequence?: boolean,
+ *   genderless_mixed?: boolean,
  * }} payload
  */
 export async function patchUpdateQueueingSession(sessionId, payload) {
@@ -61,6 +66,11 @@ export async function deleteQueueingSession(sessionId) {
  *   win_points: number,
  *   loss_points: number,
  *   skip_scores?: boolean,
+ *   skill_level?: boolean,
+ *   skill_match_mode?: 'balanced' | 'same_level',
+ *   wl_statistics?: boolean,
+ *   sequence?: boolean,
+ *   genderless_mixed?: boolean,
  * }} payload
  */
 export async function postCreateQueueingSession(payload) {

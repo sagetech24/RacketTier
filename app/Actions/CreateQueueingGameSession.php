@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Data\AutoMatchCriteria;
 use App\Models\GameSession;
 use App\Models\Sport;
 use App\Models\User;
@@ -25,10 +26,12 @@ class CreateQueueingGameSession
         int $winPoints,
         int $lossPoints,
         bool $skipScores = false,
+        ?AutoMatchCriteria $autoMatchCriteria = null,
     ): array {
         $sport = Sport::query()->where('slug', $sportSlug)->firstOrFail();
+        $autoMatchCriteria ??= AutoMatchCriteria::defaults();
 
-        return DB::transaction(function () use ($creator, $sport, $queueName, $matchType, $winPoints, $lossPoints, $skipScores): array {
+        return DB::transaction(function () use ($creator, $sport, $queueName, $matchType, $winPoints, $lossPoints, $skipScores, $autoMatchCriteria): array {
             $session = GameSession::query()->create([
                 'facility_id' => null,
                 'session_context' => 'queueing',
@@ -39,6 +42,7 @@ class CreateQueueingGameSession
                 'win_points' => $winPoints,
                 'loss_points' => $lossPoints,
                 'skip_scores' => $skipScores,
+                'auto_match_criteria' => $autoMatchCriteria->toStoredArray(),
                 'completed_matches_count' => 0,
                 'sport_id' => $sport->id,
                 'match_type' => $matchType,

@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesAutoMatchCriteria;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreQueueingGameSessionRequest extends FormRequest
 {
+    use ValidatesAutoMatchCriteria;
+
     public function authorize(): bool
     {
         return (bool) $this->user();
@@ -30,6 +33,12 @@ class StoreQueueingGameSessionRequest extends FormRequest
             'win_points' => ['required', 'integer', 'min:0', 'max:9999'],
             'loss_points' => ['required', 'integer', 'min:0', 'max:9999'],
             'skip_scores' => ['sometimes', 'boolean'],
+            ...$this->autoMatchCriteriaRules(),
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $this->withAutoMatchCriteriaValidator($validator);
     }
 }
