@@ -352,7 +352,7 @@ function FinishedMatchesTable({ rows }) {
                         const { team1, team2 } = lineupDisplayNamesByTeam(row.lineup);
                         const winningTeam = row.winning_team === 1 || row.winning_team === 2 ? row.winning_team : null;
                         const durationSeconds = durationInSeconds(row.started_at, row.finished_at);
-                        const passedValidation = durationSeconds != null && durationSeconds > 12 * 60;
+                        const passedValidation = durationSeconds != null && durationSeconds > 8 * 60;
                         const winnerNames = winningTeam === 1 ? team1 : winningTeam === 2 ? team2 : [];
                         const winnerLabel =
                             winningTeam == null
