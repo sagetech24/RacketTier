@@ -30,6 +30,35 @@ function formatTime(iso) {
     return d.toLocaleString();
 }
 
+/** @param {string | null | undefined} iso */
+function formatTimeOnly(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+}
+
+/** @param {string | null | undefined} start @param {string | null | undefined} end */
+function durationInSeconds(start, end) {
+    if (!start || !end) return null;
+    const startMs = new Date(start).getTime();
+    const endMs = new Date(end).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) return null;
+    return Math.max(0, Math.round((endMs - startMs) / 1000));
+}
+
+/** @param {string | null | undefined} start @param {string | null | undefined} end */
+function formatDuration(start, end) {
+    const totalSeconds = durationInSeconds(start, end);
+    if (totalSeconds == null) return '—';
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+    if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+    return `${seconds}s`;
+}
+
 const MATCH_STATUS_TABS = ['ongoing', 'queueing', 'finished'];
 
 /** @type {Record<string, string>} */
@@ -280,6 +309,106 @@ function LineupDisplay({ lineup, status, winningTeam }) {
             {' '}
             <span className={lineupTeamSideClass(status, winningTeam, 2)}>{right}</span>
         </>
+    );
+}
+
+/** @param {number | null | undefined} winningTeam @param {1 | 2} teamNo */
+function finishedTeamBadgeClass(winningTeam, teamNo) {
+    const base =
+        'flex items-center truncate rounded-full border px-3 py-1 text-[10px] capitalize';
+    if (winningTeam !== 1 && winningTeam !== 2) {
+        return `${base} border-[#45454a] bg-[#2a2a2d] text-[#c8c5d2]`;
+    }
+    return winningTeam === teamNo
+        ? `${base} border-[#4ce081]/40 bg-[#4ce081]/15 text-[#4ce081]`
+        : `${base} border-red-400/40 bg-red-400/10 text-red-400`;
+}
+
+/** @param {{ rows: Array<Record<string, unknown>> }} props */
+function FinishedMatchesTable({ rows }) {
+    if (rows.length === 0) {
+        return (
+            <p className="flex min-h-18 items-center justify-center rounded-xl border border-[#45454a] bg-[#1b1b1e] text-sm italic text-[#918f9c]">
+                No finished matches.
+            </p>
+        );
+    }
+
+    return (
+        <div className="rt-scroll-inline overflow-x-auto rounded-xl border border-[#45454a] bg-[#1b1b1e]">
+            <table className="w-full min-w-[720px] border-collapse text-left">
+                <thead>
+                    <tr className="border-b border-[#45454a] text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
+                        <th scope="col" className="px-3 py-3">Team 1</th>
+                        <th scope="col" className="px-3 py-3">Team 2</th>
+                        <th scope="col" className="px-3 py-3">Winning Team</th>
+                        <th scope="col" className="px-3 py-3">Dates</th>
+                        <th scope="col" className="px-3 py-3">Duration</th>
+                        <th scope="col" className="px-3 py-3">&nbsp;</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((row) => {
+                        const { team1, team2 } = lineupDisplayNamesByTeam(row.lineup);
+                        const winningTeam = row.winning_team === 1 || row.winning_team === 2 ? row.winning_team : null;
+                        const durationSeconds = durationInSeconds(row.started_at, row.finished_at);
+                        const passedValidation = durationSeconds != null && durationSeconds > 12 * 60;
+                        const winnerNames = winningTeam === 1 ? team1 : winningTeam === 2 ? team2 : [];
+                        const winnerLabel =
+                            winningTeam == null
+                                ? '—'
+                                : `Team ${winningTeam}`;
+                        return (
+                            <tr key={row.id} className="border-b border-[#2a2a2d] last:border-b-0">
+                                <td className="px-3 py-3 align-middle md:whitespace-nowrap">
+                                    {team1.length > 0 ? (
+                                        <span className="flex flex-col items-start gap-1 md:flex-row md:flex-nowrap">
+                                            {team1.map((name, i) => (
+                                                <span key={i} className={finishedTeamBadgeClass(winningTeam, 1)}>
+                                                    {name}
+                                                </span>
+                                            ))}
+                                        </span>
+                                    ) : (
+                                        <span className="text-sm text-[#918f9c]">—</span>
+                                    )}
+                                </td>
+                                <td className="px-3 py-3 align-middle md:whitespace-nowrap">
+                                    {team2.length > 0 ? (
+                                        <span className="flex flex-col items-start gap-1 md:flex-row md:flex-nowrap">
+                                            {team2.map((name, i) => (
+                                                <span key={i} className={finishedTeamBadgeClass(winningTeam, 2)}>
+                                                    {name}
+                                                </span>
+                                            ))}
+                                        </span>
+                                    ) : (
+                                        <span className="text-sm text-[#918f9c]">—</span>
+                                    )}
+                                </td>
+                                <td className="px-3 py-3 align-middle text-sm font-semibold capitalize text-[#4ce081]">
+                                    {winnerLabel}
+                                </td>
+                                <td className="whitespace-nowrap px-3 py-3 align-middle text-sm text-[#c8c5d2]">
+                                    <span className="block">
+                                        <span className="text-[12px] mr-1">Start:</span>
+                                        <span className="text-[12px] italic">{formatTimeOnly(row.started_at)}</span>
+                                    </span>
+                                    <span className="block">
+                                        <span className="text-[12px] mr-1">End:</span>
+                                        <span className="text-[12px] italic">{formatTimeOnly(row.finished_at)}</span>
+                                    </span>
+                                </td>
+                                <td className="whitespace-nowrap px-3 py-3 align-middle text-start text-xs tabular-nums text-[#c8c5d2]">
+                                    {formatDuration(row.started_at, row.finished_at)}
+                                </td>
+                                <td className={`px-3 py-3 align-middle text-sm w-18 ${passedValidation ? 'bg-[#4ce081]/50' : ''}`} />
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
     );
 }
 
@@ -583,7 +712,7 @@ export function QueueingSessionMatchesPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
                 {loading ? <div className="h-36 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
                 {actionError ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p> : null}
@@ -650,17 +779,21 @@ export function QueueingSessionMatchesPage() {
                                     aria-hidden={status !== activeMatchTab}
                                     className="w-full min-w-full shrink-0 snap-start"
                                 >
-                                    <MatchCardsList
-                                        status={status}
-                                        rows={grouped[status] ?? []}
-                                        canManageMatches={canManageMatches}
-                                        canEndMatch={canEndMatch}
-                                        busy={busy}
-                                        onStartQueuedMatch={onStartQueuedMatch}
-                                        onEditMatch={openEditMatchModal}
-                                        onRemoveMatch={openRemoveMatchConfirm}
-                                        onEndMatch={openFinishMatchModal}
-                                    />
+                                    {status === 'finished' ? (
+                                        <FinishedMatchesTable rows={grouped[status] ?? []} />
+                                    ) : (
+                                        <MatchCardsList
+                                            status={status}
+                                            rows={grouped[status] ?? []}
+                                            canManageMatches={canManageMatches}
+                                            canEndMatch={canEndMatch}
+                                            busy={busy}
+                                            onStartQueuedMatch={onStartQueuedMatch}
+                                            onEditMatch={openEditMatchModal}
+                                            onRemoveMatch={openRemoveMatchConfirm}
+                                            onEndMatch={openFinishMatchModal}
+                                        />
+                                    )}
                                 </section>
                             ))}
                         </div>

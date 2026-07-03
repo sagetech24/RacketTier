@@ -124,9 +124,9 @@ export function RankingPage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
 
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
-                <section className="mb-10 mt-8 md:mb-8">
-                    <h2 className="text-4xl font-extrabold tracking-tighter text-[#e4e1e6] md:text-4xl">Rankings</h2>
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
+                <section className="md:mb-8">
+                    <h2 className="text-4xl font-extrabold tracking-tighter text-[#e4e1e6] md:text-5xl">Rankings</h2>
                     <p className="mt-4 max-w-[80%] text-sm leading-relaxed text-[#c8c5d2] md:max-w-none md:text-base">
                         Live leaderboard from recorded match ratings.
                     </p>

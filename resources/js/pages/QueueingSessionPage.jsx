@@ -166,9 +166,6 @@ export function QueueingSessionPage() {
               { label: 'Matches', value: totals.matches ?? 0 },
               { label: 'Players', value: totals.players ?? 0 },
               { label: 'Points awarded', value: totals.points_awarded ?? totals.points_awarded_members ?? 0 },
-            //   { label: 'ELO Δ (sum)', value: totals.elo_rating_change_sum ?? 0, signed: true },
-            //   { label: 'Wins', value: totals.wins_recorded ?? 0 },
-            //   { label: 'Losses', value: totals.losses_recorded ?? 0 },
           ]
         : [];
 
@@ -186,7 +183,7 @@ export function QueueingSessionPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
                 {loading ? <div className="h-32 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="text-red-300">{error}</p> : null}
                 {actionError ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p> : null}

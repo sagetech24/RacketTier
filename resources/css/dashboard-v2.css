@@ -322,7 +322,7 @@
 
 @media (min-width: 1024px) {
     .rt-player-cards-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .rt-dashboard-activity-grid {

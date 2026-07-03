@@ -51,7 +51,7 @@ function skillLevelLabel(skillLevel) {
         5: 'Sensie',
     };
     const level = Math.min(5, Math.max(1, skillLevel));
-    return `L${level} — ${names[level] ?? 'Skill'}`;
+    return `Lvl ${level} — ${names[level] ?? 'Skill'}`;
 }
 
 /** @param {AutoMatchProposal['players'][number]} p */
@@ -59,25 +59,25 @@ function PlayerRow({ p }) {
     const skillLabel = skillLevelLabel(p.skill_level);
 
     return (
-        <div className="flex items-start justify-between gap-2 rounded-lg border border-[#2a2a2d] bg-[#131316] px-2.5 py-2 text-xs">
+        <div className="flex items-start justify-between gap-2 rounded-lg border border-[#2a2a2d] bg-[#131316] px-2.5 py-2">
             <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold capitalize text-[#e4e1e6]">{p.name}</p>
+                <p className="truncate font-semibold capitalize text-[#e4e1e6] mb-1 text-md">{p.name}</p>
                 {skillLabel ? (
                     <p className="inline-flex items-center gap-0.5" title="Skill level">
-                        <span className="text-[#c2c1ff] text-[10px]">Skill:</span>
-                        <MaterialIcon name="military_tech" className="text-[12px]! text-[#c2c1ff]" />
-                        <span className="font-medium text-[#c2c1ff] truncate">{skillLabel}</span>
+                        {/* <span className="text-[#c2c1ff] text-[10px]">Skill:</span> */}
+                        <MaterialIcon name="star" className="text-[15px]! text-[#c2c1ff]" />
+                        <span className="font-medium text-[#c2c1ff] truncate text-xs">{skillLabel}</span>
                     </p>
                 ) : null}
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[#918f9c]">
-                    <span className="text-[#c2c1ff] text-[10px]">Stats</span>
+                    <span className="text-[#c2c1ff] text-[12px]">Stats:</span>
                     <span className="inline-flex items-center gap-0.5" title="Wins">
-                        <MaterialIcon name="arrow_upward" className="text-[12px]! text-[#4ce081]" />
-                        <span className="tabular-nums font-medium text-[#e4e1e6]">{p.wins_count}</span>
+                        <MaterialIcon name="arrow_upward" className="text-[13px]! text-[#4ce081]" />
+                        <span className="tabular-nums font-medium text-[#e4e1e6] text-xs">{p.wins_count}</span>
                     </span>
                     <span className="inline-flex items-center gap-0.5" title="Losses">
-                        <MaterialIcon name="arrow_downward" className="text-[12px]! text-red-300/90" />
-                        <span className="tabular-nums font-medium text-[#e4e1e6]">{p.losses_count}</span>
+                        <MaterialIcon name="arrow_downward" className="text-[13px]! text-red-300/90" />
+                        <span className="tabular-nums font-medium text-[#e4e1e6] text-xs">{p.losses_count}</span>
                     </span>
                 </div>
             </div>
@@ -124,7 +124,7 @@ function ProposalCard({ proposal, index, busy, matchType, onApprove, onSkip }) {
                 <div className="grid grid-cols-2 gap-2">
                     <div>
                         <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#4ce081]">Team 1</p>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             {team1.map((p) => (
                                 <PlayerRow key={p.game_session_player_id} p={p} />
                             ))}
@@ -132,7 +132,7 @@ function ProposalCard({ proposal, index, busy, matchType, onApprove, onSkip }) {
                     </div>
                     <div>
                         <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#c8c5d2]">Team 2</p>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             {team2.map((p) => (
                                 <PlayerRow key={p.game_session_player_id} p={p} />
                             ))}
@@ -314,7 +314,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
 
     return (
         <div className="rt-end-match-modal-overlay fixed inset-0 z-99 flex items-end justify-center pt-10 sm:items-center">
-            <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl sm:rounded-2xl">
+            <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl sm:rounded-2xl">
                 <div className="border-b border-[#2a2a2d] p-5 pb-4">
                     <div className="flex items-start justify-between gap-2">
                         <h3 className="text-lg font-bold">Auto-Generate Matches</h3>
@@ -329,7 +329,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                             </button>
                         ) : null}
                     </div>
-                    <p className="mt-1 text-xs text-[#918f9c]">
+                    <p className="my-2 text-sm text-[#918f9c]">
                         Approve a match to add it to the queue, or skip to dismiss. Priority: Skill → W/L → Sequence.
                     </p>
                     {chips.length > 0 ? (
@@ -337,14 +337,14 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                             {chips.map((chip) => (
                                 <span
                                     key={chip}
-                                    className="rounded-full border border-[#45454a] bg-[#131316] px-2 py-0.5 text-[10px] font-semibold text-[#c8c5d2]"
+                                    className="rounded-full text-xs border border-[#45454a] bg-[#c2c1ff] px-2 py-1 font-semibold text-[#131316]"
                                 >
                                     {chip}
                                 </span>
                             ))}
                         </div>
                     ) : null}
-                    <p className="mt-2 text-[11px] text-[#918f9c]">
+                    <p className="mt-2 text-sm text-[#918f9c]">
                         {totalEligible} eligible · {required} player(s) per {matchType} match
                     </p>
                 </div>

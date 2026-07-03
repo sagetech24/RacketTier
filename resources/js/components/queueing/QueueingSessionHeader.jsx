@@ -29,18 +29,20 @@ export function QueueingSessionHeader({
     return (
         <article className={className}>
             <div className="mb-4 flex flex-col gap-2">
-                <div className="flex items-start gap-2">
-                    <SportIcon icon={session.sport?.icon} className="text-[#4ce081]" />
-                    <h1 className="mr-2 text-3xl font-extrabold leading-none tracking-tighter md:text-3xl">
-                        {session.queue_name?.trim() ? (
-                            session.queue_name.trim()
-                        ) : (
-                            <>
-                                {session.sport?.name}{' '}
-                                <span className="text-[#c2c1ff]">Queue</span>
-                            </>
-                        )}
-                    </h1>
+                <div className="flex items-start gap-2 justify-between">
+                    <div className="flex items-center gap-2">
+                        <SportIcon icon={session.sport?.icon} className="text-[#4ce081]" />
+                        <h1 className="mr-2 text-3xl font-extrabold leading-none tracking-tighter md:text-4xl">
+                            {session.queue_name?.trim() ? (
+                                session.queue_name.trim()
+                            ) : (
+                                <>
+                                    {session.sport?.name}{' '}
+                                    <span className="text-[#c2c1ff]">Queue</span>
+                                </>
+                            )}
+                        </h1>
+                    </div>
                     {session.is_active ? (
                         <span className={ session.is_active
                                 ? 'capitalize rounded-full border border-[#4ce081] bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'

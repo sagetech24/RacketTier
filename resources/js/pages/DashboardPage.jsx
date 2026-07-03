@@ -160,9 +160,9 @@ export function DashboardPage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={profileLoading} />
 
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
                 <section className="mb-10 md:mb-8">
-                    <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-[#e4e1e6] md:text-4xl">
+                    <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-[#e4e1e6] md:text-5xl">
                         {loading ? (
                             <span className="inline-block h-10 w-56 animate-pulse rounded-lg bg-[#2a2a2d]" />
                         ) : (

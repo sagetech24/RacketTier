@@ -75,7 +75,7 @@ export function ProfilePage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={loading && !summary} />
 
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
                 <div className="mb-6 flex items-center justify-between md:mb-8">
                     <h2 className="text-2xl font-extrabold tracking-tight text-[#e4e1e6] md:text-4xl">Profile</h2>
                 </div>

@@ -497,7 +497,7 @@ export function QueueingSessionPlayersPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-36 md:max-w-3xl md:px-8 md:pb-20 md:pt-32 lg:max-w-5xl">
+            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
                 {loading ? <div className="h-32 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
                 {error ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
 
@@ -645,7 +645,9 @@ export function QueueingSessionPlayersPage() {
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                                                     <span className="font-semibold capitalize">
-                                                        {displayName(p)}
+                                                        <span className="text-lg">
+                                                            {displayName(p)}
+                                                        </span>
                                                         {p.pronoun ? (
                                                             <span className="ml-1.5 text-xs font-medium normal-case text-[#c2c1ff]/80">
                                                                 {p.pronoun}
@@ -657,16 +659,8 @@ export function QueueingSessionPlayersPage() {
                                                             className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
                                                             title="Guest Player"
                                                         >Guest</span> : null}
-                                                    {!p.is_guest && session?.sport?.id != null ? (
-                                                        <span
-                                                            className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
-                                                            title="Tier for this session’s sport (lifetime session points)"
-                                                        >
-                                                            {p.tier?.name ?? '—'}
-                                                        </span>
-                                                    ) : null}
                                                 </div>
-                                                <div className="mt-2 flex items-center gap-4">
+                                                <div className="mt-4 flex items-center gap-4">
                                                     <PlayerSessionStats p={p} />
                                                     <PlayerStatusBadge
                                                         status={playerRosterStatus(
