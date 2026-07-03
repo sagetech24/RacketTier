@@ -2,6 +2,69 @@
 
 Session-based queue, matchmaking, results, and ELO rankings for racket sports—built on **Laravel 13**, **React** (Vite), and **Tailwind CSS**.
 
+## What RacketTier is
+
+RacketTier is a **mobile-first PWA** that turns casual racket-sports play into ranked, recordable progress for clubs and communities. It supports four sports out of the box—**badminton, pickleball, tennis, and table tennis**—each with its own independent ELO rating, session-point wallet, and tier ladder.
+
+Tagline: *"Every smash counts. Track it, rank it, own it."*
+
+Who it serves:
+
+- **Members** — registered users who earn ELO, session points (wallet balance), and tier progression per sport.
+- **Guests** — quick-added, account-less players in a session; tracked for wins/losses but excluded from ELO and wallets.
+- **Queue Master (QM)** — the member who creates and runs a queueing session (roster, matches, results, end + summary).
+- **Facility** — a partner venue where facility game sessions are hosted.
+- **Admin** (`users.is_admin`) — manages facilities and can view/force-manage any queueing session.
+
+## Tech stack
+
+- **Backend:** Laravel 13, Eloquent, Form Requests, Actions/Services, API Resources. Session-based (web guard) SPA auth (same-origin, CSRF), email verification. MySQL.
+- **Frontend:** React 19 + Vite, React Router 7, TanStack Query 5, Tailwind CSS v4, PWA. Source under `resources/js/`.
+- **No `routes/api.php` surface** — all JSON endpoints live in `routes/web.php` behind the `auth`/`guest` middleware.
+
+## End-to-end product flow
+
+RacketTier is built around the lifecycle **Session → Queue → Match → Result → Ranking → repeat**. Two session types share the `game_sessions` table (distinguished by `session_context`):
+
+### 1. Facility game session (finish-match / single-match flow)
+
+Facility-owned. One scored match, then the session ends.
+
+1. **Browse facilities** (`/facilities`) → pick a venue.
+2. **Create match** (`/facility/:id/create-match`): choose sport, singles/doubles, game type, court preference, invite members (1 for singles, 3 for doubles; host auto-included), assign teams → `POST /auth/game-sessions`.
+3. **Game room** (`/facility/:id/game-room`): host **Start Game** (`start-match`, status → `ongoing`), then **Finish Game** with a score (or winner-only if scores are skipped) → `finish-match`.
+4. **Post-match processing** runs once: ELO update, `rating_histories`, session points → `member_point_wallets` + `point_wallet_transactions`, and player stats. The session then **ends immediately** (`is_active = false`, `status = finished`, `ended_at`).
+
+### 2. Queueing session (Queue Master flow)
+
+Member-organized, multi-match, with a live leaderboard.
+
+1. **Create session** (`/queueing-session/new`): creator becomes **Queue Master**; set sport, queue name, singles/doubles, **win/loss points**, "skip scores", and **auto-match criteria**. The session is created as a **draft** (JSON snapshot) until it ends.
+2. **Manage roster** (`/queueing-session/:id/players`): add members (with per-sport tier + stats) or guests, set skill level (1–5: Starter → Sensie) and pronoun.
+3. **Build matches** (`/queueing-session/:id/matches`): **auto-generate** proposals (by skill level balanced/same-level, FIFO sequence, W/L statistics, genderless-mixed teams) or build manually. Matches flow `queueing → ongoing → finished`.
+4. **Record results**: enter scores or pick the winner (skip-scores). Finished players rotate to the **end of the queue** (FIFO); the session **stays active** across many matches.
+5. **Live leaderboard** (`/queueing-session/:id`): wins, losses, matches played, points earned, win %.
+6. **End session**: QM stops the session → the draft is **persisted** to real rows and every finished match is **replayed** to commit ELO/wallets atomically → a **summary report** (ranked players + totals) is generated.
+
+### Ranking & progression model
+
+- **ELO** (`rankings`, `rating_histories`): skill rating per user+sport, default **1000**, K-factor **32**. Members only; guests excluded.
+- **Session points / wallets** (`member_point_wallets`, `point_wallet_transactions`): per-sport balance credited on match finish (queueing uses the session's win/loss points; facility uses win `25 + min(10, margin)`, loss `8`).
+- **Tiers** (`tier_ranks`): 5 brackets per sport resolved from wallet balance — **1 Starter, 2 Beginner, 3 Intermediate, 4 Sempai, 5 Sensie**.
+
+### Supporting screens
+
+Dashboard (`/dashboard`), Rankings/leaderboard (`/ranking`), Activity feed (`/activity`), Profile (`/profile`), plus auth flow (`/login`, `/register`, `/verify-email`, `/forgot-password`, `/password/reset/:token`) and the marketing landing page (`/`).
+
+### Branding & theme
+
+- **Wordmark:** "Racket*Tier*" ("Tier" italic), logo `/images/rt-logo.png`.
+- **Dark theme.** Base background `#121216`; surfaces `#1b1b1e`/`#1f1f22`; primary lavender **`#c2c1ff`** (deep `#211e6a`/`#7877c6`); accent green **`#4ce081`**; text `#e4e1e6`/`#c8c5d2`, muted `#918f9c`.
+- **Fonts:** Geist (700, display) + Instrument Sans (body, `--font-sans`); Material Symbols icons.
+- **Style:** extrabold tracking-tight headings, rounded-xl cards, pill badges, gradient CTAs, radial "glow" backgrounds, mobile bottom nav + match FAB.
+
+> A copy-paste-ready brief for building a new landing page from this product is maintained at [`docs/landing-page-prompt.md`](docs/landing-page-prompt.md).
+
 ## Requirements
 
 - PHP ^8.3
