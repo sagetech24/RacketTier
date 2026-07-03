@@ -735,9 +735,14 @@ export function QueueingSessionMatchesPage() {
                             <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                                 {sectionTitle(activeMatchTab ?? 'ongoing')}{' '}
                                 <span className="text-[#c2c1ff]">Matches</span>
+                                {!session?.is_active ? (
+                                    <span className="text-[#c2c1ff]"> ({(grouped[activeMatchTab] ?? []).length})</span>
+                                ) : null}
                             </h1>
                             <div
-                                className="mb-4 flex w-full rounded-xl border border-[#45454a] bg-[#1b1b1e] p-1"
+                                className={`mb-4 w-full rounded-xl border border-[#45454a] bg-[#1b1b1e] p-1 ${
+                                    session?.is_active ? 'flex' : 'hidden'
+                                }`}
                                 role="tablist"
                                 aria-label="Match status"
                             >

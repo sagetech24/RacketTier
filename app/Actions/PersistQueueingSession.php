@@ -7,6 +7,7 @@ use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
 use App\Models\Ranking;
+use App\Models\User;
 use App\Services\MatchResultProcessor;
 use App\Services\QueueingSessionDraftLineup;
 use App\Services\QueueingSessionDraftStore;
@@ -37,7 +38,7 @@ class PersistQueueingSession
             $draft = $this->draftStore->load((int) $locked->id);
             $playerIdMap = $this->insertPlayers($locked, $draft);
             $this->insertMatches($locked, $draft, $playerIdMap);
-            $this->replayFinishedMatches($locked, $draft, $playerIdMap);
+            $this->replayFinishedMatches($locked, $draft);
 
             $locked->update([
                 'persistence_state' => 'persisted',
@@ -119,13 +120,9 @@ class PersistQueueingSession
         }
     }
 
-    /**
-     * @param  array<int, int>  $playerIdMap
-     */
     private function replayFinishedMatches(
         GameSession $session,
         QueueingSessionDraft $draft,
-        array $playerIdMap,
     ): void {
         $finished = collect($draft->matches)
             ->filter(fn (array $m): bool => ($m['status'] ?? '') === 'finished')
@@ -137,7 +134,21 @@ class PersistQueueingSession
         }
 
         $sportId = (int) $session->sport_id;
-        $memberUserIds = collect($draft->players)
+        $required = $session->match_type === 'doubles' ? 4 : 2;
+
+        // Resolve each finished match straight from its stored snapshot so that
+        // players removed from the roster mid-session no longer block the replay.
+        $replayable = $finished
+            ->map(fn (array $matchRow): array => [
+                'row' => $matchRow,
+                'players' => $this->draftLineup->playersFromFinishedSnapshot($session, $matchRow, $required),
+            ])
+            ->values();
+
+        // Members who actually played (includes players later removed from the
+        // roster) so their ELO/wallet history stays correct on end-session.
+        $memberUserIds = $replayable
+            ->flatMap(fn (array $entry): array => $entry['players'])
             ->pluck('user_id')
             ->filter()
             ->map(fn ($id): int => (int) $id)
@@ -153,10 +164,9 @@ class PersistQueueingSession
             ->mapWithKeys(fn (Ranking $r): array => [(int) $r->user_id => (int) $r->rating])
             ->all();
 
-        foreach ($finished as $matchRow) {
-            $required = $session->match_type === 'doubles' ? 4 : 2;
-            $pickedArrays = $this->draftLineup->playersFromStoredLineup($session, $matchRow, $required, $draft);
-            $playing = $this->toPlayerModels($session, $pickedArrays, $playerIdMap);
+        foreach ($replayable as $entry) {
+            $matchRow = $entry['row'];
+            $playing = $this->toPlayerModels($entry['players']);
             $teamMap = $playing->mapWithKeys(
                 fn (GameSessionPlayer $p): array => [(int) $p->id => (int) $p->team],
             )->all();
@@ -184,23 +194,40 @@ class PersistQueueingSession
     }
 
     /**
+     * Build in-memory player models from a finished match snapshot. These are
+     * used only to recompute global effects (ELO, rating history, wallets),
+     * which key off user_id + sport_id and never require a live roster row.
+     *
      * @param  list<array<string, mixed>>  $pickedArrays
-     * @param  array<int, int>  $playerIdMap
      * @return Collection<int, GameSessionPlayer>
      */
-    private function toPlayerModels(GameSession $session, array $pickedArrays, array $playerIdMap): Collection
+    private function toPlayerModels(array $pickedArrays): Collection
     {
-        return collect($pickedArrays)->map(function (array $row) use ($playerIdMap): GameSessionPlayer {
-            $draftId = (int) $row['id'];
-            $player = GameSessionPlayer::query()
-                ->with('user:id,name')
-                ->find($playerIdMap[$draftId] ?? 0);
+        $memberIds = collect($pickedArrays)
+            ->pluck('user_id')
+            ->filter()
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
-            if (! $player) {
-                abort(422, 'Failed to map draft player during persistence.');
-            }
+        $memberNames = $memberIds === []
+            ? collect()
+            : User::query()->whereIn('id', $memberIds)->pluck('name', 'id');
 
+        return collect($pickedArrays)->map(function (array $row) use ($memberNames): GameSessionPlayer {
+            $player = new GameSessionPlayer;
+            $player->id = (int) $row['id'];
+            $player->user_id = $row['user_id'] !== null ? (int) $row['user_id'] : null;
+            $player->guest_name = $row['guest_name'] ?? null;
             $player->team = $row['team'] ?? null;
+
+            if ($player->user_id !== null) {
+                $user = new User;
+                $user->id = $player->user_id;
+                $user->name = (string) ($memberNames[$player->user_id] ?? ($row['name'] ?? 'Player'));
+                $player->setRelation('user', $user);
+            }
 
             return $player;
         });

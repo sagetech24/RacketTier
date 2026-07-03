@@ -39,7 +39,7 @@ export function useQueueingSessionMatchesQuery(sessionId, options = {}) {
     return useQuery({
         queryKey: queryKeys.queueingSessionMatches(sessionId, session?.draft_version ?? null),
         queryFn: async () => fetchQueueingSessionMatches(String(sessionId)),
-        enabled: enabled && sessionId != null && sessionId !== '' && isActive,
+        enabled: enabled && sessionId != null && sessionId !== '',
         staleTime: 5_000,
         refetchInterval: isActive ? ACTIVE_POLL_MS : false,
     });

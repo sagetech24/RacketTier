@@ -274,6 +274,75 @@ class QueueingSessionDraftLineup
     }
 
     /**
+     * Resolve players for a FINISHED match straight from its stored lineup
+     * snapshot, independent of the current roster.
+     *
+     * A finished match is historical: it was already played to completion and
+     * its snapshot carries everything needed to recompute results (user_id,
+     * guest_name, team). Unlike playersFromStoredLineup (used to START a queued
+     * match), this must NOT require players to still be on the roster or in a
+     * waiting state — otherwise removing a player mid-session makes the session
+     * impossible to end.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function playersFromFinishedSnapshot(
+        GameSession $session,
+        array $match,
+        int $required,
+    ): array {
+        $lineup = is_array($match['lineup'] ?? null) ? $match['lineup'] : [];
+
+        $rows = collect($lineup)
+            ->map(function ($row): ?array {
+                if (! is_array($row)) {
+                    return null;
+                }
+                $pid = (int) ($row['game_session_player_id'] ?? 0);
+                if ($pid <= 0) {
+                    return null;
+                }
+
+                $uid = $row['user_id'] ?? null;
+
+                return [
+                    'id' => $pid,
+                    'user_id' => $uid !== null ? (int) $uid : null,
+                    'guest_name' => $row['guest_name'] ?? null,
+                    'name' => $row['name'] ?? null,
+                    'team' => isset($row['team']) ? (int) $row['team'] : null,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        if ($rows->count() !== $required || $rows->pluck('id')->unique()->count() !== $required) {
+            abort(422, 'The queued match lineup is invalid.');
+        }
+
+        if ($session->match_type === 'doubles') {
+            $grouped = $rows->groupBy(fn (array $p): int => (int) ($p['team'] ?? 0));
+            if ($grouped->get(1)?->count() !== 2 || $grouped->get(2)?->count() !== 2) {
+                abort(422, 'Doubles match lineup must have two players per team.');
+            }
+        }
+
+        return $rows
+            ->values()
+            ->map(function (array $p, int $index) use ($session): array {
+                if ($session->match_type === 'singles') {
+                    $team = $p['team'] ?? null;
+                    $p['team'] = in_array($team, [1, 2], true) ? (int) $team : ($index === 0 ? 1 : 2);
+                } else {
+                    $p['team'] = (int) $p['team'];
+                }
+
+                return $p;
+            })
+            ->all();
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $players
      */
     public function displayName(array $player): string
