@@ -101,6 +101,7 @@ These `.mdc` files use Cursor’s `alwaysApply: true` front matter so they are i
 | `matchmaking.mdc` | Singles (2) / doubles (4), top-of-queue selection, team layout, validation, `matches` / `match_players`, mark selected players `is_playing`. |
 | `ranking-system.mdc` | ELO for registered users only (initial 1000, K default 32), `rankings` + `rating_histories`; guests excluded; links session-point wallets. |
 | `tier-ranking.mdc` | **`tier_ranks`** brackets per sport; **`member_point_wallets`** + **`point_wallet_transactions`**; resolved via wallet balance vs ELO. |
+| `design-system.mdc` | On UI file edits: read `PRODUCT.md` / `DESIGN.md`; use ui-ux-pro-max for UX queries only (not new palettes). |
 
 ### Skills
 
@@ -110,8 +111,9 @@ Markdown references and Agent Skills for deeper, task-specific guidance.
 
 | File / folder | Focus |
 |------|--------|
-| `rackettier-ui-craft/SKILL.md` | **UI craft orchestration** — routes Impeccable, Emil, Taste; links PRODUCT.md / DESIGN.md. |
+| `rackettier-ui-craft/SKILL.md` | **UI craft orchestration** — routes Impeccable, Emil, Taste, frontend-ui-engineering, ui-ux-pro-max; links PRODUCT.md / DESIGN.md. |
 | `impeccable/` | Paul Bakaus design skill — `/impeccable` commands, audits, polish, live mode. |
+| `ui-ux-pro-max/` | UX intelligence — domain searches (ux, chart, web); **do not** use `--design-system` (conflicts with DESIGN.md). |
 | `commit-message-summary/SKILL.md` | Commit message footer after implementation work. |
 | `react-patterns.md` | React + Laravel JSON API: folder layout, thin client, API Resources, Sanctum/session notes, anti-patterns. |
 | `react-ui.md` | Component-driven UI, state and data fetching guidance, Tailwind, post-mutation refresh. |
@@ -128,17 +130,26 @@ Markdown references and Agent Skills for deeper, task-specific guidance.
 | `review-animations` | emilkowalski/skill | Strict motion-code review. |
 | `animation-vocabulary` | emilkowalski/skill | Motion prompt vocabulary. |
 | `design-taste-frontend` | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) | Anti-slop landing/marketing UI (not app dashboards). |
+| `frontend-ui-engineering` | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | Component architecture, responsive layout, WCAG 2.1 AA. |
 
-**Design docs:** `PRODUCT.md` and `DESIGN.md` at repo root (Impeccable init). Update with `/impeccable document` when tokens drift.
+**Design docs:** `PRODUCT.md` and `DESIGN.md` at repo root (Impeccable init). Update with `/impeccable document` when tokens drift. Rule `.cursor/rules/design-system.mdc` auto-applies on UI file edits.
 
 **Cursor setup:** Enable **Agent Skills** in Settings → Rules. Impeccable live mode config: `.impeccable/live/config.json`.
 
-**Refresh skills:**
+**Per-developer install** (`.cursor/` is gitignored — run on each machine):
+
+```bash
+npx impeccable skills install --providers=cursor --scope=project
+npx uipro-cli@latest init --ai cursor
+```
+
+**Refresh committed agent skills:**
 
 ```bash
 npx impeccable skills update
 npx skills add emilkowalski/skill --agent cursor -y
 npx skills add Leonxlnx/taste-skill --skill design-taste-frontend --agent cursor -y
+npx skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent cursor -y
 ```
 
 ### Agents (`.cursor/agents/`)
