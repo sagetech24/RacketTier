@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\SendUserEmailVerification;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterUserRequest;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class RegisteredUserController extends Controller
 {
-    public function store(RegisterUserRequest $request): RedirectResponse
-    {
+    public function store(
+        RegisterUserRequest $request,
+        SendUserEmailVerification $sendUserEmailVerification,
+    ): RedirectResponse {
         $validated = $request->validated();
 
         $user = User::create([
@@ -24,7 +26,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        event(new Registered($user));
+        $sendUserEmailVerification($user);
 
         Auth::login($user);
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\SendUserEmailVerification;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdateUserProfileRequest;
 use App\Http\Resources\UserResource;
@@ -9,8 +10,10 @@ use Illuminate\Http\JsonResponse;
 
 class UserProfileUpdateController extends Controller
 {
-    public function __invoke(UpdateUserProfileRequest $request): JsonResponse
-    {
+    public function __invoke(
+        UpdateUserProfileRequest $request,
+        SendUserEmailVerification $sendUserEmailVerification,
+    ): JsonResponse {
         $user = $request->user();
         abort_if(! $user, 401);
 
@@ -30,12 +33,14 @@ class UserProfileUpdateController extends Controller
 
         $user->save();
 
+        $verificationEmailSent = null;
         if ($emailChanged) {
-            $user->sendEmailVerificationNotification();
+            $verificationEmailSent = $sendUserEmailVerification($user);
         }
 
         return response()->json([
             'user' => new UserResource($user->fresh()),
+            'verification_email_sent' => $verificationEmailSent,
         ]);
     }
 }

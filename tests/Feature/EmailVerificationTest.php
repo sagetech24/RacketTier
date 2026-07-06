@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Auth\SendUserEmailVerification;
 use App\Models\User;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -30,8 +31,28 @@ class EmailVerificationTest extends TestCase
 
         $user = User::where('email', 'alice@example.com')->firstOrFail();
         $this->assertNull($user->email_verified_at);
+        $this->assertAuthenticatedAs($user);
 
         Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    public function test_registration_succeeds_when_verification_email_cannot_be_sent(): void
+    {
+        $this->mock(SendUserEmailVerification::class, function ($mock): void {
+            $mock->shouldReceive('__invoke')->once()->andReturn(false);
+        });
+
+        $response = $this->post('/register', [
+            'name' => 'Bob',
+            'email' => 'bob@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertRedirect('/verify-email');
+
+        $user = User::where('email', 'bob@example.com')->firstOrFail();
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_signed_verification_link_marks_email_verified(): void
