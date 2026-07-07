@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ToggleField } from '../components/app/ToggleSwitch.jsx';
 import '../../css/dashboard-v2.css';
 import { fetchQueueingSessionHistory, deleteQueueingSession } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
@@ -248,14 +249,13 @@ export function QueueingSessionHistoryPage() {
                             placeholder="Search by queue name, sport, or queue master"
                             className="w-full rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm md:flex-1"
                         />
-                        <label className="mt-1 flex shrink-0 items-center gap-2 px-3 py-3 text-sm md:mt-0">
-                            <input
-                                type="checkbox"
-                                checked={mineOnly}
-                                onChange={(e) => setMineOnly(e.target.checked)}
-                            />
-                            My queues only
-                        </label>
+                        <ToggleField
+                            checked={mineOnly}
+                            onChange={setMineOnly}
+                            layout="inline"
+                            className="mt-1 shrink-0 px-3 py-3 md:mt-0"
+                            label="My queues only"
+                        />
                     </div>
                 </section>
 

@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import '../../css/dashboard-v2.css';
 import { fetchMyActivity } from '../api/activity.js';
-import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
-import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { ActivityFeedItem } from '../components/app/ActivityFeedItem.jsx';
+import { AppShell } from '../components/app/AppShell.jsx';
+import { EmptyState } from '../components/app/EmptyState.jsx';
+import { PageHeader } from '../components/app/PageHeader.jsx';
+import { DashboardPageLoading } from '../components/dashboard/DashboardPageLoading.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { LogoutButton } from '../components/LogoutButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useDefaultGameRoomHref } from '../hooks/useDefaultGameRoomHref.js';
 import { useDashboardSummaryQuery } from '../hooks/queries/useDashboardSummaryQuery.js';
 
 const IMG_PLAY_BG =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuAdeD9jD4wFP5m8jeHYihc9onG4ZLyRfTmD5RvFgsnbJueMquK9TNRW_SyHqXiIDR9B3CH692i5gr4ce_y_Oup803Q_AcpyvX-y5KMaYf_yXfTl5AOu0K8GL2lcpnv7uvGZvNwoLRT4Sf3r-w5mlohM6S-Dtd2AngioMwnLGH8pUY4eXUvZAWvpm65heuxqA3sVBvBmhR6wRxb6rrp4U3yk5rc-MHX2OG0Jp16jur2xfsCeZV090T9-FFgbHyrLZj9mOjaMMqBev_U';
+
+const GOAL_MATCHES = 5;
 
 function formatRelativeTime(iso) {
     if (!iso) return '';
@@ -28,13 +31,6 @@ function formatRelativeTime(iso) {
     return `${day}d ago`;
 }
 
-function activityIcon(kind) {
-    if (kind === 'queueing_match') {
-        return { name: 'groups', wrap: 'bg-[#c2c1ff]/10', color: 'text-[#c2c1ff]' };
-    }
-    return { name: 'history', wrap: 'bg-[#4ce081]/10', color: 'text-[#4ce081]' };
-}
-
 /**
  * @param {{ name?: string; email?: string } | null } user
  */
@@ -47,74 +43,141 @@ function greetingFirstName(user) {
     return 'there';
 }
 
-/** @param {import('../api/activity.js').UserActivityItem} row */
-function ActivityItemMeta({ row }) {
-    const details = [
-        row.session_points_earned != null
-            ? { label: 'Points', value: `+${row.session_points_earned}`, accent: 'points' }
-            : null,
-        row.rating_change != null
-            ? {
-                  label: 'Rating %',
-                  value: `${row.rating_change >= 0 ? '+' : ''}${row.rating_change}`,
-                  accent: row.rating_change >= 0 ? 'elo-up' : 'elo-down',
-              }
-            : null,
-    ].filter(Boolean);
+function greetingForTime() {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+}
 
-    if (details.length === 0) {
-        return null;
+/**
+ * @param {{ start_point: number; end_point: number; wallet_balance: number } | null | undefined} tier
+ */
+function tierProgressPct(tier) {
+    if (!tier) return null;
+    const span = tier.end_point - tier.start_point;
+    if (span <= 0) return 100;
+    return Math.min(100, Math.round(((tier.wallet_balance - tier.start_point) / span) * 100));
+}
+
+/**
+ * @param {{
+ *   primary_sport?: { name: string } | null;
+ *   tier?: { end_point: number; wallet_balance: number } | null;
+ *   stats?: { matches_played?: number; sessions_active?: number };
+ * }} summary
+ */
+function dashboardSubtitle(summary) {
+    const sessionsActive = summary?.stats?.sessions_active ?? 0;
+    if (sessionsActive > 0) {
+        return `You have ${sessionsActive} active session${sessionsActive === 1 ? '' : 's'}. Jump back in when you're ready.`;
     }
 
+    const played = summary?.stats?.matches_played ?? 0;
+    if (played === 0) {
+        return 'Start a match or join a queue to begin climbing the tiers.';
+    }
+
+    const tier = summary?.tier;
+    const sportName = summary?.primary_sport?.name;
+    if (tier && sportName) {
+        const remaining = Math.max(0, tier.end_point - tier.wallet_balance);
+        return `${sportName} · ${remaining.toLocaleString()} pts to the next tier`;
+    }
+
+    return 'Ready to climb the tiers today?';
+}
+
+/**
+ * @param {{
+ *   tierLabel: string;
+ *   totalPointBalance: number | null | undefined;
+ *   rating: number | null | undefined;
+ *   primarySport: { name: string; code: string } | null | undefined;
+ *   tier: import('../api/dashboard.js').DashboardSummary['tier'];
+ *   sessionsActive: number;
+ * }} props
+ */
+function DashboardSnapshot({ tierLabel, totalPointBalance, rating, primarySport, tier, sessionsActive }) {
+    const progress = tierProgressPct(tier);
+
     return (
-        <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1">
-            {details.map((item) => (
-                <div key={item.label} className="flex min-w-0 items-baseline gap-1.5">
-                    <dt className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-[#c8c5d2]/55">
-                        {item.label}
-                    </dt>
-                    <dd
-                        className={[
-                            'text-xs font-semibold leading-tight',
-                            item.accent === 'points'
-                                ? 'text-[#4ce081]'
-                                : item.accent === 'elo-up'
-                                  ? 'text-[#c2c1ff]'
-                                  : item.accent === 'elo-down'
-                                    ? 'text-red-300/90'
-                                    : 'text-[#e4e1e6]',
-                        ].join(' ')}
-                    >
-                        {item.value}
-                    </dd>
-                </div>
-            ))}
-            {row.won != null ? (
-                <div className="flex items-center gap-1.5 col-span-2">
-                    <dt className="text-[10px] font-medium uppercase tracking-wide text-[#c8c5d2]/55">Result</dt>
-                    <dd>
-                        <span
-                            className={[
-                                'inline-block items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
-                                row.won ? 'bg-[#4ce081]/15 text-[#4ce081]' : 'bg-red-400/15 text-red-300/90',
-                            ].join(' ')}
-                        >
-                            {row.won ? 'Win' : 'Loss'}
+        <>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                {sessionsActive > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400 bg-red-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-400">
+                        <span className="animate-pulse flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full animate-pulse bg-red-400" aria-hidden></span>
+                            Playing
                         </span>
-                    </dd>
+                    </span>
+                ) : null}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 md:gap-6">
+                <div>
+                    <p className="rt-dashboard-stat-label">Tier</p>
+                    <p className="rt-dashboard-stat-value mt-1 flex items-center gap-1">
+                        <MaterialIcon name="star" className="text-lg text-[#c2c1ff]" />
+                        <span className="truncate text-base md:text-xl">{tier ? tier.tier_no : '—'}</span>
+                    </p>
+                    <p className="mt-0.5 truncate text-[11px] font-medium text-[#c8c5d2]">{tier?.name ?? tierLabel}</p>
+                </div>
+                <div>
+                    <p className="rt-dashboard-stat-label">Points</p>
+                    <p className="rt-dashboard-stat-value mt-1 flex items-center gap-1">
+                        <MaterialIcon name="database" className="text-lg text-[#4ce081]" />
+                        {totalPointBalance != null ? totalPointBalance.toLocaleString() : '—'}
+                    </p>
+                </div>
+                <div>
+                    <p className="rt-dashboard-stat-label">Rating</p>
+                    <p className="rt-dashboard-stat-value mt-1 flex items-center gap-1">
+                        <MaterialIcon name="trending_up" className="text-lg text-[#a6a5ed]" />
+                        {rating != null ? rating.toLocaleString()/100 : '—'}
+                    </p>
+                </div>
+            </div>
+
+            {tier && progress != null ? (
+                <div className="mt-5 border-t border-white/5 pt-4">
+                    <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest">
+                        <span className="text-[#c8c5d2]">Tier progress</span>
+                        <span className="text-[#4ce081] text-sm">{progress}%</span>
+                    </div>
+                    <div className="rt-dashboard-progress-track">
+                        <div
+                            className="rt-dashboard-progress-fill"
+                            style={{ width: `${progress}%` }}
+                            role="progressbar"
+                            aria-valuenow={progress}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label="Progress within current tier"
+                        />
+                    </div>
+                    <p className="mt-2 text-sm text-[#918f9c]">
+                        {tier.wallet_balance.toLocaleString()} / {tier.end_point.toLocaleString()} points to the next tier
+                    </p>
                 </div>
             ) : null}
-        </dl>
+        </>
     );
 }
 
 export function DashboardPage() {
     const { user: authUser } = useAuth();
-    const gameRoomHref = useDefaultGameRoomHref();
     const { data: summary, isLoading: loading, isError } = useDashboardSummaryQuery();
     const [activityItems, setActivityItems] = useState([]);
     const [activityLoading, setActivityLoading] = useState(true);
+    // TEST ONLY — remove after checking skeleton loading UI
+    const [skeletonTestDelay, setSkeletonTestDelay] = useState(true);
     const error = isError ? 'Could not load your dashboard. Refresh and try again.' : '';
+
+    useEffect(() => {
+        const timer = setTimeout(() => setSkeletonTestDelay(false), 2000);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -139,264 +202,204 @@ export function DashboardPage() {
 
     const user = summary?.user ?? authUser;
     const displayName = greetingFirstName(user);
-    const profileLoading = loading && !summary;
-
-    const goalMatches = 5;
-    const played = summary?.stats.matches_played ?? 0;
+    const showSkeleton = loading || skeletonTestDelay;
+    const profileLoading = showSkeleton && !summary;
+    const played = summary?.stats?.matches_played ?? 0;
     const won = summary?.stats.matches_won ?? 0;
     const lost = Math.max(0, played - won);
-    const ended = played;
-    const streakPct = Math.min(100, Math.round((played / goalMatches) * 100));
+    const winRate = played > 0 ? Math.round((won / played) * 100) : null;
+    const streakPct = Math.min(100, Math.round((played / GOAL_MATCHES) * 100));
+    const rating = summary?.stats.rating;
+    const sessionsActive = summary?.stats.sessions_active ?? 0;
+    const primarySport = summary?.primary_sport;
+    const tier = summary?.tier;
 
-    const tierLabel = summary?.tier
-        ? `Tier ${summary.tier.tier_no} - ${summary.tier.name}`
-        : summary?.primary_sport
+    const tierLabel = tier
+        ? `Tier ${tier.tier_no} · ${tier.name}`
+        : primarySport
           ? 'Unranked'
           : 'Play a match';
 
     const totalPointBalance = summary?.total_point_balance;
 
     return (
-        <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
-            <DashboardV2Header user={user} profileLoading={profileLoading} />
+        <AppShell user={user} profileLoading={profileLoading}>
+            {showSkeleton ? (
+                <DashboardPageLoading />
+            ) : (
+                <>
+            <PageHeader
+                eyebrow={primarySport ? primarySport.name : 'Welcome back'}
+                title={`${greetingForTime()}, ${displayName}.`}
+                subtitle={dashboardSubtitle(summary)}
+            />
 
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
-                <section className="mb-10 md:mb-8">
-                    <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-[#e4e1e6] md:text-5xl">
-                        {loading ? (
-                            <span className="inline-block h-10 w-56 animate-pulse rounded-lg bg-[#2a2a2d]" />
-                        ) : (
-                            <>Hello, {displayName}.</>
-                        )}
-                    </h2>
-                    <p className="font-medium text-[#c8c5d2]/70 md:text-base">Ready to climb the tiers today?</p>
-                </section>
+            <section className="rt-dashboard-snapshot mb-8">
+                <DashboardSnapshot
+                    tierLabel={tierLabel}
+                    totalPointBalance={totalPointBalance}
+                    rating={rating}
+                    primarySport={primarySport}
+                    tier={tier}
+                    sessionsActive={sessionsActive}
+                />
+            </section>
 
-                <section className="mb-10 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 md:p-5">
-                    {profileLoading ? (
-                        <div className="grid gap-4 sm:grid-cols-2 md:gap-6">
-                            {[1, 2].map((n) => (
-                                <div key={n} className="space-y-2">
-                                    <div className="h-3 w-20 animate-pulse rounded bg-[#2a2a2d]" />
-                                    <div className="h-7 w-full max-w-40 animate-pulse rounded bg-[#2a2a2d]" />
-                                </div>
-                            ))}
+            {error ? (
+                <div className="rt-alert-error mb-8" role="alert">
+                    {error}
+                </div>
+            ) : null}
+
+            <section className="mb-10">
+                <h2 className="rt-section-eyebrow">Quick actions</h2>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+                    <Link to="/facilities" className="rt-dashboard-action-play group col-span-2 h-36 md:col-span-1 md:h-40">
+                        <div className="absolute inset-0 opacity-15 mix-blend-overlay">
+                            <img alt="" src={IMG_PLAY_BG} className="h-full w-full object-cover" decoding="async" />
                         </div>
-                    ) : (
-                        <div className="grid gap-6 sm:grid-cols-2 md:gap-8">
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">
-                                    My Rank
-                                </p>
-                                <p className="mt-1 text-lg font-bold leading-snug text-[#e4e1e6] flex items-center gap-1.5">
-                                    <svg fill="#a6a5ed" height="18" width="18" viewBox="0 0 246.001 246.001" aria-hidden="true">
-                                        <path d="M211.667,238.5c0,4.142-3.358,7.5-7.5,7.5h-163c-4.142,0-7.5-3.358-7.5-7.5v-16c0-4.142,3.358-7.5,7.5-7.5h163 c4.142,0,7.5,3.358,7.5,7.5V238.5z M241.748,0.74c-3.043-1.458-6.683-0.71-8.899,1.83l-59.492,68.199l-44.08-67.375 C127.891,1.277,125.53,0,123,0s-4.891,1.276-6.276,3.394L72.627,70.795L13.137,3.012C10.914,0.481,7.277-0.26,4.24,1.204 c-3.034,1.465-4.72,4.773-4.12,8.089l33,182.541c0.645,3.57,3.752,6.166,7.38,6.166h165c3.629,0,6.737-2.598,7.381-6.169l33-183 C246.48,5.512,244.788,2.2,241.748,0.74z" />
-                                    </svg>
-                                    {tierLabel}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">
-                                    My Points
-                                </p>
-                                <p className="mt-1 text-lg font-bold tabular-nums text-[#e4e1e6] flex items-center gap-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-5 stroke-[#a6a5ed]" aria-hidden="true">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
-                                    </svg>
-                                    {totalPointBalance != null ? totalPointBalance.toLocaleString() : '—'}
-                                </p>
-                                {/* <p className="mt-1 text-xs text-[#c8c5d2]/70">Total across all sports</p> */}
-                            </div>
-                        </div>
-                    )}
-                </section>
-
-                {error ? (
-                    <div
-                        className="mb-8 rounded-xl border border-red-900/50 bg-red-950/40 px-4 py-3 text-sm text-red-200"
-                        role="alert"
-                    >
-                        {error}
-                    </div>
-                ) : null}
-
-                <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-4">
-                    <Link
-                        to="/facilities"
-                        className="group relative col-span-2 block h-48 cursor-pointer overflow-hidden rounded-xl bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] transition-transform duration-200 active:scale-95 md:col-span-1 md:h-40"
-                    >
-                        <div className="absolute inset-0 opacity-20 mix-blend-overlay">
-                            <img
-                                alt=""
-                                src={IMG_PLAY_BG}
-                                className="h-full w-full object-cover"
-                                decoding="async"
-                            />
-                        </div>
-                        <div className="relative flex h-full flex-col justify-end p-6">
-                            <div className="flex items-end justify-between">
+                        <div className="relative flex h-full flex-col justify-between p-5">
+                            <MaterialIcon name="sports_tennis" className="text-3xl text-[#211e6a]" filled />
+                            <div className="flex items-end justify-between gap-3">
                                 <div>
-                                    <MaterialIcon
-                                        name="sports_tennis"
-                                        className="mb-2 text-4xl text-[#211e6a]"
-                                        filled
-                                    />
-                                    <h3 className="text-2xl font-bold tracking-tight text-[#211e6a]">PLAY</h3>
+                                    <h3 className="text-xl font-extrabold tracking-tight text-[#211e6a]">Play</h3>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#211e6a]/70">
+                                        Find a facility
+                                    </p>
                                 </div>
-                                <MaterialIcon name="arrow_forward" className="text-[#211e6a]/50" />
+                                <MaterialIcon
+                                    name="arrow_forward"
+                                    className="text-[#211e6a]/50 transition-transform group-hover:translate-x-0.5"
+                                />
                             </div>
                         </div>
                     </Link>
 
-                    <Link
-                        to="/facilities"
-                        className="group flex h-32 cursor-pointer flex-col justify-between rounded-xl bg-[#1b1b1e] p-6 transition-transform active:scale-95 md:h-40"
-                    >
+                    <Link to="/queueing-session" className="rt-interactive-card flex h-32 flex-col justify-between p-5 md:h-40">
                         <MaterialIcon name="group_add" className="text-3xl text-[#4ce081]" />
                         <div>
-                            <h3 className="text-lg font-bold text-[#e4e1e6]">JOIN</h3>
-                            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">
-                                Active Hubs
-                            </p>
+                            <h3 className="text-lg font-bold text-[#e4e1e6]">Queue</h3>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#918f9c]">Sessions</p>
                         </div>
                     </Link>
 
-                    <Link
-                        to="/ranking"
-                        className="group flex h-32 cursor-pointer flex-col justify-between rounded-xl bg-[#1f1f22] p-6 transition-transform active:scale-95 md:h-40"
-                    >
+                    <Link to="/ranking" className="rt-interactive-card flex h-32 flex-col justify-between bg-[#1f1f22] p-5 md:h-40">
                         <MaterialIcon name="leaderboard" className="text-3xl text-[#c2c1ff]" />
                         <div>
-                            <h3 className="text-lg font-bold text-[#e4e1e6]">RANK</h3>
-                            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#c8c5d2]">
+                            <h3 className="text-lg font-bold text-[#e4e1e6]">Rank</h3>
+                            <p className="line-clamp-1 text-[10px] font-semibold uppercase tracking-widest text-[#918f9c]">
                                 {tierLabel}
                             </p>
                         </div>
                     </Link>
                 </div>
+            </section>
 
-                <section className="mb-6">
-                    <div className="mb-6 flex items-end justify-between">
+            <section className="mb-8">
+                <div className="mb-4 flex items-end justify-between gap-3">
+                    <div>
+                        <p className="rt-section-eyebrow mb-1">Feed</p>
                         <h2 className="text-xl font-bold tracking-tight text-[#e4e1e6]">Recent Activity</h2>
-                        <Link
-                            to="/activity"
-                            className="rounded-full bg-[#c2c1ff]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#c2c1ff] transition-opacity hover:opacity-80"
-                        >
-                            View All
-                        </Link>
                     </div>
+                    <Link to="/activity" className="rt-btn-secondary shrink-0 px-3 py-1.5 text-[10px]">
+                        View All
+                    </Link>
+                </div>
 
-                    <div className="rt-dashboard-activity-grid space-y-4 md:space-y-0">
-                        {activityLoading ? (
-                            <>
-                                <div className="h-16 animate-pulse rounded-xl bg-[#1b1b1e] md:col-span-2 lg:col-span-3" />
-                                <div className="h-16 animate-pulse rounded-xl bg-[#1b1b1e] md:col-span-2 lg:col-span-3" />
-                            </>
-                        ) : activityItems.length === 0 ? (
-                            <div className="rounded-xl bg-[#1b1b1e] p-4 text-sm text-[#c8c5d2] md:col-span-2 lg:col-span-3">
-                                No activity in the last 7 days. Play a facility match or join a queue session to see
-                                results here.
-                            </div>
-                        ) : (
-                            activityItems.map((row) => {
-                                const icon = activityIcon(row.kind);
-                                return (
-                                    <Link
-                                        key={row.id}
-                                        to={row.href}
-                                        className="flex items-start gap-4 rounded-xl bg-[#1b1b1e] p-4 transition-colors hover:bg-[#1f1f22]"
-                                    >
-                                        <div
-                                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${icon.wrap}`}
-                                        >
-                                            <MaterialIcon name={icon.name} className={icon.color} />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <h4 className="font-semibold text-[#e4e1e6] text-lg leading-tight">{row.title}</h4>
-                                            <ActivityItemMeta className="mt-1.5" row={row} />
-                                        </div>
-                                        {row.finished_at ? (
-                                            <div className="shrink-0 text-right">
-                                                <p className="text-[10px] font-medium text-[#c8c5d2]/60">
-                                                    {formatRelativeTime(row.finished_at)}
-                                                </p>
-                                            </div>
-                                        ) : null}
-                                    </Link>
-                                );
-                            })
-                        )}
-                    </div>
-                </section>
-
-                <section className="relative mt-8 overflow-hidden rounded-xl bg-[#353438] p-6 md:p-8">
-                    {/* <div className="absolute left-0 top-0 h-full w-1 bg-[#4ce081]" aria-hidden /> */}
-                    <div className="pointer-events-none absolute -right-5 -bottom-18" aria-hidden>
-                        <MaterialIcon name="trending_up" className="dashboard-v2-watermark-icon" />
-                    </div>
-
-                    <div className="relative z-10 mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-                        <div className="rounded-lg bg-[#131316]/80 p-3">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">Played</p>
-                            <p className="mt-1 text-xl font-extrabold tabular-nums text-[#e4e1e6]">{played}</p>
-                        </div>
-                        <div className="rounded-lg bg-[#131316]/80 p-3">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">Won</p>
-                            <p className="mt-1 text-xl font-extrabold tabular-nums text-[#4ce081]">{won}</p>
-                        </div>
-                        <div className="rounded-lg bg-[#131316]/80 p-3">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">Lost</p>
-                            <p className="mt-1 text-xl font-extrabold tabular-nums text-[#f27c8a]">{lost}</p>
-                        </div>
-                        <div className="rounded-lg bg-[#131316]/80 p-3">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]/70">Finished</p>
-                            <p className="mt-1 text-xl font-extrabold tabular-nums text-[#e4e1e6]">{ended}</p>
-                        </div>
-                    </div>
-
-                    <div className="relative z-10">
-                        <h3 className="mb-1 text-lg font-bold text-[#e4e1e6]">
-                            {played > 0 ? 'On a Streak!' : 'Start your streak'}
-                        </h3>
-                        <p className="mb-4 text-sm text-[#c8c5d2]">
-                            {played === 0
-                                ? "You haven't recorded a ranked match yet. Queue up a session to begin."
-                                : `You've played ${played} ranked ${played === 1 ? 'match' : 'matches'}. Keep the momentum going to unlock the next tier.`}
-                        </p>
-
-                        <div className="mb-2 h-1.5 w-full rounded-full bg-[#131316]">
-                            <div
-                                className="h-full rounded-full bg-[#4ce081] transition-[width] duration-500"
-                                style={{ width: `${streakPct}%` }}
+                <div className="rt-dashboard-activity-grid space-y-3 md:space-y-0">
+                    {activityLoading ? (
+                        <>
+                            <div className="rt-skeleton h-[4.75rem] rounded-xl md:col-span-2 lg:col-span-3" />
+                            <div className="rt-skeleton h-[4.75rem] rounded-xl md:col-span-2 lg:col-span-3" />
+                        </>
+                    ) : activityItems.length === 0 ? (
+                        <div className="md:col-span-2 lg:col-span-3">
+                            <EmptyState
+                                icon="history"
+                                title="No recent matches"
+                                description="Play a facility match or join a queue session to see results here."
+                                actionLabel="Start playing"
+                                actionTo="/facilities"
                             />
                         </div>
-
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#4ce081]">
-                                {streakPct}% to Goal
-                            </span>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]">
-                                {played >= goalMatches ? 'Goal met' : `${Math.max(0, goalMatches - played)} match${goalMatches - played === 1 ? '' : 'es'} left`}
-                            </span>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="mt-10 flex justify-center">
-                    <LogoutButton className="text-xs border border-[#c8c5d2]/80 rounded-full px-4 py-2 font-medium uppercase tracking-wider text-[#c8c5d2]/80 underline-offset-4 transition" />
+                    ) : (
+                        activityItems.map((row) => (
+                            <ActivityFeedItem
+                                key={row.id}
+                                row={row}
+                                relativeTime={row.finished_at ? formatRelativeTime(row.finished_at) : undefined}
+                                compact
+                            />
+                        ))
+                    )}
                 </div>
-            </main>
+            </section>
 
-            <DashboardMobileNav />
+            <section className="rt-dashboard-performance p-5 md:p-7">
+                <div className="pointer-events-none absolute -right-4 -bottom-16 opacity-[0.07]" aria-hidden>
+                    <MaterialIcon name="trending_up" className="dashboard-v2-watermark-icon" />
+                </div>
 
-            {/* <Link
-                to={gameRoomHref}
-                className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] text-[#131316] shadow-xl transition-transform active:scale-90"
-                aria-label="Play"
-                title="Play"
-            >
-                <MaterialIcon name="add" className="text-3xl" />
-            </Link> */}
-        </div>
+                <div className="relative z-10 mb-5">
+                    <p className="rt-section-eyebrow mb-1">Performance</p>
+                    <h3 className="text-lg font-bold text-[#e4e1e6]">{played > 0 ? 'Your season so far' : 'Start your season'}</h3>
+                </div>
+
+                <div className="relative z-10 mb-6 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
+                    {[
+                        { label: 'Played', value: played, tone: 'text-[#e4e1e6]' },
+                        { label: 'Won', value: won, tone: 'text-[#4ce081]' },
+                        { label: 'Lost', value: lost, tone: 'text-[#ffb4ab]' },
+                        {
+                            label: winRate != null ? 'Win rate' : 'ELO',
+                            value: winRate != null ? `${winRate}%` : rating != null ? rating.toLocaleString() : '—',
+                            tone: 'text-[#c2c1ff]',
+                        },
+                    ].map((stat) => (
+                        <div key={stat.label} className="rounded-lg border border-white/5 bg-[#121216]/80 p-3">
+                            <p className="rt-dashboard-stat-label">{stat.label}</p>
+                            <p className={`mt-1 text-xl font-extrabold tabular-nums ${stat.tone}`}>{stat.value}</p>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="relative z-10">
+                    <p className="mb-3 text-sm leading-relaxed text-[#c8c5d2]">
+                        {played === 0
+                            ? "You haven't recorded a ranked match yet. Queue up a session to begin."
+                            : `You've played ${played} ranked ${played === 1 ? 'match' : 'matches'}. ${GOAL_MATCHES - played > 0 ? `${GOAL_MATCHES - played} more to hit your weekly goal.` : 'Weekly goal met — keep going.'}`}
+                    </p>
+
+                    <div className="rt-dashboard-progress-track mb-2">
+                        <div
+                            className="rt-dashboard-progress-fill"
+                            style={{ width: `${streakPct}%` }}
+                            role="progressbar"
+                            aria-valuenow={streakPct}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label="Progress toward weekly match goal"
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#4ce081]">
+                            {streakPct}% weekly goal
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#918f9c]">
+                            {played >= GOAL_MATCHES
+                                ? 'Goal met'
+                                : `${Math.max(0, GOAL_MATCHES - played)} match${GOAL_MATCHES - played === 1 ? '' : 'es'} left`}
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <div className="mt-10 flex justify-center pb-2">
+                <LogoutButton className="rounded-full border border-[#918f9c]/30 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#918f9c] transition hover:border-[#c8c5d2]/40 hover:text-[#c8c5d2]" />
+            </div>
+                </>
+            )}
+        </AppShell>
     );
 }

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDefaultGameRoomHref } from '../../hooks/useDefaultGameRoomHref.js';
 import { RacketTierWordmark } from './RacketTierWordmark.jsx';
 
@@ -24,6 +24,35 @@ function Spinner() {
     );
 }
 
+function userInitials(user) {
+    const name = user?.name?.trim();
+    if (name) {
+        const parts = name.split(/\s+/).filter(Boolean);
+        if (parts.length >= 2) {
+            return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+        }
+        return parts[0].slice(0, 2).toUpperCase();
+    }
+    const local = user?.email?.split('@')[0]?.trim();
+    if (local) return local.slice(0, 2).toUpperCase();
+    return 'RT';
+}
+
+/**
+ * @param {{ active: boolean; to: string; children: import('react').ReactNode }} props
+ */
+function DesktopNavLink({ active, to, children }) {
+    return (
+        <Link
+            to={to}
+            className={['rt-nav-link', active ? 'rt-nav-link-active font-semibold' : 'rt-nav-link-idle'].join(' ')}
+            aria-current={active ? 'page' : undefined}
+        >
+            {children}
+        </Link>
+    );
+}
+
 /**
  * @param {{
  *   user: { name?: string; email?: string } | null;
@@ -33,83 +62,89 @@ function Spinner() {
 export function DashboardV2Header({ user, profileLoading = false }) {
     const gameRoomHref = useDefaultGameRoomHref();
     const navigate = useNavigate();
+    const { pathname } = useLocation();
     const label = user?.name?.trim() || user?.email?.trim() || 'User';
 
+    const homeActive = pathname === '/dashboard';
+    const rankingActive = pathname === '/ranking';
+    const queueActive =
+        pathname === '/queueing-session' ||
+        pathname === '/queueing-session/new' ||
+        pathname === '/queueing-session/history' ||
+        /^\/queueing-session\/\d+(\/(players|matches))?\/?$/.test(pathname);
+    const facilitiesActive = pathname === '/facility' || pathname === '/facilities' || pathname.startsWith('/facility/');
+    const activityActive = pathname === '/activity';
+    const profileActive = pathname === '/profile';
+
     return (
-        <nav className="fixed top-0 z-50 w-full bg-[#131316]/70 backdrop-blur-xl pt-0 md:static md:bg-transparent md:backdrop-blur-none">
+        <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-[#121216]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl md:static md:border-b-0 md:bg-transparent md:backdrop-blur-none">
             <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
                 <div className="flex items-center gap-4">
-                    <RacketTierWordmark textSize="text-3xl" />
+                    <Link to="/dashboard" className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2c1ff]/60">
+                        <RacketTierWordmark textSize="text-3xl" />
+                    </Link>
                 </div>
                 <div className="hidden items-center gap-8 md:flex">
-                    <Link
-                        to="/dashboard"
-                        className="text-sm font-medium uppercase tracking-wider text-[#c2c1ff] transition-opacity hover:opacity-80"
-                    >
+                    <DesktopNavLink active={homeActive} to="/dashboard">
                         Home
-                    </Link>
-                    <Link
-                        to="/ranking"
-                        className="text-sm font-medium uppercase tracking-wider text-[#c2c1ff] transition-opacity hover:opacity-80"
-                    >
+                    </DesktopNavLink>
+                    <DesktopNavLink active={rankingActive} to="/ranking">
                         Rankings
-                    </Link>
-                    <Link
-                        to="/queueing-session"
-                        className="text-sm font-medium uppercase tracking-wider text-[#c2c1ff] transition-opacity hover:opacity-80"
-                    >
+                    </DesktopNavLink>
+                    <DesktopNavLink active={queueActive} to="/queueing-session">
                         Queue
-                    </Link>
-                    <Link
-                        to="/facilities"
-                        className="text-sm font-medium uppercase tracking-wider text-[#c2c1ff] transition-opacity hover:opacity-80"
-                    >
+                    </DesktopNavLink>
+                    <DesktopNavLink active={facilitiesActive} to="/facilities">
                         Facilities
-                    </Link>
+                    </DesktopNavLink>
+                    <DesktopNavLink active={activityActive} to="/activity">
+                        Activity
+                    </DesktopNavLink>
                     <Link
                         to={gameRoomHref}
-                        className="text-sm font-medium uppercase tracking-wider text-[#c2c1ff] transition-opacity hover:opacity-80"
+                        className="rt-nav-link rt-nav-link-idle rounded-full border border-[#c2c1ff]/30 bg-[#c2c1ff]/10 px-3 py-1.5 text-xs font-bold hover:bg-[#c2c1ff]/15 hover:text-[#c2c1ff]"
                     >
                         Play
                     </Link>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                     {!user ? (
                         <Link
                             to="/login"
-                            className="hidden px-4 py-2 text-xs font-bold uppercase tracking-widest text-[#e4e1e6] transition-opacity hover:opacity-70 md:block"
+                            className="hidden rounded-full border border-white/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-[#e4e1e6] transition-colors hover:border-white/20 hover:bg-white/5 md:block"
                         >
                             Sign In
                         </Link>
                     ) : null}
                     {profileLoading ? (
                         <div
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#353438]"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#353438]"
                             aria-busy="true"
                             aria-label="Loading profile"
                         >
                             <Spinner />
                         </div>
                     ) : user ? (
+                        <Link
+                            to="/profile"
+                            className={[
+                                'relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2c1ff]/60',
+                                profileActive ? 'bg-[#c2c1ff] text-[#211e6a]' : 'bg-[#353438] text-[#c2c1ff]',
+                            ].join(' ')}
+                            aria-label={`Profile for ${label}`}
+                            aria-current={profileActive ? 'page' : undefined}
+                        >
+                            {userInitials(user)}
+                        </Link>
+                    ) : (
                         <button
                             type="button"
-                            onClick={() => navigate(-1)}
-                            className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#353438] text-[#c2c1ff] transition-opacity hover:opacity-80"
-                            aria-label="Go back"
-                            title={`Back from ${label}`}
+                            onClick={() => navigate('/login')}
+                            className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#353438]"
+                            aria-label="Sign in"
                         >
-                            <span className="text-base leading-none" aria-hidden>
-                                ←
-                            </span>
+                            <img src={IMG_AVATAR_FALLBACK} alt="" className="h-full w-full object-cover" />
                         </button>
-                    ) : (
-                        <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#353438]">
-                            <img
-                                src={IMG_AVATAR_FALLBACK}
-                                alt=""
-                                className="h-full w-full object-cover"
-                            />
-                        </div>
                     )}
                 </div>
             </div>

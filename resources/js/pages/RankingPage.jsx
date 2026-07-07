@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import '../../css/dashboard-v2.css';
 import { fetchRankings } from '../api/ranking.js';
-import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
-import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { AppShell } from '../components/app/AppShell.jsx';
+import { EmptyState } from '../components/app/EmptyState.jsx';
+import { PageHeader } from '../components/app/PageHeader.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import { useSportsQuery } from '../hooks/queries/useSportsQuery.js';
@@ -121,68 +121,55 @@ export function RankingPage() {
         'ring-2 ring-[#c2c1ff]/60 bg-linear-to-br from-[#c2c1ff]/30 to-[#c2c1ff]/10';
 
     return (
-        <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
-            <DashboardV2Header user={user} profileLoading={false} />
+        <AppShell user={user}>
+            <PageHeader
+                title="Rankings"
+                subtitle="Live leaderboard from recorded match ratings."
+            />
 
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
-                <section className="md:mb-8">
-                    <h2 className="text-4xl font-extrabold tracking-tighter text-[#e4e1e6] md:text-5xl">Rankings</h2>
-                    <p className="mt-4 max-w-[80%] text-sm leading-relaxed text-[#c8c5d2] md:max-w-none md:text-base">
-                        Live leaderboard from recorded match ratings.
-                    </p>
-                </section>
-
-                <div className="mb-8 flex flex-col gap-4 md:mb-6">
-                    <div className="group relative md:flex-1">
-                        <div className="pointer-events-none absolute inset-y-0 left-4 z-10 flex items-center text-[#918f9c]">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth="1.5"
-                                stroke="currentColor"
-                                className="size-6"
-                                aria-hidden
-                            >
-                                <path d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                            </svg>
-                        </div>
-                        <input
-                            type="search"
-                            placeholder="Search players..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full rounded-xl border border-[#353438] bg-[#0e0e11] py-4 pl-12 pr-4 text-sm text-[#e4e1e6] transition-all placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
-                            aria-label="Search players"
-                        />
+            <div className="mb-8 flex flex-col gap-4 md:mb-6">
+                <div className="group relative md:flex-1">
+                    <div className="pointer-events-none absolute inset-y-0 left-4 z-10 flex items-center text-[#918f9c]">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="currentColor"
+                            className="size-5"
+                            aria-hidden
+                        >
+                            <path d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
                     </div>
-                    <div className="rt-scroll-inline flex gap-2 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">
-                        {filterOptions.map((filter) => {
-                            const isActive = activeFilter === filter.id;
-                            return (
-                                <button
-                                    key={filter.id}
-                                    type="button"
-                                    onClick={() => setActiveFilter(filter.id)}
-                                    className={
-                                        isActive
-                                            ? 'shrink-0 rounded-full bg-[#4ce081] px-4 py-2 text-xs font-bold whitespace-nowrap text-[#003919] md:text-sm'
-                                            : 'shrink-0 cursor-pointer rounded-full bg-[#353438] px-4 py-2 text-xs font-medium whitespace-nowrap text-[#e4e1e6] transition-colors hover:bg-[#1f1f22] md:text-sm'
-                                    }
-                                >
-                                    {filter.label}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <input
+                        type="search"
+                        placeholder="Search players…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="rt-input"
+                        aria-label="Search players"
+                    />
                 </div>
+                <div className="rt-scroll-inline flex gap-2 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">
+                    {filterOptions.map((filter) => {
+                        const isActive = activeFilter === filter.id;
+                        return (
+                            <button
+                                key={filter.id}
+                                type="button"
+                                onClick={() => setActiveFilter(filter.id)}
+                                className={['rt-chip md:text-sm', isActive ? 'rt-chip-active' : 'rt-chip-idle'].join(' ')}
+                            >
+                                {filter.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
 
-                <div className="flex flex-col gap-3">
-                    {error ? (
-                        <div className="rounded-xl border border-red-900/50 bg-red-950/40 px-4 py-3 text-sm text-red-200">
-                            {error}
-                        </div>
-                    ) : null}
+            <div className="flex flex-col gap-3">
+                {error ? <div className="rt-alert-error">{error}</div> : null}
 
                     {loading ? (
                         Array.from({ length: 4 }).map((_, idx) => (
@@ -193,9 +180,13 @@ export function RankingPage() {
                     ) : null}
 
                     {!loading && rankings.length === 0 ? (
-                        <div className="rounded-xl bg-[#1f1f22] px-4 py-6 text-center text-sm text-[#c8c5d2]">
-                            No ranking data yet for this filter.
-                        </div>
+                        <EmptyState
+                            icon="leaderboard"
+                            title="No rankings yet"
+                            description="Rankings appear after members finish recorded matches for this sport."
+                            actionLabel="Join a queue"
+                            actionTo="/queueing-session"
+                        />
                     ) : null}
 
                     {!loading && topThree.length > 0 ? (
@@ -341,9 +332,6 @@ export function RankingPage() {
                         ) : null}
                     </div>
                 </div>
-            </main>
-
-            <DashboardMobileNav />
-        </div>
+        </AppShell>
     );
 }

@@ -121,7 +121,7 @@ export function CreateQueueingSessionPage() {
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit}>
-                        <div className="mb-4 space-y-6 rounded-xl border border-[#484848] bg-[#1b1b1e] p-5 md:p-6 lg:p-8">
+                        <div className="mb-4 space-y-6">
                             <div>
                                 <label className="mb-4 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Sport</label>
                                 {sports.length === 0 ? (

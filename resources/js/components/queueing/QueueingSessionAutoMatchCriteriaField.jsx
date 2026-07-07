@@ -1,5 +1,7 @@
 /** @typedef {import('../api/queueingSession.js').AutoMatchCriteria} AutoMatchCriteria */
 
+import { ToggleField } from '../app/ToggleSwitch.jsx';
+
 export const DEFAULT_AUTO_MATCH_CRITERIA = /** @type {AutoMatchCriteria} */ ({
     skill_level: true,
     skill_match_mode: 'balanced',
@@ -18,9 +20,6 @@ const SKILL_MATCH_MODE_OPTIONS = [
         label: 'Same Skill Level (High vs High, Starter vs Starter, etc.)',
     },
 ];
-
-export const AUTO_MATCH_CHECKBOX_CLASS =
-    'h-4 w-4 shrink-0 rounded border-[#45454a] bg-[#131316] text-[#4ce081] focus:ring-[#4ce081]/40';
 
 /**
  * @param {unknown} value
@@ -87,10 +86,10 @@ export function QueueingSessionAutoMatchCriteriaField({
     }
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-1 border-t-2 border-[#2a2a2d] pt-4">
             {showHeading ? (
                 <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-[#918f9c]">Auto-Match Setup</p>
+                    <p className="text-sm font-bold uppercase tracking-wide text-[#918f9c]">Auto-Match Setup</p>
                     <p className="mt-1 text-xs text-[#918f9c]">
                         Choose how auto-generated matches pick players. Priority: Skill Level → W/L Statistics →
                         Sequence.
@@ -98,25 +97,21 @@ export function QueueingSessionAutoMatchCriteriaField({
                 </div>
             ) : null}
 
-            <div className="rounded-xl border border-[#2a2a2d] bg-[#131316] p-3">
-                <label className="flex cursor-pointer items-start gap-3">
-                    <input
-                        type="checkbox"
-                        className={AUTO_MATCH_CHECKBOX_CLASS}
-                        checked={value.skill_level}
-                        disabled={disabled}
-                        onChange={(e) => patch({ skill_level: e.target.checked })}
-                    />
-                    <span>
-                        <span className="block text-sm font-semibold text-[#e4e1e6]">Skill Level</span>
-                    </span>
-                </label>
+            <div className="space-y-1">
+                <ToggleField
+                    checked={value.skill_level}
+                    onChange={(checked) => patch({ skill_level: checked })}
+                    disabled={disabled}
+                    layout="card"
+                    size="xs"
+                    label="Skill Level"
+                />
 
                 {value.skill_level ? (
-                    <div className="mt-3 pl-7">
+                    <div className="pt-0">
                         <label
                             htmlFor="rt-auto-match-skill-mode"
-                            className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-[#918f9c]"
+                            className="mb-1 block text-xs font-bold uppercase tracking-wide text-[#918f9c] sm:text-[12px]"
                         >
                             Skill matching
                         </label>
@@ -142,38 +137,29 @@ export function QueueingSessionAutoMatchCriteriaField({
                 ) : null}
             </div>
 
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#2a2a2d] bg-[#131316] p-3">
-                <input
-                    type="checkbox"
-                    className={AUTO_MATCH_CHECKBOX_CLASS}
-                    checked={value.sequence}
-                    disabled={disabled}
-                    onChange={(e) => patch({ sequence: e.target.checked })}
-                />
-                <span className="text-sm font-semibold text-[#e4e1e6]">Sequence (First list, first play)</span>
-            </label>
+            <ToggleField
+                checked={value.sequence}
+                onChange={(checked) => patch({ sequence: checked })}
+                disabled={disabled}
+                layout="card"
+                label="Sequence (First list, first play)"
+            />
 
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#2a2a2d] bg-[#131316] p-3">
-                <input
-                    type="checkbox"
-                    className={AUTO_MATCH_CHECKBOX_CLASS}
-                    checked={value.wl_statistics}
-                    disabled={disabled}
-                    onChange={(e) => patch({ wl_statistics: e.target.checked })}
-                />
-                <span className="text-sm font-semibold text-[#e4e1e6]">W/L Statistics</span>
-            </label>
+            <ToggleField
+                checked={value.wl_statistics}
+                onChange={(checked) => patch({ wl_statistics: checked })}
+                disabled={disabled}
+                layout="card"
+                label="Win/Loss Statistics"
+            />
 
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#2a2a2d] bg-[#131316] p-3">
-                <input
-                    type="checkbox"
-                    className={AUTO_MATCH_CHECKBOX_CLASS}
-                    checked={value.genderless_mixed}
-                    disabled={disabled}
-                    onChange={(e) => patch({ genderless_mixed: e.target.checked })}
-                />
-                <span className="text-sm font-semibold text-[#e4e1e6]">Genderless (mixed)</span>
-            </label>
+            <ToggleField
+                checked={value.genderless_mixed}
+                onChange={(checked) => patch({ genderless_mixed: checked })}
+                disabled={disabled}
+                layout="card"
+                label="Genderless (mixed)"
+            />
 
             {!hasAnyCriterion ? (
                 <p className="text-xs text-[#ffb4ab]">Select at least one matching criterion.</p>

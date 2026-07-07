@@ -10,8 +10,9 @@ import {
     normalizeAutoMatchCriteria,
     parseAutoMatchCriteria,
 } from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
-import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
-import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { AppShell } from '../components/app/AppShell.jsx';
+import { EmptyState } from '../components/app/EmptyState.jsx';
+import { ToggleField } from '../components/app/ToggleSwitch.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
@@ -263,19 +264,12 @@ export function QueueingSessionListPage() {
         return { activeRows: active, finishedTodayRows: finishedToday };
     }, [rows]);
 
-    const emptyMessage = useMemo(() => {
-        if (loading) return '';
-        if (q.trim()) return 'No sessions match your filters.';
-        return 'No queueing sessions yet.';
-    }, [loading, q]);
 
     const showActiveSection = status !== 'finished';
     const showFinishedSection = status !== 'active';
 
     return (
-        <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
-            <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
+        <AppShell user={user}>
                 <div className="mb-4 flex items-start justify-between gap-3 md:mb-6">
                     <div className="min-w-0 flex-1">
                         <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl">
@@ -316,13 +310,13 @@ export function QueueingSessionListPage() {
                     </Link>
                 </div>
 
-                <section className="mb-4 rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4 md:mb-6 md:p-5">
+                <section className="rt-surface-card mb-4 p-4 md:mb-6 md:p-5">
                     <div className="grid grid-cols-4 gap-3 md:grid-cols-2">
                         <input
                             value={q}
                             onChange={(e) => setQ(e.target.value)}
-                            placeholder="Search by queue name, sport, queue master, or queue ID"
-                            className="col-span-4 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm md:col-span-2"
+                            placeholder="Search queue, sport, QM, or ID"
+                            className="col-span-4 rounded-lg border border-[#353438] bg-[#0f0f12] px-3 py-3 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:border-[#c2c1ff]/35 focus:outline-none focus:ring-[3px] focus:ring-[#c2c1ff]/12 md:col-span-2"
                         />
                         <select
                             value={sort}
@@ -344,24 +338,35 @@ export function QueueingSessionListPage() {
                             <option value="finished">Finished Today</option>
                         </select>
                     </div>
-                    <label className="flex items-center gap-2 mt-1 px-3 py-3 text-sm checked:bg-[#4ce081]/20">
-                        <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
-                        My Queues Only
-                    </label>
+                    <ToggleField
+                        checked={mineOnly}
+                        onChange={setMineOnly}
+                        layout="inline"
+                        className="mt-1 px-3 py-3"
+                        label="My Queues Only"
+                    />
                 </section>
 
                 {error ? (
-                    <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                    <div className="rt-alert-error mb-4" role="alert">
                         {error}
-                    </p>
+                    </div>
                 ) : null}
 
                 {loading ? <div className="h-40 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
 
                 {!loading && rows.length === 0 ? (
-                    <p className="rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] px-4 py-5 text-sm text-[#918f9c]">
-                        {emptyMessage}
-                    </p>
+                    <EmptyState
+                        icon="groups"
+                        title={q.trim() ? 'No matches' : 'No queueing sessions yet'}
+                        description={
+                            q.trim()
+                                ? 'Try a different search or clear your filters.'
+                                : 'Create a queue to organize players and run matches.'
+                        }
+                        actionLabel={q.trim() ? undefined : 'New queue'}
+                        actionTo={q.trim() ? undefined : '/queueing-session/new'}
+                    />
                 ) : null}
 
                 {showActiveSection && activeRows.length > 0 ? (
@@ -410,7 +415,6 @@ export function QueueingSessionListPage() {
                         </div>
                     </section>
                 ) : null}
-            </main>
 
             {editRow ? (
                 <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 sm:items-center md:p-6">
@@ -536,8 +540,6 @@ export function QueueingSessionListPage() {
                     </div>
                 </div>
             ) : null}
-
-            <DashboardMobileNav />
-        </div>
+        </AppShell>
     );
 }
