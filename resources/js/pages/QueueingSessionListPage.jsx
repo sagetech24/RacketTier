@@ -10,21 +10,32 @@ import {
     normalizeAutoMatchCriteria,
     parseAutoMatchCriteria,
 } from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
+import { QueueingSessionPageLoading } from '../components/queueing/QueueingSessionPageLoading.jsx';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
+import { PageHeader } from '../components/app/PageHeader.jsx';
 import { ToggleField } from '../components/app/ToggleSwitch.jsx';
+import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
-import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
+import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
+import { normalizedAppPath, queueingSessionNavPaths, queueSessionCardActionClass } from '../lib/queueingSessionNav.js';
 import { canDeleteQueueingSession } from '../lib/queueingSessionPermissions.js';
 import { userIsAdmin } from '../lib/userRoles.js';
+
+const INITIAL_LOADING_MIN_MS = 2000;
 
 function formatTime(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString();
+    return d.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
 }
 
 /**
@@ -41,94 +52,123 @@ function formatTime(iso) {
 function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, onDelete, deleteSubmitting }) {
     const paths = queueingSessionNavPaths(row.id);
     const showDelete = canDeleteQueueingSession(row, isAdmin);
+    const isActive = row.is_active && !viewOnly;
+
     return (
         <article
-            className={`h-full rounded-xl border bg-[#1b1b1e] p-4 md:p-5 ${
-                viewOnly ? 'border-[#2a2a2d]' : 'border-[#3c3c3e]'
-            }`}
+            className={[
+                'rt-queue-card rt-interactive-card flex h-full flex-col p-4 md:p-5',
+                isActive ? 'rt-queue-card--active border-[#3c3c3e]' : 'border-[#2a2a2d]',
+                viewOnly ? 'opacity-90' : '',
+            ]
+                .filter(Boolean)
+                .join(' ')}
         >
-            <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="flex items-center gap-2 text-base font-bold">
-                    <SportIcon icon={row.sport?.icon} className="text-[#4ce081]" />
-                    <Link to={`/queueing-session/${row.id}`}>
-                    {row.queue_name?.trim()
-                        ? row.queue_name.trim()
-                        : `${row.sport?.name ?? 'Sport'} Queue`}
+            <div className="rt-queue-card-body min-h-0 flex-1">
+            <div className="mb-2 flex items-start justify-between gap-2">
+                <h2 className="min-w-0 flex-1 text-base font-bold">
+                    <Link to={`/queueing-session/${row.id}`} className="rt-queue-card-title-link inline-flex items-center gap-2">
+                        <SportIcon icon={row.sport?.icon} className="shrink-0 text-[#4ce081]" />
+                        <span className="truncate md:text-2xl text-md font-bold capitalize">
+                            {row.queue_name?.trim()
+                                ? row.queue_name.trim()
+                                : `${row.sport?.name ?? 'Sport'} Queue`}
+                        </span>
                     </Link>
                 </h2>
-                <QueueSessionCardBadges row={row} viewOnly={viewOnly} />
-            </div>
-            <p className="text-sm text-[#c8c5d2]/90 capitalize">
-                QM: {row.created_by?.name ?? 'Unknown'} <span className="ml-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">{row.match_type}</span>
-            </p>
-            <div className="mt-3 text-xs text-[#918f9c] md:grid md:grid-cols-1 md:gap-x-4 md:gap-y-0.5">
-                <div className="space-y-1">
-                    <div>Started: {formatTime(row.started_at)}</div>
-                    <div>Ended: {formatTime(row.ended_at)}</div>
-                </div>
-                <div className="space-y-1">
-                    <div>Players: {row.participant_count ?? 0}</div>
-                    {row.completed_matches_count != null ? (
-                        <div>Matches: {row.completed_matches_count}</div>
-                    ) : null}
-                </div>
-            </div>
-            <div className="mt-3 flex w-full flex-wrap gap-2 md:gap-4">
                 {!viewOnly && row.can_manage && onEdit ? (
-                    <button
-                        type="button"
-                        onClick={() => onEdit(row)}
-                        className={`${queueingSessionTabClass(false)} text-center text-[#c2c1ff] border-[#c2c1ff]/50 md:flex-1`}
-                    >
-                        Edit
-                    </button>
+                    <div className="rt-queue-card-manage">
+                        <button
+                            type="button"
+                            onClick={() => onEdit(row)}
+                            className={queueSessionCardActionClass('edit', { iconOnly: true })}
+                            aria-label="Edit queue"
+                        >
+                            <MaterialIcon name="edit" className="rt-queue-card-btn__icon" />
+                        </button>
+                        {showDelete && onDelete ? (
+                            <button
+                                type="button"
+                                disabled={deleteSubmitting}
+                                onClick={() => onDelete(row)}
+                                className={queueSessionCardActionClass('danger', { iconOnly: true })}
+                                aria-label={row.is_active ? 'Delete queue' : 'Remove queue'}
+                            >
+                                <MaterialIcon name="delete_outline" className="rt-queue-card-btn__icon" />
+                            </button>
+                        ) : null}
+                    </div>
+                ) : showDelete && onDelete ? (
+                    <div className="rt-queue-card-manage">
+                        <button
+                            type="button"
+                            disabled={deleteSubmitting}
+                            onClick={() => onDelete(row)}
+                            className={queueSessionCardActionClass('danger', { iconOnly: true })}
+                            aria-label={row.is_active ? 'Delete queue' : 'Remove queue'}
+                        >
+                            <MaterialIcon name="delete_outline" className="rt-queue-card-btn__icon" />
+                        </button>
+                    </div>
                 ) : null}
-                {showDelete && onDelete ? (
-                    <button
-                        type="button"
-                        disabled={deleteSubmitting}
-                        onClick={() => onDelete(row)}
-                        className={`${queueingSessionTabClass(false)} text-center text-red-300 border-red-400/50 disabled:opacity-50 md:flex-1`}
-                    >
-                        {row.is_active ? 'Delete' : 'Remove'}
-                    </button>
+            </div>
+
+            <p className="text-sm text-[#c8c5d2]/90">
+                <span className="text-[#918f9c] text-sm md:text-xl">QM {row.created_by?.name ?? 'Unknown'}</span>
+                <span className="ml-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] md:text-[12px] font-bold uppercase tracking-widest text-[#c2c1ff]">
+                    {row.match_type}
+                </span>
+            </p>
+
+            <div className="mt-3 text-[#918f9c] text-xs md:text-lg">
+                <div className="flex items-center gap-1.5">
+                    <MaterialIcon name="schedule" className="text-sm! md:text-lg! text-[#7877c6]" />
+                    <span>Started {formatTime(row.started_at)}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <MaterialIcon name="groups" className="text-sm! md:text-lg! text-[#7877c6]" />
+                    <span>{row.participant_count ?? 0} players</span>
+                </div>
+                {row.ended_at ? (
+                    <div className="flex items-center gap-1.5">
+                        <MaterialIcon name="flag" className="text-sm! md:text-lg! text-[#7877c6]" />
+                        <span>Ended {formatTime(row.ended_at)}</span>
+                    </div>
                 ) : null}
+                {row.completed_matches_count != null ? (
+                    <div className="flex items-center gap-1.5">
+                        <MaterialIcon name="sports_score" className="text-sm! md:text-lg! text-[#7877c6]" />
+                        <span>{row.completed_matches_count} matches</span>
+                    </div>
+                ) : null}
+            </div>
+
+            </div>
+
+            <footer className="rt-queue-card-footer">
                 <Link
                     to={paths.dash}
-                    className={`${queueingSessionTabClass(navPath === paths.dash)} text-center text-white/70 border-white/70 md:flex-1`}
+                    className={queueSessionCardActionClass('nav', { active: navPath === paths.dash })}
                 >
+                    <MaterialIcon name="space_dashboard" className="rt-queue-card-btn__icon" />
                     {viewOnly ? 'Summary' : 'Dashboard'}
                 </Link>
                 <Link
                     to={paths.players}
-                    className={`${queueingSessionTabClass(navPath === paths.players)} text-center text-white/70 border-white/70 md:flex-1`}
+                    className={queueSessionCardActionClass('nav', { active: navPath === paths.players })}
                 >
+                    <MaterialIcon name="groups" className="rt-queue-card-btn__icon" />
                     Players
                 </Link>
                 <Link
                     to={paths.matches}
-                    className={`${queueingSessionTabClass(navPath === paths.matches)} text-center text-white/70 border-white/70 md:flex-1`}
+                    className={queueSessionCardActionClass('nav', { active: navPath === paths.matches })}
                 >
+                    <MaterialIcon name="sports_score" className="rt-queue-card-btn__icon" />
                     Matches
                 </Link>
-            </div>
+            </footer>
         </article>
-    );
-}
-
-function QueueSessionCardBadges({ row, viewOnly }) {
-    return (
-        <div className="flex flex-col items-end gap-1">
-            <span
-                className={
-                    row.is_active
-                        ? 'capitalize rounded-full bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
-                        : 'capitalize rounded-full bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
-                }
-            >
-                {row.is_active ? row.status : 'finished'}
-            </span>
-        </div>
     );
 }
 
@@ -264,157 +304,171 @@ export function QueueingSessionListPage() {
         return { activeRows: active, finishedTodayRows: finishedToday };
     }, [rows]);
 
-
     const showActiveSection = status !== 'finished';
     const showFinishedSection = status !== 'active';
 
+    const isAwaitingInitialData = loading && rows.length === 0 && !error;
+    const showInitialSkeleton = useMinimumLoadingDuration(isAwaitingInitialData, INITIAL_LOADING_MIN_MS);
+    const isRefreshing = loading && rows.length > 0 && !showInitialSkeleton;
+    const contentKey = `${debouncedQ}-${status}-${mineOnly}-${sort}`;
+
+    const activeCount = activeRows.length;
+    const subtitle = isAdmin
+        ? 'Admin view — all queueing sessions across the platform.'
+        : 'Browse active queues and review today\u2019s finished sessions.';
+
     return (
         <AppShell user={user}>
-                <div className="mb-4 flex items-start justify-between gap-3 md:mb-6">
-                    <div className="min-w-0 flex-1">
-                        <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl">
-                            Queueing <span className="text-[#c2c1ff]">Sessions</span>
-                        </h1>
-                        <p className="text-xs md:text-[15px] text-[#c8c5d2]/80 mt-2">
-                            {isAdmin
-                                ? 'Admin view — all queueing sessions across the platform.'
-                                : 'Browse active queues and review today\u2019s finished sessions.'}{' '}
-                            <Link
-                                to="/queueing-session/history"
-                                className="text-[#4ce081]"
-                            >
-                                {isAdmin ? 'View all session history' : 'View my session history'}
+            {showInitialSkeleton ? (
+                <QueueingSessionPageLoading />
+            ) : (
+                <>
+                    <PageHeader
+                        eyebrow="Queue Master"
+                        title="Queueing Sessions"
+                        subtitle={subtitle}
+                        action={
+                            <Link to="/queueing-session/new" className="rt-queue-new-btn">
+                                <MaterialIcon name="add" className="text-base!" />
+                                New queue
                             </Link>
-                        </p>
+                        }
+                    />
+
+                    <p className="-mt-4 mb-6 text-sm text-[#c8c5d2]/80 md:-mt-6 md:mb-8">
                         {isAdmin ? (
-                            <span className="mt-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">
+                            <span className="mr-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">
                                 Admin
                             </span>
                         ) : null}
-                    </div>
-                    <Link
-                        to="/queueing-session/new"
-                        className="flex shrink-0 items-center rounded-xl bg-[#4ce081] px-2.5 py-2 text-sm font-semibold text-[#003919] transition hover:brightness-105 md:px-4 md:py-2.5"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth="1.5"
-                            stroke="currentColor"
-                            className="size-4"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Queue
-                    </Link>
-                </div>
+                        <Link to="/queueing-session/history" className="font-medium text-[#4ce081] transition hover:text-[#6ae896]">
+                            {isAdmin ? 'View all session history' : 'View my session history'}
+                        </Link>
+                    </p>
 
-                <section className="rt-surface-card mb-4 p-4 md:mb-6 md:p-5">
-                    <div className="grid grid-cols-4 gap-3 md:grid-cols-2">
-                        <input
-                            value={q}
-                            onChange={(e) => setQ(e.target.value)}
-                            placeholder="Search queue, sport, QM, or ID"
-                            className="col-span-4 rounded-lg border border-[#353438] bg-[#0f0f12] px-3 py-3 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:border-[#c2c1ff]/35 focus:outline-none focus:ring-[3px] focus:ring-[#c2c1ff]/12 md:col-span-2"
+                    <section className="rt-queue-toolbar rt-surface-card mb-6 p-4 md:p-5">
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                            <div className="relative col-span-2 md:col-span-2">
+                                <div className="pointer-events-none absolute inset-y-0 left-3.5 z-10 flex items-center text-[#918f9c]">
+                                    <MaterialIcon name="search" className="text-xl!" />
+                                </div>
+                                <input
+                                    value={q}
+                                    onChange={(e) => setQ(e.target.value)}
+                                    placeholder="Search queue, sport, QM, or ID"
+                                    aria-label="Search queueing sessions"
+                                    className="rt-input py-3.5 pl-11"
+                                />
+                            </div>
+                            <select
+                                value={sort}
+                                onChange={(e) => setSort(e.target.value)}
+                                aria-label="Sort sessions"
+                                className="rt-queue-filter-select col-span-1"
+                            >
+                                <option value="updated_desc">Recently Updated</option>
+                                <option value="updated_asc">Least Recently Updated</option>
+                                <option value="created_desc">Newest</option>
+                                <option value="created_asc">Oldest</option>
+                            </select>
+                            <select
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                                aria-label="Filter by status"
+                                className="rt-queue-filter-select col-span-1"
+                            >
+                                <option value="all">All Statuses</option>
+                                <option value="active">Active Only</option>
+                                <option value="finished">Finished Today</option>
+                            </select>
+                        </div>
+                        <ToggleField
+                            checked={mineOnly}
+                            onChange={setMineOnly}
+                            layout="inline"
+                            className="mt-3 border-t border-white/5 px-1 pt-3"
+                            label="My Queues Only"
                         />
-                        <select
-                            value={sort}
-                            onChange={(e) => setSort(e.target.value)}
-                            className="col-span-2 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm md:col-span-1"
-                        >
-                            <option value="updated_desc">Recently Updated</option>
-                            <option value="updated_asc">Least Recently Updated</option>
-                            <option value="created_desc">Newest</option>
-                            <option value="created_asc">Oldest</option>
-                        </select>
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="col-span-2 rounded-lg border border-[#3c3c3e] bg-[#131316] px-3 py-3 text-sm md:col-span-1"
-                        >
-                            <option value="all">All Statuses</option>
-                            <option value="active">Active Only</option>
-                            <option value="finished">Finished Today</option>
-                        </select>
-                    </div>
-                    <ToggleField
-                        checked={mineOnly}
-                        onChange={setMineOnly}
-                        layout="inline"
-                        className="mt-1 px-3 py-3"
-                        label="My Queues Only"
-                    />
-                </section>
-
-                {error ? (
-                    <div className="rt-alert-error mb-4" role="alert">
-                        {error}
-                    </div>
-                ) : null}
-
-                {loading ? <div className="h-40 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
-
-                {!loading && rows.length === 0 ? (
-                    <EmptyState
-                        icon="groups"
-                        title={q.trim() ? 'No matches' : 'No queueing sessions yet'}
-                        description={
-                            q.trim()
-                                ? 'Try a different search or clear your filters.'
-                                : 'Create a queue to organize players and run matches.'
-                        }
-                        actionLabel={q.trim() ? undefined : 'New queue'}
-                        actionTo={q.trim() ? undefined : '/queueing-session/new'}
-                    />
-                ) : null}
-
-                {showActiveSection && activeRows.length > 0 ? (
-                    <section className="mb-6">
-                        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Active</h2>
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-                            {activeRows.map((row) => (
-                                <QueueingSessionCard
-                                    key={row.id}
-                                    row={row}
-                                    navPath={navPath}
-                                    viewOnly={false}
-                                    isAdmin={isAdmin}
-                                    onEdit={openEditModal}
-                                    onDelete={openDeleteConfirm}
-                                    deleteSubmitting={deleteSubmitting}
-                                />
-                            ))}
-                        </div>
                     </section>
-                ) : null}
 
-                {showFinishedSection && finishedTodayRows.length > 0 ? (
-                    <section>
-                        <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-[#918f9c]">
-                            Finished today
-                        </h2>
-                        <p className="mb-3 text-xs text-[#918f9c]">
-                            {isAdmin
-                                ? 'Manage or open summary for finished sessions from today.'
-                                : 'View only — open summary for leaderboard and session stats.'}
-                        </p>
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-                            {finishedTodayRows.map((row) => (
-                                <QueueingSessionCard
-                                    key={row.id}
-                                    row={row}
-                                    navPath={navPath}
-                                    viewOnly={!row.can_manage && !canDeleteQueueingSession(row, isAdmin)}
-                                    isAdmin={isAdmin}
-                                    onEdit={row.can_manage ? openEditModal : undefined}
-                                    onDelete={openDeleteConfirm}
-                                    deleteSubmitting={deleteSubmitting}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                ) : null}
+                    <div
+                        key={contentKey}
+                        className={['rt-queue-list-content flex flex-col gap-3', isRefreshing ? 'rt-queue-list-content--refreshing' : '']
+                            .filter(Boolean)
+                            .join(' ')}
+                    >
+                        {error ? (
+                            <div className="rt-alert-error" role="alert">
+                                {error}
+                            </div>
+                        ) : null}
+
+                        {!loading && rows.length === 0 ? (
+                            <EmptyState
+                                icon="groups"
+                                title={q.trim() ? 'No matches' : 'No queueing sessions yet'}
+                                description={
+                                    q.trim()
+                                        ? 'Try a different search or clear your filters.'
+                                        : 'Create a queue to organize players and run matches.'
+                                }
+                                actionLabel={q.trim() ? undefined : 'New queue'}
+                                actionTo={q.trim() ? undefined : '/queueing-session/new'}
+                            />
+                        ) : null}
+
+                        {showActiveSection && activeRows.length > 0 ? (
+                            <section className="mb-2">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <h2 className="rt-queue-section-heading">Active</h2>
+                                    <span className="text-xs font-semibold tabular-nums text-[#4ce081]">
+                                        {activeCount} live
+                                    </span>
+                                </div>
+                                <div className="rt-queue-list grid grid-cols-1 gap-3 md:grid-cols-1 md:gap-4">
+                                    {activeRows.map((row) => (
+                                        <QueueingSessionCard
+                                            key={row.id}
+                                            row={row}
+                                            navPath={navPath}
+                                            viewOnly={false}
+                                            isAdmin={isAdmin}
+                                            onEdit={openEditModal}
+                                            onDelete={openDeleteConfirm}
+                                            deleteSubmitting={deleteSubmitting}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        ) : null}
+
+                        {showFinishedSection && finishedTodayRows.length > 0 ? (
+                            <section>
+                                <h2 className="rt-queue-section-heading mb-1">Finished today</h2>
+                                <p className="mb-3 text-xs text-[#918f9c]">
+                                    {isAdmin
+                                        ? 'Manage or open summary for finished sessions from today.'
+                                        : 'View only — open summary for leaderboard and session stats.'}
+                                </p>
+                                <div className="rt-queue-list grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                                    {finishedTodayRows.map((row) => (
+                                        <QueueingSessionCard
+                                            key={row.id}
+                                            row={row}
+                                            navPath={navPath}
+                                            viewOnly={!row.can_manage && !canDeleteQueueingSession(row, isAdmin)}
+                                            isAdmin={isAdmin}
+                                            onEdit={row.can_manage ? openEditModal : undefined}
+                                            onDelete={openDeleteConfirm}
+                                            deleteSubmitting={deleteSubmitting}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        ) : null}
+                    </div>
+                </>
+            )}
 
             {editRow ? (
                 <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 sm:items-center md:p-6">
