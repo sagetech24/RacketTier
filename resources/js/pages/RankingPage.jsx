@@ -9,10 +9,12 @@ import { RankingPageLoading } from '../components/ranking/RankingPageLoading.jsx
 import { RankingPodiumCard } from '../components/ranking/RankingPodiumCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
+import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
 import { useSportsQuery } from '../hooks/queries/useSportsQuery.js';
 
 const DEFAULT_SPORT_SLUG = 'pickleball';
 const REST_VISIBLE_COUNT = 10;
+const INITIAL_LOADING_MIN_MS = 2000;
 
 function isCurrentUserRow(row, userId) {
     return userId != null && row.user?.id === userId;
@@ -118,8 +120,10 @@ export function RankingPage() {
         return candidate;
     }, [user?.id, search, rankings, viewerRanking, displayedUserIds]);
 
-    const isInitialLoading = loading && rankings.length === 0 && !error;
-    const isRefreshing = loading && rankings.length > 0;
+    const isAwaitingInitialData =
+        activeFilter == null || (loading && rankings.length === 0 && !error);
+    const showInitialSkeleton = useMinimumLoadingDuration(isAwaitingInitialData, INITIAL_LOADING_MIN_MS);
+    const isRefreshing = loading && rankings.length > 0 && !showInitialSkeleton;
     const contentKey = `${activeFilter}-${debouncedSearch}`;
 
     return (
@@ -129,8 +133,8 @@ export function RankingPage() {
                 title="Rankings"
                 subtitle="Live skill ratings from recorded matches. Climb the board by winning against stronger opponents."
                 action={
-                    !isInitialLoading && rankings.length > 0 ? (
-                        <span className="rt-ranking-stats">
+                    !showInitialSkeleton && rankings.length > 0 ? (
+                        <span className="rt-ranking-stats rt-ranking-stats--enter">
                             <MaterialIcon name="groups" className="text-sm!" />
                             <span>
                                 <strong>{rankings.length}</strong> ranked
@@ -140,11 +144,11 @@ export function RankingPage() {
                 }
             />
 
-            {isInitialLoading ? <RankingPageLoading /> : null}
+            {showInitialSkeleton ? <RankingPageLoading /> : null}
 
-            {!isInitialLoading ? (
+            {!showInitialSkeleton ? (
                 <>
-                    <div className="rt-ranking-toolbar mb-8 md:mb-6">
+                    <div className="rt-ranking-toolbar rt-ranking-toolbar--enter mb-8 md:mb-6">
                         <div className="rt-ranking-toolbar-search group relative">
                             <div className="pointer-events-none absolute inset-y-0 left-4 z-10 flex items-center text-[#918f9c]">
                                 <MaterialIcon name="search" className="text-xl!" />
