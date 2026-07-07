@@ -6,8 +6,10 @@ use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\MemberPointWallet;
 use App\Models\Ranking;
+use App\Models\Sport;
 use App\Models\TierRank;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class GetDashboardSummary
 {
@@ -63,7 +65,7 @@ class GetDashboardSummary
             ->limit(3)
             ->get();
 
-        $primarySport = $recent->first()?->sport;
+        $primarySport = $this->resolvePrimarySport($user);
         $primarySportId = $primarySport?->id !== null ? (int) $primarySport->id : null;
         $walletBalance = 0;
         $tier = null;
@@ -156,5 +158,33 @@ class GetDashboardSummary
             'total_point_balance' => $totalPointBalance,
             'highlights' => $highlights,
         ];
+    }
+
+    /**
+     * Primary sport = most played by match count (wins + losses on session rosters), ties broken by most recent play.
+     */
+    private function resolvePrimarySport(User $user): ?Sport
+    {
+        $row = GameSessionPlayer::query()
+            ->join('game_sessions', 'game_sessions.id', '=', 'game_session_players.game_session_id')
+            ->where('game_session_players.user_id', $user->id)
+            ->whereNotNull('game_sessions.sport_id')
+            ->groupBy('game_sessions.sport_id')
+            ->select([
+                'game_sessions.sport_id',
+                DB::raw('SUM(game_session_players.wins_count + game_session_players.losses_count) as matches_played'),
+                DB::raw('MAX(game_sessions.last_finished_at) as last_played_at'),
+            ])
+            ->havingRaw('SUM(game_session_players.wins_count + game_session_players.losses_count) > 0')
+            ->orderByDesc('matches_played')
+            ->orderByDesc('last_played_at')
+            ->orderBy('game_sessions.sport_id')
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return Sport::query()->find((int) $row->sport_id);
     }
 }
