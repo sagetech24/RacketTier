@@ -1,0 +1,239 @@
+/* Auth screens — login, register, password reset */
+
+.rt-auth-shell {
+    position: relative;
+    display: flex;
+    min-height: max(850px, 100dvh);
+    flex-direction: column;
+    overflow: hidden;
+    background-color: #121216;
+    color: #e4e1e6;
+}
+
+.rt-auth-grid {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.035) 1px, transparent 0);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 75%);
+}
+
+.rt-auth-orb {
+    pointer-events: none;
+    position: fixed;
+    border-radius: 9999px;
+    filter: blur(100px);
+    will-change: transform;
+}
+
+.rt-auth-orb--lavender {
+    left: -5rem;
+    top: 8%;
+    height: 18rem;
+    width: 18rem;
+    background: rgb(194 193 255 / 0.08);
+    animation: rt-auth-orb-drift-a 22s ease-in-out infinite;
+}
+
+.rt-auth-orb--green {
+    right: -5rem;
+    bottom: 6%;
+    height: 22rem;
+    width: 22rem;
+    background: rgb(76 224 129 / 0.07);
+    animation: rt-auth-orb-drift-b 26s ease-in-out infinite;
+}
+
+.rt-auth-orb--violet {
+    left: 50%;
+    top: 42%;
+    height: 16rem;
+    width: 16rem;
+    transform: translateX(-50%);
+    background: rgb(120 119 198 / 0.06);
+    animation: rt-auth-orb-drift-c 20s ease-in-out infinite;
+}
+
+@keyframes rt-auth-orb-drift-a {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+    50% {
+        transform: translate(1.5rem, -1rem) scale(1.06);
+    }
+}
+
+@keyframes rt-auth-orb-drift-b {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+    50% {
+        transform: translate(-1.25rem, 1rem) scale(1.04);
+    }
+}
+
+@keyframes rt-auth-orb-drift-c {
+    0%,
+    100% {
+        transform: translate(-50%, 0) scale(1);
+    }
+    50% {
+        transform: translate(calc(-50% + 0.75rem), 0.75rem) scale(1.05);
+    }
+}
+
+@keyframes rt-auth-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.85rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rt-auth-enter {
+    animation: rt-auth-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+}
+
+.rt-auth-enter--1 {
+    animation-delay: 0.04s;
+}
+
+.rt-auth-enter--2 {
+    animation-delay: 0.1s;
+}
+
+.rt-auth-enter--3 {
+    animation-delay: 0.16s;
+}
+
+.rt-auth-enter--4 {
+    animation-delay: 0.22s;
+}
+
+.rt-auth-card {
+    border: 1px solid rgb(255 255 255 / 0.26);
+    background: linear-gradient(180deg, rgb(27 27 30 / 0.95) 0%, rgb(27 27 30 / 0.88) 100%);
+    box-shadow:
+        0 1.5rem 3rem -1.5rem rgb(0 0 0 / 0.55),
+        inset 0 1px 0 rgb(255 255 255 / 0.04);
+    backdrop-filter: blur(12px);
+}
+
+.rt-auth-input {
+    border: 1px solid rgb(255 255 255 / 0.14);
+    background-color: #0e0e11;
+    transition:
+        border-color 0.2s ease-out,
+        box-shadow 0.2s ease-out,
+        background-color 0.2s ease-out;
+}
+
+.rt-auth-input:hover:not(:disabled) {
+    border-color: rgb(255 255 255 / 0.08);
+    background-color: #141417;
+}
+
+.rt-auth-input:focus {
+    border-color: rgb(194 193 255 / 0.4);
+    background-color: #141417;
+    box-shadow: 0 0 0 3px rgb(194 193 255 / 0.12);
+}
+
+.rt-auth-input--error {
+    border-color: rgb(255 180 171 / 0.45);
+    box-shadow: 0 0 0 3px rgb(255 180 171 / 0.1);
+}
+
+.rt-auth-input-wrap:focus-within .rt-auth-input {
+    border-color: rgb(194 193 255 / 0.4);
+    background-color: #141417;
+    box-shadow: 0 0 0 3px rgb(194 193 255 / 0.12);
+}
+
+.rt-auth-input-wrap--error:focus-within .rt-auth-input {
+    border-color: rgb(255 180 171 / 0.45);
+    box-shadow: 0 0 0 3px rgb(255 180 171 / 0.1);
+}
+
+.rt-auth-btn {
+    background: linear-gradient(135deg, #c2c1ff 0%, #a5a3ff 52%, #b8b7ff 100%);
+    box-shadow: 0 1.25rem 2.5rem -0.75rem rgb(194 193 255 / 0.35);
+    transition:
+        transform 0.18s ease-out,
+        opacity 0.18s ease-out,
+        box-shadow 0.18s ease-out;
+}
+
+.rt-auth-btn:hover:not(:disabled) {
+    box-shadow: 0 1.35rem 2.75rem -0.65rem rgb(194 193 255 / 0.42);
+}
+
+.rt-auth-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.rt-auth-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.rt-auth-btn__spinner {
+    height: 1.125rem;
+    width: 1.125rem;
+    animation: rt-auth-spin 0.7s linear infinite;
+}
+
+@keyframes rt-auth-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes rt-auth-alert-in {
+    from {
+        opacity: 0;
+        transform: translateY(-0.35rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rt-auth-alert {
+    animation: rt-auth-alert-in 0.24s ease-out forwards;
+    border: 1px solid rgb(255 180 171 / 0.2);
+    background: rgb(147 0 10 / 0.28);
+}
+
+.rt-auth-logo-ring {
+    box-shadow:
+        0 0 0 1px rgb(194 193 255 / 0.12),
+        0 0 2rem rgb(194 193 255 / 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rt-auth-enter,
+    .rt-auth-orb,
+    .rt-auth-alert,
+    .rt-auth-btn__spinner {
+        animation: none !important;
+    }
+
+    .rt-auth-enter {
+        opacity: 1;
+        transform: none;
+    }
+
+    .rt-auth-btn,
+    .rt-auth-input {
+        transition: none !important;
+    }
+}

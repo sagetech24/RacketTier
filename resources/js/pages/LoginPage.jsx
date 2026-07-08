@@ -1,13 +1,30 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthBrandHeader } from '../components/AuthBrandHeader.jsx';
+import { AuthField } from '../components/auth/AuthField.jsx';
+import { AuthPageShell } from '../components/auth/AuthPageShell.jsx';
+import { AuthPasswordField } from '../components/auth/AuthPasswordField.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { normalizeAuthUser } from '../lib/userRoles.js';
 import { postForm } from '../lib/http.js';
 
-const GOOGLE_ICON =
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuAg6awCdOFM2mUf4iHGroiuA4v5FGVYEt8GEc92F4OoyT6bPN8TgPc9BXPwzIwu6l6DzC-ib67_TfDdsMJGski5FBONFL2OCZtkAXkPfW5fjp0Aa7CYj1xz8fPs3c94HvcxIBfE931i7mdW-d75OYOWJO6ZRrdOwdqPYcK6Pvw4rcFmItgXGZeVHiOOpAG3gm5ycAVVg-8KThXtrrHSXtZuG76rIEYQYEUAfkK7vvhPTG9lGDjsnVhTkjSYXSaozv_E4CchpD1d7xc';
-const APPLE_ICON = 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg';
+function AuthSpinner() {
+    return (
+        <svg
+            className="rt-auth-btn__spinner"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+            <path
+                className="opacity-90"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"
+            />
+        </svg>
+    );
+}
 
 export function LoginPage() {
     const navigate = useNavigate();
@@ -61,94 +78,86 @@ export function LoginPage() {
     }
 
     return (
-        <div className="pt-10 relative flex min-h-[max(850px,100dvh)] flex-col overflow-hidden bg-[#121216] text-[#e4e1e6]">
-            <main className="flex grow items-center justify-center px-6 py-8 tab:py-12">
-                <div className="w-full max-w-md space-y-12">
-                    <AuthBrandHeader />
+        <AuthPageShell>
+            <div className="w-full max-w-md space-y-8 tab:space-y-10">
+                <div className="rt-auth-enter rt-auth-enter--1">
+                    <AuthBrandHeader
+                        eyebrow="Welcome back"
+                        tagline="Sign in to track matches, climb tiers, and run queueing sessions."
+                    />
+                </div>
 
-                    <div className="space-y-8 rounded-xl bg-[#1b1b1e] p-8">
-                        <form className="space-y-6" onSubmit={handleSubmit} aria-busy={submitting}>
-                            <div className="space-y-2">
-                                <label
-                                    htmlFor="v2-login-email"
-                                    className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                >
-                                    Email Address
-                                </label>
-                                <input
-                                    id="v2-login-email"
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    autoComplete="email"
-                                    disabled={submitting}
-                                    placeholder="name@example.com"
-                                    className="w-full rounded-lg border-none bg-[#2a2a2d] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                />
-                                {fieldErrors.email?.[0] ? (
-                                    <p className="text-sm text-red-100">{fieldErrors.email[0]}</p>
-                                ) : null}
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="ml-1 flex items-end justify-between">
-                                    <label
-                                        htmlFor="v2-login-password"
-                                        className="text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                    >
-                                        Password
-                                    </label>
-                                    <Link
-                                        to="/forgot-password"
-                                        className="text-[10px] uppercase tracking-widest text-[#c2c1ff] transition-opacity hover:opacity-80"
-                                    >
-                                        Forgot?
-                                    </Link>
-                                </div>
-                                <input
-                                    id="v2-login-password"
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    autoComplete="current-password"
-                                    disabled={submitting}
-                                    placeholder="••••••••"
-                                    className="w-full rounded-lg border-none bg-[#2a2a2d] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                />
-                                {fieldErrors.password?.[0] ? (
-                                    <p className="text-sm text-red-100">{fieldErrors.password[0]}</p>
-                                ) : null}
-                            </div>
-
-                            {error ? (
-                                <div className="rounded-lg bg-[#93000a]/35 px-3 py-2 text-sm text-red-100" role="alert">
-                                    {error}
-                                </div>
-                            ) : null}
-
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="w-full rounded-xl bg-primary py-4 font-bold text-[#211e6a] shadow-[0_20px_40px_-10px_rgba(194,193,255,0.2)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
-                            >
-                                {submitting ? 'Signing in...' : 'Sign In'}
-                            </button>
-                        </form>
+                <div className="rt-auth-card rt-auth-enter rt-auth-enter--2 space-y-6 rounded-2xl p-7 tab:p-8">
+                    <div className="space-y-1 border-b border-white/6 pb-5">
+                        <h2 className="text-lg font-bold tracking-tight text-[#e4e1e6]">Sign in</h2>
+                        <p className="text-sm text-[#918f9c]">Use the email and password for your RacketTier account.</p>
                     </div>
 
-                    <p className="text-center text-sm text-[#c8c5d2]">
-                        Don&apos;t have an account?{' '}
-                        <Link to="/register" className="ml-1 font-bold text-[#4ce081] underline-offset-4 hover:underline">
-                            Create Account
-                        </Link>
-                    </p>
-                </div>
-            </main>
+                    <form className="space-y-5" onSubmit={handleSubmit} aria-busy={submitting} noValidate>
+                        <AuthField
+                            id="v2-login-email"
+                            label="Email address"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            error={fieldErrors.email?.[0]}
+                            disabled={submitting}
+                            autoComplete="email"
+                            autoFocus
+                            placeholder="name@example.com"
+                            inputMode="email"
+                        />
 
-            <div className="pointer-events-none fixed -left-20 top-[10%] h-64 w-64 rounded-full bg-[#c2c1ff]/5 blur-[100px]" />
-            <div className="pointer-events-none fixed -right-20 bottom-[10%] h-80 w-80 rounded-full bg-[#4ce081]/5 blur-[120px]" />
-        </div>
+                        <AuthPasswordField
+                            id="v2-login-password"
+                            label="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            error={fieldErrors.password?.[0]}
+                            disabled={submitting}
+                            labelAction={
+                                <Link
+                                    to="/forgot-password"
+                                    className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#c2c1ff] transition-opacity hover:opacity-80"
+                                >
+                                    Forgot?
+                                </Link>
+                            }
+                        />
+
+                        {error ? (
+                            <div className="rt-auth-alert rounded-xl px-3.5 py-2.5 text-sm text-[#ffb4ab]" role="alert">
+                                {error}
+                            </div>
+                        ) : null}
+
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="rt-auth-btn flex w-full items-center justify-center gap-2.5 rounded-xl py-4 font-bold text-[#211e6a]"
+                        >
+                            {submitting ? (
+                                <>
+                                    <AuthSpinner />
+                                    <span>Signing in…</span>
+                                </>
+                            ) : (
+                                'Sign in'
+                            )}
+                        </button>
+                    </form>
+                </div>
+
+                <p className="rt-auth-enter rt-auth-enter--3 text-center text-sm text-[#c8c5d2]">
+                    Don&apos;t have an account?{' '}
+                    <Link
+                        to="/register"
+                        className="font-bold text-[#4ce081] underline-offset-4 transition-colors hover:underline"
+                    >
+                        Create account
+                    </Link>
+                </p>
+            </div>
+        </AuthPageShell>
     );
 }
