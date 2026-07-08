@@ -9,6 +9,7 @@ import { DashboardPageLoading } from '../components/dashboard/DashboardPageLoadi
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { LogoutButton } from '../components/LogoutButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { formatRating } from '../components/ranking/rankingUtils.js';
 import { useDashboardSummaryQuery } from '../hooks/queries/useDashboardSummaryQuery.js';
 
 const IMG_PLAY_BG =
@@ -119,9 +120,11 @@ function DashboardSnapshot({ tierLabel, totalPointBalance, rating, primarySport,
                     <p className="rt-dashboard-stat-label">Tier</p>
                     <p className="rt-dashboard-stat-value mt-1 flex items-center gap-1">
                         <MaterialIcon name="star" className="text-lg text-[#c2c1ff]" />
-                        <span className="truncate text-base md:text-xl">{tier ? tier.tier_no : '—'}</span>
+                        <span className="truncate text-base md:text-xl">{tier ? tier.name : '—'}</span>
                     </p>
-                    <p className="mt-0.5 truncate text-[11px] font-medium text-[#c8c5d2]">{tier?.name ?? tierLabel}</p>
+                    <p className="mt-0.5 truncate text-[11px] font-medium text-[#c8c5d2]">
+                        {tier ? `Tier ${tier.tier_no}` : tierLabel}
+                    </p>
                 </div>
                 <div>
                     <p className="rt-dashboard-stat-label">Points</p>
@@ -134,7 +137,7 @@ function DashboardSnapshot({ tierLabel, totalPointBalance, rating, primarySport,
                     <p className="rt-dashboard-stat-label">Rating</p>
                     <p className="rt-dashboard-stat-value mt-1 flex items-center gap-1">
                         <MaterialIcon name="trending_up" className="text-lg text-[#a6a5ed]" />
-                        {rating != null ? rating.toLocaleString()/100 : '—'}
+                        {rating != null ? formatRating(rating) : '—'}
                     </p>
                 </div>
             </div>
@@ -352,7 +355,7 @@ export function DashboardPage() {
                         { label: 'Lost', value: lost, tone: 'text-[#ffb4ab]' },
                         {
                             label: winRate != null ? 'Win rate' : 'ELO',
-                            value: winRate != null ? `${winRate}%` : rating != null ? rating.toLocaleString() : '—',
+                            value: winRate != null ? `${winRate}%` : rating != null ? formatRating(rating) : '—',
                             tone: 'text-[#c2c1ff]',
                         },
                     ].map((stat) => (

@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Models\GameSession;
+use App\Support\RatingDisplay;
 use App\Models\GameSessionPlayer;
 use App\Models\MemberPointWallet;
 use App\Models\Ranking;
@@ -119,7 +120,7 @@ class GetDashboardSummary
                 $metaParts[] = 'Earned pts: +'.$sessionPoints.' pts';
             }
             if ($ratingChange !== null) {
-                $metaParts[] = 'Rating Chg: '.($ratingChange >= 0 ? '+' : '').$ratingChange;
+                $metaParts[] = 'Rating Chg: '.RatingDisplay::formatChange($ratingChange);
             }
             $meta = $metaParts !== [] ? implode(' • ', $metaParts) : ($finishedAt !== '' ? 'Match complete' : 'Match complete');
 

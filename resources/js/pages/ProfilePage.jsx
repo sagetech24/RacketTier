@@ -7,18 +7,8 @@ import { LogoutButton } from '../components/LogoutButton.jsx';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal.jsx';
 import { EditProfileModal } from '../components/profile/EditProfileModal.jsx';
 import { EmailVerificationCard } from '../components/profile/EmailVerificationCard.jsx';
+import { formatRating } from '../components/ranking/rankingUtils.js';
 import { useAuth } from '../context/AuthContext.jsx';
-
-function formatCurrentRating(rating) {
-    if (rating == null) {
-        return '0.00';
-    }
-
-    return (rating / 100).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 export function ProfilePage() {
     const { user: authUser, setUser, refreshUser } = useAuth();
@@ -162,7 +152,7 @@ export function ProfilePage() {
                             Current Rating
                         </div>
                         <div className="mt-1 text-2xl font-extrabold tabular-nums text-[#c2c1ff] md:text-3xl">
-                            {formatCurrentRating(stats?.rating)}
+                            {formatRating(stats?.rating)}
                         </div>
                     </div>
                     <div className="rt-surface-card bg-[#1f1f22] p-4 md:p-5">

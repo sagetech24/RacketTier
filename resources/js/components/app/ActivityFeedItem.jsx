@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { formatRatingChange } from '../ranking/rankingUtils.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 
 function activityIcon(kind) {
@@ -21,7 +22,7 @@ function ActivityItemMeta({ row, showMatchNo = false, compact = false }) {
         row.rating_change != null
             ? {
                   label: 'Rating',
-                  value: `${row.rating_change >= 0 ? '+' : ''}${row.rating_change}`,
+                  value: formatRatingChange(row.rating_change),
                   accent: row.rating_change >= 0 ? 'elo-up' : 'elo-down',
               }
             : null,

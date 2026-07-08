@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\GameSession;
 use App\Models\QueueingSessionMatch;
 use App\Models\User;
+use App\Support\RatingDisplay;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -341,7 +342,7 @@ class GetUserActivity
             $parts[] = '+'.$stats['session_points_earned'].' pts';
         }
         if ($stats['rating_change'] !== null) {
-            $parts[] = 'Rating Chg '.($stats['rating_change'] >= 0 ? '+' : '').$stats['rating_change'];
+            $parts[] = 'Rating Chg '.RatingDisplay::formatChange($stats['rating_change']);
         }
 
         return implode(' • ', $parts);

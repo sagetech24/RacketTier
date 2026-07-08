@@ -130,7 +130,7 @@ export function RankingPage() {
         <AppShell user={user}>
             <PageHeader
                 eyebrow="Leaderboard"
-                title="Rankings"
+                title="Global Rankings"
                 subtitle="Live skill ratings from recorded matches. Climb the board by winning against stronger opponents."
                 action={
                     !showInitialSkeleton && rankings.length > 0 ? (

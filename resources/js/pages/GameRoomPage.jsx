@@ -6,6 +6,7 @@ import { fetchGameSession, postFinishGameSessionMatch, postStartGameSessionMatch
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
+import { formatRating, formatRatingChange } from '../components/ranking/rankingUtils.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useVisibilityPolling } from '../hooks/useVisibilityPolling.js';
 
@@ -113,7 +114,7 @@ function mapQueueRow(session, row, currentUserId) {
         detail: [
             row.user.email,
             typeof row.session_points === 'number' ? `${row.session_points} session pts` : null,
-            typeof row.elo_rating === 'number' ? `Elo ${row.elo_rating}` : null,
+            typeof row.elo_rating === 'number' ? `Rating ${formatRating(row.elo_rating)}` : null,
         ]
             .filter(Boolean)
             .join(' · '),
@@ -553,8 +554,7 @@ export function GameRoomPage() {
                                                         <span className="ml-1.5 text-[#918f9c]">L</span>
                                                     )}
                                                     <span className={p.rating_change >= 0 ? 'text-[#4ce081] ml-1' : 'text-[#ffb4ab] ml-1'}>
-                                                        ({p.rating_change >= 0 ? '+' : ''}
-                                                        {p.rating_change} rating)
+                                                        ({formatRatingChange(p.rating_change)} rating)
                                                     </span>
                                                 </span>
                                                 <span className="shrink-0 text-right tabular-nums">
