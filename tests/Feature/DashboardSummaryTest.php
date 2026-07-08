@@ -81,4 +81,64 @@ class DashboardSummaryTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('primary_sport', null);
     }
+
+    public function test_sessions_active_counts_only_active_queueing_sessions(): void
+    {
+        $user = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+        $facility = Facility::query()->orderBy('id')->firstOrFail();
+
+        GameSession::query()->create([
+            'facility_id' => $facility->id,
+            'session_context' => 'facility',
+            'sport_id' => $sport->id,
+            'match_type' => 'singles',
+            'game_type' => '1st-set',
+            'created_by' => $user->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'started_at' => now()->subWeek(),
+        ]);
+
+        GameSession::query()->create([
+            'session_context' => 'queueing',
+            'queue_name' => 'Friday Night',
+            'sport_id' => $sport->id,
+            'match_type' => 'singles',
+            'created_by' => $user->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'started_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('auth.dashboard-summary'));
+
+        $response->assertOk();
+        $response->assertJsonPath('stats.sessions_active', 1);
+    }
+
+    public function test_sessions_active_is_zero_when_user_has_no_active_queueing_sessions(): void
+    {
+        $user = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+        $facility = Facility::query()->orderBy('id')->firstOrFail();
+
+        GameSession::query()->create([
+            'facility_id' => $facility->id,
+            'session_context' => 'facility',
+            'sport_id' => $sport->id,
+            'match_type' => 'singles',
+            'game_type' => '1st-set',
+            'created_by' => $user->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'started_at' => now()->subWeek(),
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('auth.dashboard-summary'));
+
+        $response->assertOk();
+        $response->assertJsonPath('stats.sessions_active', 0);
+    }
 }

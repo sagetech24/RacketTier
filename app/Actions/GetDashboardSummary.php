@@ -48,13 +48,9 @@ class GetDashboardSummary
         $losses = (int) ($playerAgg?->losses_sum ?? 0);
 
         $sessionsActive = GameSession::query()
+            ->where('session_context', 'queueing')
             ->where('is_active', true)
-            ->where(function ($q) use ($user): void {
-                $q->where('created_by', $user->id)
-                    ->orWhereHas('players', function ($p) use ($user): void {
-                        $p->where('user_id', $user->id);
-                    });
-            })
+            ->whereUserIsParticipant($user)
             ->count();
 
         $recent = GameSession::query()

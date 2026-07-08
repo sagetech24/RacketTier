@@ -71,7 +71,7 @@ function tierProgressPct(tier) {
 function dashboardSubtitle(summary) {
     const sessionsActive = summary?.stats?.sessions_active ?? 0;
     if (sessionsActive > 0) {
-        return `You have ${sessionsActive} active session${sessionsActive === 1 ? '' : 's'}. Jump back in when you're ready.`;
+        return `You have ${sessionsActive} active queue${sessionsActive === 1 ? '' : 's'}. Jump back in when you're ready.`;
     }
 
     const played = summary?.stats?.matches_played ?? 0;
@@ -109,7 +109,7 @@ function DashboardSnapshot({ tierLabel, totalPointBalance, rating, primarySport,
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400 bg-red-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-400">
                         <span className="animate-pulse flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full animate-pulse bg-red-400" aria-hidden></span>
-                            Playing
+                            <span>Playing</span>
                         </span>
                     </span>
                 ) : null}
