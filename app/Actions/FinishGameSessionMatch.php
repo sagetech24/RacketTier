@@ -194,34 +194,24 @@ class FinishGameSessionMatch
             }
 
             $pickedArrays = $this->draftLineup->playersFromOngoingLineup($session, $targetMatch, $required, $draft);
-            $playing = $this->hydrator->hydrate($session)->players
-                ->filter(fn (GameSessionPlayer $p): bool => collect($pickedArrays)->pluck('id')->contains($p->id))
-                ->values();
+            $playing = collect($pickedArrays)->map(function (array $row) use ($session): GameSessionPlayer {
+                $player = new GameSessionPlayer([
+                    'game_session_id' => $session->id,
+                    'user_id' => $row['user_id'] ?? null,
+                    'guest_name' => $row['guest_name'] ?? null,
+                    'queue_position' => (int) ($row['queue_position'] ?? 0),
+                    'team' => $row['team'] ?? null,
+                    'wins_count' => (int) ($row['wins_count'] ?? 0),
+                    'losses_count' => (int) ($row['losses_count'] ?? 0),
+                    'session_points' => (int) ($row['session_points'] ?? 0),
+                ]);
+                $player->id = (int) $row['id'];
+                $player->exists = true;
 
-            if ($playing->count() !== $required) {
-                $playing = collect($pickedArrays)->map(function (array $row) use ($session): GameSessionPlayer {
-                    $player = new GameSessionPlayer([
-                        'game_session_id' => $session->id,
-                        'user_id' => $row['user_id'] ?? null,
-                        'guest_name' => $row['guest_name'] ?? null,
-                        'queue_position' => (int) ($row['queue_position'] ?? 0),
-                        'team' => $row['team'] ?? null,
-                    ]);
-                    $player->id = (int) $row['id'];
-                    $player->exists = true;
+                return $player;
+            })->values();
 
-                    return $player;
-                });
-            }
-
-            $teamMap = [];
-            foreach ($playing->values() as $index => $player) {
-                if ($session->match_type === 'singles') {
-                    $teamMap[$player->id] = $index === 0 ? 1 : 2;
-                } else {
-                    $teamMap[$player->id] = (int) $player->team;
-                }
-            }
+            $teamMap = $this->teamMapFromLineupRows($session, $pickedArrays, $playing);
 
             $breakdown = $this->matchResultProcessor->processMatch(
                 $session,
@@ -358,16 +348,54 @@ class FinishGameSessionMatch
             }
         }
 
+        $teamMap = $this->teamMapFromLineupTeams($session, $lineupTeams, $playing);
+
+        return [$playing, $teamMap];
+    }
+
+    /**
+     * @param  array<int, int|null>  $lineupTeams
+     * @param  Collection<int, GameSessionPlayer>  $playing
+     * @return array<int, int>
+     */
+    private function teamMapFromLineupTeams(GameSession $session, array $lineupTeams, Collection $playing): array
+    {
         $teamMap = [];
-        foreach ($playing as $index => $player) {
+        foreach ($playing->values() as $index => $player) {
             if ($session->match_type === 'singles') {
-                $teamMap[$player->id] = $index === 0 ? 1 : 2;
+                $team = $lineupTeams[$player->id] ?? null;
+                $teamMap[$player->id] = in_array($team, [1, 2], true) ? (int) $team : ($index === 0 ? 1 : 2);
             } else {
                 $teamMap[$player->id] = (int) $lineupTeams[$player->id];
             }
         }
 
-        return [$playing, $teamMap];
+        return $teamMap;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lineupRows
+     * @param  Collection<int, GameSessionPlayer>  $playing
+     * @return array<int, int>
+     */
+    private function teamMapFromLineupRows(
+        GameSession $session,
+        array $lineupRows,
+        Collection $playing,
+    ): array {
+        $lineupTeams = [];
+        foreach ($lineupRows as $index => $row) {
+            $playerId = (int) ($row['id'] ?? 0);
+            if ($playerId <= 0) {
+                continue;
+            }
+            $team = $row['team'] ?? null;
+            $lineupTeams[$playerId] = in_array($team, [1, 2], true)
+                ? (int) $team
+                : ($index === 0 ? 1 : 2);
+        }
+
+        return $this->teamMapFromLineupTeams($session, $lineupTeams, $playing);
     }
 
     /**

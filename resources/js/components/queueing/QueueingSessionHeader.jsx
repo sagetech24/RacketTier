@@ -1,38 +1,25 @@
-import { Link, useLocation } from 'react-router-dom';
-import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../dashboard/SportIcon.jsx';
-import { normalizedAppPath, queueingSessionNavPaths, queueingSessionTabClass } from '../../lib/queueingSessionNav.js';
+import { QueueingSessionNav } from './QueueingSessionNav.jsx';
 
 /**
  * @param {{
  *   session: import('../../api/gameSession.js').GameSessionDetail,
  *   className?: string,
  *   tabSuffix?: string,
- *   canStopSession?: boolean,
- *   endSessionBusy?: boolean,
- *   onEndSessionClick?: () => void,
  * }} props
  */
 export function QueueingSessionHeader({
     session,
     className = 'mb-8',
     tabSuffix = '',
-    canStopSession = false,
-    endSessionBusy = false,
-    onEndSessionClick,
 }) {
-    const location = useLocation();
-    const navPath = normalizedAppPath(location.pathname);
-    const queueingNav = queueingSessionNavPaths(session.id);
-    const tabTextSize = 'text-base md:text-lg lg:text-xl';
-
     return (
         <article className={className}>
             <div className="mb-4 flex flex-col gap-2">
                 <div className="flex items-start gap-2 justify-between">
                     <div className="flex items-center gap-2">
                         <SportIcon icon={session.sport?.icon} className="text-[#4ce081]" />
-                        <h1 className="mr-2 text-3xl font-extrabold leading-none tracking-tighter md:text-4xl">
+                        <h1 className="mr-2 text-3xl font-extrabold leading-none tracking-tighter md:text-4xl capitalize">
                             {session.queue_name?.trim() ? (
                                 session.queue_name.trim()
                             ) : (
@@ -44,11 +31,7 @@ export function QueueingSessionHeader({
                         </h1>
                     </div>
                     {session.is_active ? (
-                        <span className={ session.is_active
-                                ? 'capitalize rounded-full border border-[#4ce081] bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]'
-                                : 'capitalize rounded-full border border-[#4ce081] bg-[#353438] px-2 py-0.5 text-xs font-bold text-[#c8c5d2]'
-                            }
-                        >
+                        <span className="rt-queue-status--active capitalize rounded-full border border-[#4ce081] bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]">
                             {session.status}
                         </span>
                     ) : (
@@ -89,36 +72,7 @@ export function QueueingSessionHeader({
                 </div>
             </div>
 
-            <div className="mb-6 mt-3 flex flex-wrap items-center gap-2 md:gap-4">
-                <Link
-                    to={queueingNav.dash}
-                    className={`${queueingSessionTabClass(navPath === queueingNav.dash, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
-                >
-                    Dashboard
-                </Link>
-                <Link
-                    to={queueingNav.players}
-                    className={`${queueingSessionTabClass(navPath === queueingNav.players, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
-                >
-                    Players{tabSuffix}
-                </Link>
-                <Link
-                    to={queueingNav.matches}
-                    className={`${queueingSessionTabClass(navPath === queueingNav.matches, tabTextSize)} text-center text-white/70 border-white/70 md:flex-1`}
-                >
-                    Matches{tabSuffix}
-                </Link>
-                {canStopSession && onEndSessionClick ? (
-                    <button
-                        type="button"
-                        disabled={endSessionBusy}
-                        onClick={onEndSessionClick}
-                        className="ml-auto flex shrink-0 items-center rounded-lg border border-red-200 bg-red-400/70 px-2 py-1.5 text-sm font-bold text-red-200 transition-transform enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm lg:text-base"
-                    >
-                        <MaterialIcon name="power_settings_new" className="text-md" />
-                    </button>
-                ) : null}
-            </div>
+            <QueueingSessionNav sessionId={session.id} tabSuffix={tabSuffix} />
         </article>
     );
 }

@@ -1,12 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchGameSession } from '../../api/gameSession.js';
 import {
     fetchQueueingSessionMatches,
     postCreateQueueingSessionMatch,
+    postEndQueueingSession,
 } from '../../api/queueingSession.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { AutoMatchProposalsModal } from './AutoMatchProposalsModal.jsx';
+import { ConfirmActionModal } from './ConfirmActionModal.jsx';
 import { parseAutoMatchCriteria } from './QueueingSessionAutoMatchCriteriaField.jsx';
+import { QueueingSessionEndLoadingOverlay } from './QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionMatchLineupModal } from './QueueingSessionMatchLineupModal.jsx';
 
 /**
@@ -27,6 +32,8 @@ export function QueueingSessionMatchFabPanel({
     onReload,
     onActionError,
 }) {
+    const navigate = useNavigate();
+    const { user } = useAuth();
     const fabRef = useRef(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -34,6 +41,8 @@ export function QueueingSessionMatchFabPanel({
     const [localSession, setLocalSession] = useState(session);
     const [createMatchOpen, setCreateMatchOpen] = useState(false);
     const [autoMatchProposalsOpen, setAutoMatchProposalsOpen] = useState(false);
+    const [stopSessionOpen, setStopSessionOpen] = useState(false);
+    const [endingSession, setEndingSession] = useState(false);
     /** @type {import('../../api/queueingSession.js').AutoMatchCriteria | null} */
     const [autoMatchCriteria, setAutoMatchCriteria] = useState(null);
 
@@ -88,12 +97,26 @@ export function QueueingSessionMatchFabPanel({
         [onActionError],
     );
 
+    const hasOngoingMatchRecord = useMemo(
+        () => matches.some((row) => row.status === 'ongoing'),
+        [matches],
+    );
+
+    const isAdmin = Boolean(user?.is_admin);
+    const canForceEndSession = canManage && isAdmin && hasOngoingMatchRecord;
+    const blockEndSession = hasOngoingMatchRecord && !isAdmin;
+    const hasStaleOngoingSession = localSession?.status === 'ongoing' && !hasOngoingMatchRecord;
+
+    const queueSessionLabel =
+        localSession?.queue_name?.trim() ||
+        (localSession?.sport?.name ? `${localSession.sport.name} queue` : 'this queue session');
+
     function closeMenu() {
         setMenuOpen(false);
     }
 
     function toggleMenu() {
-        if (busy) return;
+        if (busy || endingSession) return;
         setMenuOpen((open) => !open);
     }
 
@@ -118,6 +141,12 @@ export function QueueingSessionMatchFabPanel({
         } finally {
             setBusy(false);
         }
+    }
+
+    function handleOpenEndSession() {
+        closeMenu();
+        onActionError?.('');
+        setStopSessionOpen(true);
     }
 
     async function handleCreateMatch(lineup) {
@@ -147,6 +176,20 @@ export function QueueingSessionMatchFabPanel({
         }
     }
 
+    async function onStopQueueSession() {
+        if (sessionId == null || endingSession) return;
+        onActionError?.('');
+        setStopSessionOpen(false);
+        setEndingSession(true);
+        try {
+            await postEndQueueingSession(sessionId);
+            navigate(`/queueing-session/${sessionId}`);
+        } catch (e) {
+            setEndingSession(false);
+            reportError(e instanceof Error ? e.message : 'Could not stop session.');
+        }
+    }
+
     if (!canManage || !localSession?.is_active) {
         return null;
     }
@@ -166,12 +209,13 @@ export function QueueingSessionMatchFabPanel({
                     <div
                         className="rt-match-fab-callout mb-3 w-[min(16rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border border-[#686898] bg-[#1b1b1e] p-1.5 shadow-2xl shadow-black/40"
                         role="menu"
-                        aria-label="Create match options"
+                        aria-label="Match and session options"
                     >
+                        <div className="rt-match-fab-callout__matches">
                             <button
                                 type="button"
                                 role="menuitem"
-                                disabled={busy}
+                                disabled={busy || endingSession}
                                 onClick={() => handleOpenAutoMatch()}
                                 className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -188,7 +232,7 @@ export function QueueingSessionMatchFabPanel({
                             <button
                                 type="button"
                                 role="menuitem"
-                                disabled={busy}
+                                disabled={busy || endingSession}
                                 onClick={() => handleOpenCreateMatch()}
                                 className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -202,12 +246,33 @@ export function QueueingSessionMatchFabPanel({
                                     </span>
                                 </span>
                             </button>
+                        </div>
+
+                        <div className="rt-match-fab-callout__session">
+                            <button
+                                type="button"
+                                role="menuitem"
+                                disabled={busy || endingSession}
+                                onClick={handleOpenEndSession}
+                                className="rt-match-fab-callout-item rt-match-fab-callout-item--danger flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-400/15 text-red-300">
+                                    <MaterialIcon name="power_settings_new" className="text-xl!" />
+                                </span>
+                                <span className="min-w-0">
+                                    <span className="block text-sm font-bold text-red-200">End session</span>
+                                    <span className="block text-[10px] leading-snug text-red-200/70">
+                                        Close this queue for all players
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 ) : null}
 
                 <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || endingSession}
                     onClick={toggleMenu}
                     aria-expanded={menuOpen}
                     aria-haspopup="menu"
@@ -237,6 +302,43 @@ export function QueueingSessionMatchFabPanel({
                 busy={busy}
                 onClose={() => setCreateMatchOpen(false)}
                 onSave={handleCreateMatch}
+            />
+
+            <ConfirmActionModal
+                open={stopSessionOpen}
+                title={canForceEndSession ? 'Force stop queue session?' : 'Stop queue session?'}
+                description={
+                    canForceEndSession
+                        ? `This will cancel the ongoing match, close pending matches, and permanently end ${queueSessionLabel} for all players. No scores or rankings will be recorded for cancelled matches.`
+                        : `This permanently ends ${queueSessionLabel} for all players. No new matches can be started and the session will show as finished.`
+                }
+                busy={busy || endingSession}
+                confirmDisabled={blockEndSession}
+                confirmLabel={canForceEndSession ? 'Force stop session' : 'Stop session'}
+                confirmBusyLabel={canForceEndSession ? 'Force stopping…' : 'Stopping…'}
+                onCancel={() => setStopSessionOpen(false)}
+                onConfirm={() => void onStopQueueSession()}
+            >
+                {blockEndSession ? (
+                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                        Finish or cancel the ongoing match before stopping the session.
+                    </p>
+                ) : null}
+                {hasStaleOngoingSession ? (
+                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                        Session status was out of sync. Ending will clear stale player states and close the session.
+                    </p>
+                ) : null}
+                {canForceEndSession ? (
+                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                        Admin override: ongoing and queued matches will be closed without recording results.
+                    </p>
+                ) : null}
+            </ConfirmActionModal>
+
+            <QueueingSessionEndLoadingOverlay
+                open={endingSession}
+                queueName={localSession?.queue_name ?? localSession?.sport?.name}
             />
         </>
     );

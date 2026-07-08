@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchGameSession, postFinishGameSessionMatch } from '../api/gameSession.js';
 import {
     deleteQueueingSessionMatch,
     patchUpdateQueueingSessionMatch,
-    postEndQueueingSession,
     postStartQueueingSessionMatch,
 } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
-import { QueueingSessionEndLoadingOverlay } from '../components/queueing/QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { QueueingSessionMatchLineupModal } from '../components/queueing/QueueingSessionMatchLineupModal.jsx';
@@ -414,7 +412,6 @@ function FinishedMatchesTable({ rows }) {
 
 export function QueueingSessionMatchesPage() {
     const { id: idParam } = useParams();
-    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const tabScrollerRef = useRef(null);
     const skipScrollSyncRef = useRef(false);
@@ -456,8 +453,6 @@ export function QueueingSessionMatchesPage() {
     const [editingMatchId, setEditingMatchId] = useState(null);
     const [editingMatchNo, setEditingMatchNo] = useState(null);
     const [editInitialTeams, setEditInitialTeams] = useState({ team1: [], team2: [] });
-    const [stopSessionOpen, setStopSessionOpen] = useState(false);
-    const [endingSession, setEndingSession] = useState(false);
     /** @type {null | { id: number, matchNo: number | null, status: string }} */
     const [removeMatchConfirm, setRemoveMatchConfirm] = useState(null);
 
@@ -603,20 +598,6 @@ export function QueueingSessionMatchesPage() {
         }
     }
 
-    async function onStopQueueSession() {
-        if (sessionId == null || endingSession) return;
-        setActionError('');
-        setStopSessionOpen(false);
-        setEndingSession(true);
-        try {
-            await postEndQueueingSession(sessionId);
-            navigate(`/queueing-session/${sessionId}`);
-        } catch (e) {
-            setEndingSession(false);
-            setActionError(e instanceof Error ? e.message : 'Could not stop session.');
-        }
-    }
-
     const grouped = useMemo(() => {
         const base = { queueing: [], ongoing: [], finished: [] };
         for (const row of matches) {
@@ -697,17 +678,7 @@ export function QueueingSessionMatchesPage() {
     }
 
     const canManageMatches = Boolean(session?.can_manage) && Boolean(session?.is_active);
-    const canStopSession = Boolean(session?.can_manage) && Boolean(session?.is_active);
     const canEndMatch = canManageMatches && session?.status === 'ongoing';
-    const hasOngoingMatchRecord = matches.some((row) => row.status === 'ongoing');
-    const hasStaleOngoingSession = session?.status === 'ongoing' && !hasOngoingMatchRecord;
-    const isAdmin = Boolean(user?.is_admin);
-    const canForceEndSession = canStopSession && isAdmin && hasOngoingMatchRecord;
-    const blockEndSession = hasOngoingMatchRecord && !isAdmin;
-
-    const queueSessionLabel =
-        session?.queue_name?.trim() ||
-        (session?.sport?.name ? `${session.sport.name} queue` : 'this queue session');
 
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
@@ -717,17 +688,7 @@ export function QueueingSessionMatchesPage() {
                 {error ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
                 {actionError ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p> : null}
 
-                {session ? (
-                    <QueueingSessionHeader
-                        session={session}
-                        canStopSession={canStopSession}
-                        endSessionBusy={busy}
-                        onEndSessionClick={() => {
-                            setActionError('');
-                            setStopSessionOpen(true);
-                        }}
-                    />
-                ) : null}
+                {session ? <QueueingSessionHeader session={session} /> : null}
 
                 {!loading && !error ? (
                     <div className="space-y-4">
@@ -736,7 +697,10 @@ export function QueueingSessionMatchesPage() {
                                 {sectionTitle(activeMatchTab ?? 'ongoing')}{' '}
                                 <span className="text-[#c2c1ff]">Matches</span>
                                 {!session?.is_active ? (
-                                    <span className="text-[#c2c1ff]"> ({(grouped[activeMatchTab] ?? []).length})</span>
+                                    <span className="text-[#c2c1ff]">
+                                        {' '}
+                                        ({(grouped[activeMatchTab] ?? []).length})
+                                    </span>
                                 ) : null}
                             </h1>
                             <div
@@ -957,43 +921,6 @@ export function QueueingSessionMatchesPage() {
                 confirmBusyLabel={removeMatchConfirm?.status === 'ongoing' ? 'Canceling…' : 'Removing…'}
                 onCancel={() => setRemoveMatchConfirm(null)}
                 onConfirm={() => confirmRemoveMatch()}
-            />
-
-            <ConfirmActionModal
-                open={stopSessionOpen}
-                title={canForceEndSession ? 'Force stop queue session?' : 'Stop queue session?'}
-                description={
-                    canForceEndSession
-                        ? `This will cancel the ongoing match, close pending matches, and permanently end ${queueSessionLabel} for all players. No scores or rankings will be recorded for cancelled matches.`
-                        : `This permanently ends ${queueSessionLabel} for all players. No new matches can be started and the session will show as finished.`
-                }
-                busy={busy}
-                confirmDisabled={blockEndSession}
-                confirmLabel={canForceEndSession ? 'Force stop session' : 'Stop session'}
-                confirmBusyLabel={canForceEndSession ? 'Force stopping…' : 'Stopping…'}
-                onCancel={() => setStopSessionOpen(false)}
-                onConfirm={() => void onStopQueueSession()}
-            >
-                {blockEndSession ? (
-                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-                        Finish or cancel the ongoing match before stopping the session.
-                    </p>
-                ) : null}
-                {hasStaleOngoingSession ? (
-                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-                        Session status was out of sync. Ending will clear stale player states and close the session.
-                    </p>
-                ) : null}
-                {canForceEndSession ? (
-                    <p className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-                        Admin override: ongoing and queued matches will be closed without recording results.
-                    </p>
-                ) : null}
-            </ConfirmActionModal>
-
-            <QueueingSessionEndLoadingOverlay
-                open={endingSession}
-                queueName={session?.queue_name ?? session?.sport?.name}
             />
 
             <DashboardMobileNav />

@@ -81,6 +81,7 @@ class BuildQueueingSessionSummary
                 'total_matches' => (int) $p->wins_count + (int) $p->losses_count,
                 'earned_points' => (int) $p->session_points,
                 'is_guest' => $isGuest,
+                'skill_level' => $p->skill_level !== null ? (int) $p->skill_level : null,
             ];
         });
 
