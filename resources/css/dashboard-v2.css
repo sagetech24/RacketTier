@@ -2148,20 +2148,29 @@
     opacity: 0;
 }
 
+.rt-match-fab-callout__players,
 .rt-match-fab-callout__session {
     margin-top: 0.875rem;
     padding-top: 0.875rem;
     border-top: 1px solid rgb(255 255 255 / 0.08);
 }
 
-.rt-match-fab-callout-item:nth-child(1) {
+.rt-match-fab-callout__matches .rt-match-fab-callout-item:nth-child(1) {
     animation-delay: 0.04s;
 }
 
-.rt-match-fab-callout-item:nth-child(2) {
+.rt-match-fab-callout__matches .rt-match-fab-callout-item:nth-child(2) {
     animation-delay: 0.08s;
 }
 
+.rt-match-fab-callout__players .rt-match-fab-callout-item:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.rt-match-fab-callout__players .rt-match-fab-callout-item:nth-child(2) {
+    animation-delay: 0.11s;
+}
+
 .rt-match-fab-callout__session .rt-match-fab-callout-item {
-    animation-delay: 0.12s;
+    animation-delay: 0.14s;
 }

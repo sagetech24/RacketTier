@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { fetchGameSession } from '../../api/gameSession.js';
 import {
     fetchQueueingSessionMatches,
+    postAddQueueingSessionPlayer,
     postCreateQueueingSessionMatch,
     postEndQueueingSession,
 } from '../../api/queueingSession.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
+import { AddQueueingSessionPlayerModal } from './AddQueueingSessionPlayerModal.jsx';
 import { AutoMatchProposalsModal } from './AutoMatchProposalsModal.jsx';
 import { ConfirmActionModal } from './ConfirmActionModal.jsx';
 import { parseAutoMatchCriteria } from './QueueingSessionAutoMatchCriteriaField.jsx';
+import { QueueingSessionAddMemberPickerModal } from './QueueingSessionAddMemberPickerModal.jsx';
 import { QueueingSessionEndLoadingOverlay } from './QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionMatchLineupModal } from './QueueingSessionMatchLineupModal.jsx';
 
@@ -41,6 +44,14 @@ export function QueueingSessionMatchFabPanel({
     const [localSession, setLocalSession] = useState(session);
     const [createMatchOpen, setCreateMatchOpen] = useState(false);
     const [autoMatchProposalsOpen, setAutoMatchProposalsOpen] = useState(false);
+    const [addMemberPickerOpen, setAddMemberPickerOpen] = useState(false);
+    const [addPlayerModal, setAddPlayerModal] = useState(
+        /** @type {{
+         *   mode: 'guest' | 'member',
+         *   intent: 'add',
+         *   member?: { id?: number, name: string, pronoun?: string | null },
+         * } | null} */ (null),
+    );
     const [stopSessionOpen, setStopSessionOpen] = useState(false);
     const [endingSession, setEndingSession] = useState(false);
     /** @type {import('../../api/queueingSession.js').AutoMatchCriteria | null} */
@@ -111,6 +122,14 @@ export function QueueingSessionMatchFabPanel({
         localSession?.queue_name?.trim() ||
         (localSession?.sport?.name ? `${localSession.sport.name} queue` : 'this queue session');
 
+    const rosterUserIds = useMemo(() => {
+        const ids = new Set();
+        for (const p of localSession?.players ?? []) {
+            if (p.user?.id) ids.add(p.user.id);
+        }
+        return ids;
+    }, [localSession?.players]);
+
     function closeMenu() {
         setMenuOpen(false);
     }
@@ -147,6 +166,69 @@ export function QueueingSessionMatchFabPanel({
         closeMenu();
         onActionError?.('');
         setStopSessionOpen(true);
+    }
+
+    function handleOpenAddPlayers() {
+        closeMenu();
+        onActionError?.('');
+        setAddMemberPickerOpen(true);
+    }
+
+    function handleOpenAddGuestPlayer() {
+        closeMenu();
+        onActionError?.('');
+        setAddPlayerModal({ mode: 'guest', intent: 'add' });
+    }
+
+    /**
+     * @param {{ id: number, name: string, pronoun?: string | null }} member
+     */
+    function handleSelectMember(member) {
+        setAddMemberPickerOpen(false);
+        setAddPlayerModal({
+            mode: 'member',
+            intent: 'add',
+            member: {
+                id: member.id,
+                name: member.name,
+                pronoun: member.pronoun ?? null,
+            },
+        });
+    }
+
+    /**
+     * @param {{ guest_name?: string, pronoun?: string | null, skill_level: number }} payload
+     */
+    async function handleConfirmAddPlayer(payload) {
+        if (sessionId == null || !addPlayerModal) return;
+        setBusy(true);
+        try {
+            const isGuest = addPlayerModal.mode === 'guest';
+            const body = isGuest
+                ? {
+                      guest_name: payload.guest_name,
+                      pronoun: payload.pronoun ?? null,
+                      skill_level: payload.skill_level,
+                  }
+                : {
+                      user_id: addPlayerModal.member?.id,
+                      skill_level: payload.skill_level,
+                  };
+            await postAddQueueingSessionPlayer(sessionId, body);
+            if (addPlayerModal.mode === 'member') {
+                setAddPlayerModal(null);
+            }
+            if (onReload) {
+                await onReload();
+            } else {
+                await refreshMatchData();
+            }
+        } catch (e) {
+            reportError(e instanceof Error ? e.message : 'Could not add player.');
+            throw e;
+        } finally {
+            setBusy(false);
+        }
     }
 
     async function handleCreateMatch(lineup) {
@@ -248,6 +330,43 @@ export function QueueingSessionMatchFabPanel({
                             </button>
                         </div>
 
+                        <div className="rt-match-fab-callout__players">
+                            <button
+                                type="button"
+                                role="menuitem"
+                                disabled={busy || endingSession}
+                                onClick={handleOpenAddPlayers}
+                                className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ce081]/15 text-[#4ce081]">
+                                    <MaterialIcon name="group_add" className="text-xl!" />
+                                </span>
+                                <span className="min-w-0">
+                                    <span className="block text-sm font-bold text-[#e4e1e6]">Add players</span>
+                                    <span className="block text-[10px] leading-snug text-[#918f9c]">
+                                        Search and add members to the roster
+                                    </span>
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                role="menuitem"
+                                disabled={busy || endingSession}
+                                onClick={handleOpenAddGuestPlayer}
+                                className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15 text-[#c2c1ff]">
+                                    <MaterialIcon name="person_add" className="text-xl!" />
+                                </span>
+                                <span className="min-w-0">
+                                    <span className="block text-sm font-bold text-[#e4e1e6]">Add guest players</span>
+                                    <span className="block text-[10px] leading-snug text-[#918f9c]">
+                                        Quick-add a guest to the roster
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+
                         <div className="rt-match-fab-callout__session">
                             <button
                                 type="button"
@@ -339,6 +458,30 @@ export function QueueingSessionMatchFabPanel({
             <QueueingSessionEndLoadingOverlay
                 open={endingSession}
                 queueName={localSession?.queue_name ?? localSession?.sport?.name}
+            />
+
+            <QueueingSessionAddMemberPickerModal
+                open={addMemberPickerOpen}
+                sportId={localSession?.sport?.id ?? null}
+                sportName={localSession?.sport?.name ?? null}
+                rosterUserIds={rosterUserIds}
+                busy={busy}
+                onClose={() => {
+                    if (!busy) setAddMemberPickerOpen(false);
+                }}
+                onSelectMember={handleSelectMember}
+            />
+
+            <AddQueueingSessionPlayerModal
+                open={addPlayerModal != null}
+                mode={addPlayerModal?.mode ?? 'guest'}
+                intent="add"
+                member={addPlayerModal?.mode === 'member' ? addPlayerModal.member ?? null : null}
+                busy={busy}
+                onCancel={() => {
+                    if (!busy) setAddPlayerModal(null);
+                }}
+                onConfirm={(payload) => handleConfirmAddPlayer(payload)}
             />
         </>
     );

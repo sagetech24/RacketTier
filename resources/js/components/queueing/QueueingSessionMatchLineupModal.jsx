@@ -22,7 +22,7 @@ function PlayerStatusBadge({ status }) {
 function CreateMatchPlayerSessionStats({ p }) {
     const wins = p.wins_count ?? 0;
     const losses = p.losses_count ?? 0;
-    const earnedLabel = p.is_guest ? 'N/A' : String(p.session_points ?? 0);
+    const earnedLabel = String(p.session_points ?? 0);
 
     return (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-[#918f9c]">

@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchFacilityPlayers } from '../api/gameSession.js';
 import {
     deleteQueueingSessionPlayer,
     patchUpdateQueueingSessionPlayer,
-    postAddQueueingSessionPlayer,
 } from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
@@ -152,7 +150,7 @@ function PlayerSessionStats({ p }) {
     const wins = p.wins_count ?? 0;
     const losses = p.losses_count ?? 0;
     const total = wins + losses;
-    const earnedLabel = p.is_guest ? 'N/A' : String(p.session_points ?? 0);
+    const earnedLabel = String(p.session_points ?? 0);
 
     return (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[#918f9c]">
@@ -167,36 +165,6 @@ function PlayerSessionStats({ p }) {
             <span className="inline-flex items-center gap-0.5">
                 <MaterialIcon name="award_star" className="text-[15px]! text-[#c2c1ff]" />
                 <span className="tabular-nums font-medium text-[#e4e1e6]">{earnedLabel}</span>
-            </span>
-        </div>
-    );
-}
-
-/**
- * @param {{
- *   stats?: { wins: number, losses: number, total_matches: number } | null,
- *   sportName?: string | null,
- * }} props
- */
-function MemberSportStats({ stats, sportName }) {
-    const wins = stats?.wins ?? 0;
-    const losses = stats?.losses ?? 0;
-    const total = stats?.total_matches ?? wins + losses;
-    const label = sportName ? `${sportName} stats` : 'Sport stats';
-
-    return (
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-[#918f9c]" title={label}>
-            <span className="inline-flex items-center gap-0.5">
-                <MaterialIcon name="arrow_upward" className="text-[13px]! text-[#4ce081]" />
-                <span className="tabular-nums font-medium text-[#e4e1e6]">{wins}</span>
-            </span>
-            <span className="inline-flex items-center gap-0.5">
-                <MaterialIcon name="arrow_downward" className="text-[13px]! text-red-300/90" />
-                <span className="tabular-nums font-medium text-[#e4e1e6]">{losses}</span>
-            </span>
-            <span className="inline-flex items-center gap-0.5">
-                Total:
-                <span className="tabular-nums font-medium text-[#e4e1e6]">{total} games</span>
             </span>
         </div>
     );
@@ -221,17 +189,14 @@ export function QueueingSessionPlayersPage() {
     const error = sessionId == null ? 'Invalid session.' : isError ? 'Could not load session.' : '';
     const [busy, setBusy] = useState(false);
     const [actionError, setActionError] = useState('');
-    const [playerSearch, setPlayerSearch] = useState('');
-    const [searchRows, setSearchRows] = useState([]);
     const [visibleRosterCount, setVisibleRosterCount] = useState(ROSTER_PAGE_SIZE);
     const [loadingMoreRoster, setLoadingMoreRoster] = useState(false);
     const [rosterSortField, setRosterSortField] = useState('status');
     const [rosterSortDirection, setRosterSortDirection] = useState('asc');
-    const [addPlayerModal, setAddPlayerModal] = useState(
+    const [editPlayerModal, setEditPlayerModal] = useState(
         /** @type {{
          *   mode: 'guest' | 'member',
-         *   intent: 'add' | 'edit',
-         *   playerRowId?: number,
+         *   playerRowId: number,
          *   member?: { id?: number, name: string, pronoun?: string | null, skill_level?: number | null },
          *   guest?: { name?: string, pronoun?: string | null, skill_level?: number | null },
          * } | null} */ (null),
@@ -239,27 +204,6 @@ export function QueueingSessionPlayersPage() {
     const [removeTarget, setRemoveTarget] = useState(
         /** @type {{ id: number, name: string, isGuest: boolean } | null} */ (null),
     );
-
-    useEffect(() => {
-        let cancelled = false;
-        const t = window.setTimeout(() => {
-            (async () => {
-                try {
-                    const rows = await fetchFacilityPlayers(playerSearch, {
-                        includeMe: true,
-                        sportId: session?.sport?.id,
-                    });
-                    if (!cancelled) setSearchRows(rows);
-                } catch {
-                    if (!cancelled) setSearchRows([]);
-                }
-            })();
-        }, 200);
-        return () => {
-            cancelled = true;
-            window.clearTimeout(t);
-        };
-    }, [playerSearch, session?.sport?.id]);
 
     const isHost = Boolean(session?.is_host);
     const canManagePlayers = Boolean(session?.can_manage) && Boolean(session?.is_active);
@@ -353,32 +297,6 @@ export function QueueingSessionPlayersPage() {
         }, 200);
     }, [hasMoreRoster, loadingMoreRoster, sortedRosterPlayers.length]);
 
-    const rosterUserIds = useMemo(() => {
-        const ids = new Set();
-        for (const p of session?.players ?? []) {
-            if (p.user?.id) ids.add(p.user.id);
-        }
-        return ids;
-    }, [session?.players]);
-
-    const addablePlayers = useMemo(
-        () => searchRows.filter((row) => !rosterUserIds.has(row.id)),
-        [searchRows, rosterUserIds],
-    );
-
-    function onAddMemberClick(row) {
-        if (!canManagePlayers || busy) return;
-        setAddPlayerModal({
-            mode: 'member',
-            intent: 'add',
-            member: {
-                id: row.id,
-                name: row.name,
-                pronoun: row.pronoun ?? null,
-            },
-        });
-    }
-
     /**
      * @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p
      */
@@ -386,9 +304,8 @@ export function QueueingSessionPlayersPage() {
         if (!canManagePlayers || busy || p.is_playing) return;
 
         if (p.is_guest) {
-            setAddPlayerModal({
+            setEditPlayerModal({
                 mode: 'guest',
-                intent: 'edit',
                 playerRowId: p.id,
                 guest: {
                     name: p.guest_name ?? '',
@@ -399,9 +316,8 @@ export function QueueingSessionPlayersPage() {
             return;
         }
 
-        setAddPlayerModal({
+        setEditPlayerModal({
             mode: 'member',
-            intent: 'edit',
             playerRowId: p.id,
             member: {
                 id: p.user?.id,
@@ -412,36 +328,12 @@ export function QueueingSessionPlayersPage() {
         });
     }
 
-    async function onConfirmAddPlayer(payload) {
-        if (sessionId == null || !canManagePlayers || !addPlayerModal) return;
+    async function onConfirmEditPlayer(payload) {
+        if (sessionId == null || !canManagePlayers || !editPlayerModal) return;
         setActionError('');
         setBusy(true);
         try {
-            const isEdit = addPlayerModal.intent === 'edit';
-            const isGuest = addPlayerModal.mode === 'guest';
-
-            if (isEdit) {
-                if (addPlayerModal.playerRowId == null) return;
-                const body = isGuest
-                    ? {
-                          guest_name: payload.guest_name,
-                          pronoun: payload.pronoun ?? null,
-                          skill_level: payload.skill_level,
-                      }
-                    : {
-                          skill_level: payload.skill_level,
-                      };
-                await patchUpdateQueueingSessionPlayer(
-                    sessionId,
-                    addPlayerModal.playerRowId,
-                    body,
-                );
-                invalidateQueueingSession(sessionId);
-                await refetchSession();
-                setAddPlayerModal(null);
-                return;
-            }
-
+            const isGuest = editPlayerModal.mode === 'guest';
             const body = isGuest
                 ? {
                       guest_name: payload.guest_name,
@@ -449,16 +341,12 @@ export function QueueingSessionPlayersPage() {
                       skill_level: payload.skill_level,
                   }
                 : {
-                      user_id: addPlayerModal.member?.id,
                       skill_level: payload.skill_level,
                   };
-            await postAddQueueingSessionPlayer(sessionId, body);
+            await patchUpdateQueueingSessionPlayer(sessionId, editPlayerModal.playerRowId, body);
             invalidateQueueingSession(sessionId);
             await refetchSession();
-            if (addPlayerModal.mode === 'member') {
-                setPlayerSearch('');
-                setAddPlayerModal(null);
-            }
+            setEditPlayerModal(null);
         } catch (e) {
             setActionError(e instanceof Error ? e.message : 'Could not save player.');
             throw e;
@@ -518,65 +406,7 @@ export function QueueingSessionPlayersPage() {
                             <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p>
                         ) : null}
 
-                        <div className={canManagePlayers ? 'flex flex-col gap-6 mt-4' : ''}>
-                        {canManagePlayers ? (
-                            <section className="rounded-xl border border-[#3c3c3e] bg-[#1b1b1e] p-4 md:p-5">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h2 className="flex-1 text-sm font-bold uppercase tracking-wide text-[#918f9c]">Add players</h2>
-                                    <button
-                                        type="button"
-                                        disabled={busy}
-                                        onClick={() => setAddPlayerModal({ mode: 'guest', intent: 'add' })}
-                                        className="flex items-center justify-center gap-1 text-sm font-semibold text-[#cacaca] border border-[#505050] rounded-md px-2.5 py-1"
-                                    >
-                                        <MaterialIcon name="person_add" className="text-[15px]! text-[#4ce081]" />
-                                        Add a Guest Player
-                                    </button>    
-                                </div>
-                                <input
-                                    value={playerSearch}
-                                    onChange={(e) => setPlayerSearch(e.target.value)}
-                                    placeholder="Search members…"
-                                    className="mb-2 w-full rounded-lg border border-[#3c3c3e] bg-[#131316] p-3 text-md outline-none focus:ring-1 focus:ring-[#4ce081]"
-                                />
-                                <div className="max-h-60 space-y-4 overflow-y-auto md:max-h-[min(28rem,calc(100dvh-22rem))]">
-                                    {addablePlayers.map((r) => (
-                                        <button
-                                            key={r.id}
-                                            type="button"
-                                            disabled={busy}
-                                            onClick={() => onAddMemberClick(r)}
-                                            className="flex w-full items-center justify-between gap-2 rounded-lg bg-white/10 border border-[#514c53] px-3 py-2 text-left text-md hover:border-[#4ce081]/50"
-                                        >
-                                            <span className="flex min-w-0 flex-1 flex-col">
-                                                <span className="flex min-w-0 items-center gap-2">
-                                                    <span className="truncate">{r.name}</span>
-                                                    {session?.sport?.id != null ? (
-                                                        <span
-                                                            className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
-                                                            title="Tier for this session’s sport (lifetime session points)"
-                                                        >
-                                                            {r.tier?.name ?? '—'}
-                                                        </span>
-                                                    ) : null}
-                                                </span>
-                                                {session?.sport?.id != null ? (
-                                                    <MemberSportStats
-                                                        stats={r.stats}
-                                                        sportName={session?.sport?.name}
-                                                    />
-                                                ) : null}
-                                            </span>
-                                            <span className="shrink-0 text-xs text-[#c2c1ff]/70">
-                                                <MaterialIcon name="add" className="text-xs text-[#c2c1ff]/70" />
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </section>
-                        ) : null}
-
-                        <section className="mt-10 min-w-0">
+                        <section className="mt-4 min-w-0">
                             <div className="mb-4 flex items-center justify-between">
                                 <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                                     Current <span className="text-[#c2c1ff]">Players</span>
@@ -719,21 +549,20 @@ export function QueueingSessionPlayersPage() {
                                 </div>
                             ) : null}
                         </section>
-                        </div>
                     </div>
                 ) : null}
             </main>
             <AddQueueingSessionPlayerModal
-                open={addPlayerModal != null}
-                mode={addPlayerModal?.mode ?? 'guest'}
-                intent={addPlayerModal?.intent ?? 'add'}
-                member={addPlayerModal?.mode === 'member' ? addPlayerModal.member ?? null : null}
-                guest={addPlayerModal?.mode === 'guest' ? addPlayerModal.guest ?? null : null}
+                open={editPlayerModal != null}
+                mode={editPlayerModal?.mode ?? 'guest'}
+                intent="edit"
+                member={editPlayerModal?.mode === 'member' ? editPlayerModal.member ?? null : null}
+                guest={editPlayerModal?.mode === 'guest' ? editPlayerModal.guest ?? null : null}
                 busy={busy}
                 onCancel={() => {
-                    if (!busy) setAddPlayerModal(null);
+                    if (!busy) setEditPlayerModal(null);
                 }}
-                onConfirm={(payload) => onConfirmAddPlayer(payload)}
+                onConfirm={(payload) => onConfirmEditPlayer(payload)}
             />
             <ConfirmActionModal
                 open={removeTarget != null}
