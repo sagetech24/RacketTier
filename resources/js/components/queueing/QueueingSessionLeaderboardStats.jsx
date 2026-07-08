@@ -36,7 +36,7 @@ export function QueueingSessionLeaderboardStats({
     return (
         <div
             className={[
-                'flex flex-wrap items-center gap-x-3 gap-y-0.5 uppercase tracking-wider text-[#c8c5d2] md:justify-center md:items-center justify-end',
+                'flex flex-wrap items-center gap-x-3 gap-y-0.5 uppercase tracking-wider text-[#c8c5d2] md:justify-start md:items-center justify-start',
                 compact ? 'text-[11px]' : 'text-[13px] md:gap-x-4',
             ].join(' ')}
         >

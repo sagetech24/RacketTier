@@ -109,6 +109,7 @@ export function QueueingSessionAddMemberPickerModal({
                 <input
                     value={playerSearch}
                     onChange={(e) => setPlayerSearch(e.target.value)}
+                    type="search"
                     placeholder="Search members…"
                     disabled={busy}
                     className="mt-4 mb-2 w-full rounded-lg border border-[#3c3c3e] bg-[#131316] p-3 text-md text-[#e4e1e6] outline-none focus:ring-1 focus:ring-[#4ce081] disabled:opacity-60"

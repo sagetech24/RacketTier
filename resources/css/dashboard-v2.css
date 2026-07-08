@@ -1641,6 +1641,23 @@
         pointer-events: auto !important;
     }
 
+    .rt-roster-head,
+    .rt-roster-player-card,
+    .rt-roster-player-skeleton,
+    .rt-roster-status--playing .rt-roster-status-dot {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+
+    .rt-roster-player-card--editable:hover,
+    .rt-roster-sort-direction:active,
+    .rt-roster-load-more:active:not(:disabled),
+    .rt-roster-player-action:active:not(:disabled) {
+        transform: none;
+    }
+
     .rt-qs-dash-summary-stat:hover {
         transform: none;
     }
@@ -1831,6 +1848,308 @@
 .rt-playing-player-card {
     border-width: 2px;
     animation: rt-playing-player-border-pulse 1.5s ease-in-out infinite;
+}
+
+/* Queueing session roster (/queueing-session/:id/players) */
+.rt-roster-head {
+    animation: rt-ranking-toolbar-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+}
+
+.rt-roster-sort-select {
+    border-radius: 0.75rem;
+    border: 1px solid #353438;
+    background-color: #131316;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #e4e1e6;
+    transition:
+        border-color 0.2s ease-out,
+        box-shadow 0.2s ease-out;
+}
+
+.rt-roster-sort-select:focus {
+    border-color: rgb(194 193 255 / 0.35);
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(194 193 255 / 0.12);
+}
+
+.rt-roster-sort-direction {
+    display: inline-flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    border: 1px solid #353438;
+    background-color: #131316;
+    color: #c2c1ff;
+    transition:
+        border-color 0.2s ease-out,
+        background-color 0.2s ease-out,
+        transform 0.15s ease-out;
+}
+
+.rt-roster-sort-direction:hover {
+    border-color: rgb(194 193 255 / 0.35);
+    background-color: #1b1b1e;
+}
+
+.rt-roster-sort-direction:active {
+    transform: scale(0.96);
+}
+
+.rt-roster-player-cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.rt-roster-player-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.875rem;
+    border: 1px solid rgb(255 255 255 / 0.06);
+    background-color: #1b1b1e;
+    opacity: 0;
+    animation: rt-ranking-row-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    transition:
+        border-color 0.2s ease-out,
+        background-color 0.2s ease-out,
+        transform 0.2s ease-out,
+        box-shadow 0.2s ease-out;
+}
+
+.rt-roster-player-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: rgb(255 255 255 / 0.08);
+    transition: background 0.2s ease-out;
+}
+
+.rt-roster-player-card--queueing::before {
+    background: linear-gradient(to bottom, #fbbf24, rgb(251 191 36 / 0.35));
+}
+
+.rt-roster-player-card--playing::before {
+    background: linear-gradient(to bottom, #4ce081, rgb(76 224 129 / 0.35));
+}
+
+.rt-roster-player-card--you {
+    border-color: rgb(194 193 255 / 0.28);
+    background: linear-gradient(135deg, rgb(194 193 255 / 0.1), rgb(194 193 255 / 0.03));
+}
+
+.rt-roster-player-card--editable {
+    cursor: pointer;
+}
+
+.rt-roster-player-card--editable:hover {
+    border-color: rgb(255 255 255 / 0.12);
+    background-color: #1f1f22;
+    transform: translateY(-1px);
+}
+
+.rt-roster-player-card--editable:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(76 224 129 / 0.45);
+}
+
+.rt-roster-player-card--playing {
+    border-color: rgb(76 224 129 / 0.22);
+    background-color: rgb(76 224 129 / 0.05);
+    animation:
+        rt-ranking-row-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+        rt-playing-player-border-pulse 1.5s ease-in-out 0.32s infinite;
+}
+
+.rt-roster-player-card-inner {
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.875rem 0.875rem 0.875rem 1rem;
+}
+
+.rt-roster-player-main {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    gap: 0.75rem;
+}
+
+.rt-roster-player-avatar--playing {
+    border-color: rgb(76 224 129 / 0.35);
+    background: linear-gradient(145deg, rgb(76 224 129 / 0.18), rgb(194 193 255 / 0.2));
+}
+
+.rt-roster-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    padding: 0.2rem 0.55rem;
+    font-size: 0.5625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.rt-roster-status-dot {
+    height: 0.375rem;
+    width: 0.375rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+.rt-roster-status--playing {
+    border-color: rgb(76 224 129 / 0.35);
+    background-color: rgb(76 224 129 / 0.12);
+    color: #4ce081;
+}
+
+.rt-roster-status--playing .rt-roster-status-dot {
+    background-color: #4ce081;
+    animation: rt-match-status-blink 1.2s ease-in-out infinite;
+}
+
+.rt-roster-status--queueing {
+    border-color: rgb(251 191 36 / 0.35);
+    background-color: rgb(251 191 36 / 0.12);
+    color: #fbbf24;
+}
+
+.rt-roster-status--queueing .rt-roster-status-dot {
+    background-color: #fbbf24;
+}
+
+.rt-roster-status--waiting {
+    border-color: rgb(255 255 255 / 0.08);
+    background-color: rgb(255 255 255 / 0.04);
+    color: #c8c5d2;
+}
+
+.rt-roster-status--waiting .rt-roster-status-dot {
+    background-color: #918f9c;
+}
+
+.rt-roster-player-points {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.125rem;
+}
+
+.rt-roster-player-aside {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.rt-roster-player-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.rt-roster-player-action {
+    display: inline-flex;
+    height: 2rem;
+    width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    background-color: transparent;
+    transition:
+        background-color 0.2s ease-out,
+        border-color 0.2s ease-out,
+        color 0.2s ease-out,
+        transform 0.15s ease-out;
+}
+
+.rt-roster-player-action--edit {
+    color: #c2c1ff;
+}
+
+.rt-roster-player-action--remove {
+    color: rgb(252 165 165 / 0.9);
+}
+
+.rt-roster-player-action:hover:not(:disabled) {
+    background-color: rgb(255 255 255 / 0.06);
+    border-color: rgb(255 255 255 / 0.08);
+}
+
+.rt-roster-player-action:active:not(:disabled) {
+    transform: scale(0.94);
+}
+
+.rt-roster-player-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.rt-roster-player-card--editable:hover .rt-roster-player-action--edit,
+.rt-roster-player-card--editable:focus-within .rt-roster-player-action--edit {
+    background-color: rgb(194 193 255 / 0.1);
+    border-color: rgb(194 193 255 / 0.2);
+}
+
+.rt-roster-player-card--editable:hover .rt-roster-player-action--remove,
+.rt-roster-player-card--editable:focus-within .rt-roster-player-action--remove {
+    background-color: rgb(248 113 113 / 0.1);
+    border-color: rgb(248 113 113 / 0.2);
+}
+
+.rt-roster-load-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(194 193 255 / 0.25);
+    background-color: rgb(194 193 255 / 0.08);
+    padding: 0.625rem 1.25rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #c2c1ff;
+    transition:
+        border-color 0.2s ease-out,
+        background-color 0.2s ease-out,
+        transform 0.15s ease-out;
+}
+
+.rt-roster-load-more:hover:not(:disabled) {
+    border-color: rgb(194 193 255 / 0.45);
+    background-color: rgb(194 193 255 / 0.14);
+}
+
+.rt-roster-load-more:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.rt-roster-load-more:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.rt-roster-player-skeleton {
+    height: 7.5rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgb(255 255 255 / 0.04);
+    background: linear-gradient(90deg, #1b1b1e 0%, #242428 50%, #1b1b1e 100%);
+    background-size: 200% 100%;
+    opacity: 0;
+    animation:
+        rt-ranking-row-in 0.3s ease-out forwards,
+        rt-skeleton-shimmer 1.4s ease-in-out infinite;
 }
 
 .rt-finished-match-card {
@@ -2060,6 +2379,16 @@
     }
 
     .rt-player-cards-grid > article {
+        height: 100%;
+    }
+
+    .rt-roster-player-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .rt-roster-player-cards-grid > article {
         height: 100%;
     }
 

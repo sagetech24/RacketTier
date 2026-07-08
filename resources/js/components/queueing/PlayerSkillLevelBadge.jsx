@@ -12,7 +12,7 @@ export function PlayerSkillLevelBadge({ skillLevel, className = '' }) {
     return (
         <span
             className={[
-                'inline-flex items-center gap-0.5 rounded-full border border-[#c2c1ff]/25 bg-[#c2c1ff]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c2c1ff]',
+                'inline-flex items-center gap-0.5 rounded-full border border-[#c2c1ff]/25 bg-[#c2c1ff]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c2c1ff] md:text-md! text-xs!',
                 className,
             ]
                 .filter(Boolean)

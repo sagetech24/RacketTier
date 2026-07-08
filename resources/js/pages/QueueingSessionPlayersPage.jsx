@@ -5,11 +5,18 @@ import {
     deleteQueueingSessionPlayer,
     patchUpdateQueueingSessionPlayer,
 } from '../api/queueingSession.js';
+import { EmptyState } from '../components/app/EmptyState.jsx';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueueingSessionPlayerModal.jsx';
+import {
+    QueueingSessionPlayerCard,
+    playerRosterStatus,
+    rosterPlayerName,
+} from '../components/queueing/QueueingSessionPlayerCard.jsx';
+import { QueueingSessionPlayersLoading } from '../components/queueing/QueueingSessionPlayersLoading.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -18,16 +25,33 @@ import {
     useQueueingSessionMatchesQuery,
     useQueueingSessionQuery,
 } from '../hooks/queries/useQueueingSessionQuery.js';
+import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
 
 const ROSTER_PAGE_SIZE = 10;
+const INITIAL_LOADING_MIN_MS = 2000;
 
 const ROSTER_SORT_OPTIONS = [
-    { value: 'rank', label: 'Rank' },
+    { value: 'status', label: 'Status' },
+    { value: 'rank', label: 'Skill level' },
     { value: 'name', label: 'Name' },
     { value: 'pronoun', label: 'Pronoun' },
     { value: 'player_type', label: 'Player type' },
-    { value: 'status', label: 'Status' },
 ];
+
+const STATUS_FILTERS = [
+    { value: 'all', label: 'All' },
+    { value: 'playing', label: 'Playing' },
+    { value: 'queueing', label: 'Queueing' },
+    { value: 'waiting', label: 'Waiting' },
+];
+
+/** @param {unknown} lineup */
+function lineupPlayerIds(lineup) {
+    const rows = Array.isArray(lineup) ? lineup : [];
+    return rows
+        .map((p) => Number(p.game_session_player_id ?? p.id ?? 0))
+        .filter((id) => id > 0);
+}
 
 /**
  * @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p
@@ -48,126 +72,6 @@ function rosterStatusSortRank(p, reservedPlayerIds, sessionActive) {
         return 2;
     }
     return 3;
-}
-
-function displayName(row) {
-    if (row.is_guest) return row.guest_name || 'Guest';
-    return row.user?.name || 'Player';
-}
-
-/** @param {unknown} lineup */
-function lineupPlayerIds(lineup) {
-    const rows = Array.isArray(lineup) ? lineup : [];
-    return rows
-        .map((p) => Number(p.game_session_player_id ?? p.id ?? 0))
-        .filter((id) => id > 0);
-}
-
-/**
- * @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p
- * @param {Set<number>} reservedPlayerIds
- * @param {boolean} sessionActive
- */
-function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
-    if (!sessionActive) {
-        return null;
-    }
-    if (p.is_playing) {
-        return { label: 'Playing', className: 'border border-[#4ce081]/40 bg-[#4ce081]/20 text-[#4ce081]' };
-    }
-    if (reservedPlayerIds.has(p.id)) {
-        return { label: 'Queueing', className: 'border border-amber-400/40 bg-amber-400/20 text-amber-200' };
-    }
-    return { label: 'Waiting', className: 'border border-[#514c53] bg-[#353438] text-[#918f9c]' };
-}
-
-/** @param {{ status: { label: string, className: string } | null }} props */
-function PlayerStatusBadge({ status }) {
-    if (!status) return null;
-    return (
-        <span
-            className={`shrink-0 self-center rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide ${status.className}`}
-        >
-            {status.label}
-        </span>
-    );
-}
-
-const SKILL_LEVEL_NAMES = {
-    1: 'Starter',
-    2: 'Beginner',
-    3: 'Intermediate',
-    4: 'Sempai',
-    5: 'Sensie',
-};
-
-/** @param {number} level */
-function skillLevelBackgroundOpacity(level) {
-    const clamped = Math.min(5, Math.max(1, level));
-    return 0.15 + ((clamped - 1) / 4) * 0.65;
-}
-
-/** @param {number} level */
-function skillLevelTextClass(level) {
-    const clamped = Math.min(5, Math.max(1, level));
-    const classes = {
-        1: 'text-[#e4e1e6]',
-        2: 'text-[#c8c5d2]',
-        3: 'text-[#c9c8d0]',
-        4: 'text-[#353438]',
-        5: 'text-[#131316]',
-    };
-    return classes[clamped] ?? classes[1];
-}
-
-/** @param {{ skillLevel?: number | null }} props */
-function PlayerSkillLevelIndicator({ skillLevel }) {
-    if (skillLevel == null) return null;
-
-    const level = Math.min(5, Math.max(1, skillLevel));
-    const opacity = skillLevelBackgroundOpacity(level);
-    const textClass = skillLevelTextClass(level);
-    const tierName = SKILL_LEVEL_NAMES[level] ?? `Level ${level}`;
-
-    return (
-        <div
-            className="flex w-11 shrink-0 flex-col items-center justify-center self-stretch border-r border-[#514c53]/40"
-            style={{ backgroundColor: `rgba(194, 193, 255, ${opacity})` }}
-            title={`Skill level ${level} — ${tierName}`}
-        >
-            <span className={`text-lg font-extrabold leading-none tabular-nums ${textClass}`}>
-                {level}
-            </span>
-            <span className={`mt-0.5 text-[7px] font-semibold uppercase tracking-wide ${textClass}`}>
-                Skill <br />Level
-            </span>
-        </div>
-    );
-}
-
-/** @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p */
-function PlayerSessionStats({ p }) {
-    const wins = p.wins_count ?? 0;
-    const losses = p.losses_count ?? 0;
-    const total = wins + losses;
-    const earnedLabel = String(p.session_points ?? 0);
-
-    return (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[#918f9c]">
-            <span className="inline-flex items-center gap-0.5">
-                <MaterialIcon name="arrow_upward" className="text-[15px]! text-[#4ce081]" />
-                <span className="tabular-nums font-medium text-[#e4e1e6]">{wins}</span>
-            </span>
-            <span className="inline-flex items-center gap-0.5">
-                <MaterialIcon name="arrow_downward" className="text-[15px]! text-red-300/90" />
-                <span className="tabular-nums font-medium text-[#e4e1e6]">{losses}</span>
-            </span>
-            <span className="inline-flex items-center gap-0.5">
-                <MaterialIcon name="award_star" className="text-[15px]! text-[#c2c1ff]" />
-                <span className="tabular-nums font-medium text-[#e4e1e6]">{earnedLabel}</span>
-            </span>
-        </div>
-    );
 }
 
 export function QueueingSessionPlayersPage() {
@@ -193,6 +97,8 @@ export function QueueingSessionPlayersPage() {
     const [loadingMoreRoster, setLoadingMoreRoster] = useState(false);
     const [rosterSortField, setRosterSortField] = useState('status');
     const [rosterSortDirection, setRosterSortDirection] = useState('asc');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [playerSearch, setPlayerSearch] = useState('');
     const [editPlayerModal, setEditPlayerModal] = useState(
         /** @type {{
          *   mode: 'guest' | 'member',
@@ -208,6 +114,7 @@ export function QueueingSessionPlayersPage() {
     const isHost = Boolean(session?.is_host);
     const canManagePlayers = Boolean(session?.can_manage) && Boolean(session?.is_active);
     const canManageMatches = canManagePlayers;
+    const sessionActive = Boolean(session?.is_active);
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
@@ -227,10 +134,30 @@ export function QueueingSessionPlayersPage() {
     }, [matches]);
 
     const rosterPlayers = useMemo(() => session?.players ?? [], [session?.players]);
+
+    const filteredRosterPlayers = useMemo(() => {
+        const query = playerSearch.trim().toLowerCase();
+
+        return rosterPlayers.filter((p) => {
+            const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
+            if (statusFilter !== 'all' && status?.key !== statusFilter) {
+                return false;
+            }
+            if (!query) return true;
+            const haystack = [
+                rosterPlayerName(p),
+                p.pronoun ?? '',
+                p.is_guest ? 'guest' : 'member',
+            ]
+                .join(' ')
+                .toLowerCase();
+            return haystack.includes(query);
+        });
+    }, [playerSearch, reservedPlayerIds, rosterPlayers, sessionActive, statusFilter]);
+
     const sortedRosterPlayers = useMemo(() => {
-        const players = [...rosterPlayers];
+        const players = [...filteredRosterPlayers];
         const dir = rosterSortDirection === 'asc' ? 1 : -1;
-        const sessionActive = Boolean(session?.is_active);
 
         players.sort((a, b) => {
             let cmp = 0;
@@ -243,7 +170,9 @@ export function QueueingSessionPlayersPage() {
                     break;
                 }
                 case 'name':
-                    cmp = displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base' });
+                    cmp = rosterPlayerName(a).localeCompare(rosterPlayerName(b), undefined, {
+                        sensitivity: 'base',
+                    });
                     break;
                 case 'pronoun': {
                     const aPronoun = (a.pronoun ?? '').trim().toLowerCase();
@@ -277,16 +206,34 @@ export function QueueingSessionPlayersPage() {
         });
 
         return players;
-    }, [rosterPlayers, rosterSortField, rosterSortDirection, reservedPlayerIds, session?.is_active]);
+    }, [
+        filteredRosterPlayers,
+        rosterSortField,
+        rosterSortDirection,
+        reservedPlayerIds,
+        sessionActive,
+    ]);
+
     const visibleRosterPlayers = useMemo(
         () => sortedRosterPlayers.slice(0, visibleRosterCount),
         [sortedRosterPlayers, visibleRosterCount],
     );
     const hasMoreRoster = visibleRosterCount < sortedRosterPlayers.length;
 
+    const statusCounts = useMemo(() => {
+        const counts = { all: rosterPlayers.length, playing: 0, queueing: 0, waiting: 0 };
+        for (const p of rosterPlayers) {
+            const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
+            if (status?.key === 'playing') counts.playing += 1;
+            else if (status?.key === 'queueing') counts.queueing += 1;
+            else if (status?.key === 'waiting') counts.waiting += 1;
+        }
+        return counts;
+    }, [reservedPlayerIds, rosterPlayers, sessionActive]);
+
     useEffect(() => {
         setVisibleRosterCount(ROSTER_PAGE_SIZE);
-    }, [sessionId, rosterSortField, rosterSortDirection]);
+    }, [sessionId, rosterSortField, rosterSortDirection, statusFilter, playerSearch]);
 
     const loadMoreRoster = useCallback(() => {
         if (!hasMoreRoster || loadingMoreRoster) return;
@@ -321,7 +268,7 @@ export function QueueingSessionPlayersPage() {
             playerRowId: p.id,
             member: {
                 id: p.user?.id,
-                name: displayName(p),
+                name: rosterPlayerName(p),
                 pronoun: p.pronoun ?? null,
                 skill_level: p.skill_level ?? null,
             },
@@ -372,7 +319,7 @@ export function QueueingSessionPlayersPage() {
 
     function onRemoveClick(p) {
         if (!canManagePlayers || busy) return;
-        setRemoveTarget({ id: p.id, name: displayName(p), isGuest: Boolean(p.is_guest) });
+        setRemoveTarget({ id: p.id, name: rosterPlayerName(p), isGuest: Boolean(p.is_guest) });
     }
 
     async function onConfirmRemove() {
@@ -382,174 +329,246 @@ export function QueueingSessionPlayersPage() {
         setRemoveTarget(null);
     }
 
+    const isAwaitingInitialData = loading && !session && !error;
+    const showInitialSkeleton = useMinimumLoadingDuration(isAwaitingInitialData, INITIAL_LOADING_MIN_MS);
+    const showEmptyRoster = !showInitialSkeleton && rosterPlayers.length === 0;
+    const showNoFilterResults =
+        !showInitialSkeleton && rosterPlayers.length > 0 && sortedRosterPlayers.length === 0;
+
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
             <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
-                {loading ? <div className="h-32 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
-                {error ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
+                {showInitialSkeleton ? <QueueingSessionPlayersLoading /> : null}
+
+                {!showInitialSkeleton ? (
+                    <>
+                {error ? (
+                    <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                        {error}
+                    </p>
+                ) : null}
 
                 {session ? (
                     <div className="space-y-4">
                         <section>
                             <QueueingSessionHeader session={session} className="mb-4" />
-                                {!canManagePlayers ? (
-                                    <p className="mt-4 text-sm text-[#918f9c]">
-                                        {isHost
-                                            ? 'Player changes are locked once the session has ended.'
-                                            : 'View-only access. Only the queue master or an admin can manage this roster.'}
-                                    </p>
-                                ) : null}
+                            {!canManagePlayers ? (
+                                <p className="mt-4 text-sm text-[#918f9c]">
+                                    {isHost
+                                        ? 'Player changes are locked once the session has ended.'
+                                        : 'View-only access. Only the queue master or an admin can manage this roster.'}
+                                </p>
+                            ) : null}
                         </section>
 
                         {actionError ? (
-                            <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p>
+                            <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                                {actionError}
+                            </p>
                         ) : null}
 
-                        <section className="mt-4 min-w-0">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
-                                    Current <span className="text-[#c2c1ff]">Players</span>
-                                </h1>
-                                <div className="flex shrink-0 items-center gap-1.5">
-                                    <select
-                                        value={rosterSortField}
-                                        onChange={(e) => setRosterSortField(e.target.value)}
-                                        aria-label="Sort players by"
-                                        className="max-w-[9.5rem] rounded-lg border border-[#3c3c3e] bg-[#1b1b1e] px-2.5 py-2 text-xs font-medium text-[#e4e1e6] outline-none focus:ring-1 focus:ring-[#4ce081] md:max-w-none md:px-3 md:text-sm"
-                                    >
-                                        {ROSTER_SORT_OPTIONS.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setRosterSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-                                        }
-                                        aria-label={rosterSortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
-                                        title={rosterSortDirection === 'asc' ? 'Ascending' : 'Descending'}
-                                        className="flex size-9 items-center justify-center rounded-lg border border-[#3c3c3e] bg-[#1b1b1e] text-[#c2c1ff] transition-colors hover:border-[#c2c1ff]/50"
-                                    >
-                                        <MaterialIcon
-                                            name={rosterSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
-                                            className="text-[18px]!"
-                                        />
-                                    </button>
+                        <section className="mt-4 min-w-0" aria-label="Session roster">
+                            <div className="rt-roster-head mb-5">
+                                <div className="flex flex-wrap items-end justify-between gap-3">
+                                    <div>
+                                        <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
+                                            Current <span className="text-[#c2c1ff]">Players</span>
+                                        </h1>
+                                        <p className="mt-2 text-sm text-[#918f9c]">
+                                            {sessionActive
+                                                ? 'Tap a player to edit details. Status updates live as matches progress.'
+                                                : 'Final roster for this session.'}
+                                        </p>
+                                    </div>
+                                    {rosterPlayers.length > 0 ? (
+                                        <span className="rt-qs-dash-stats rt-qs-dash-stats--enter border border-white/10 rounded-full px-4 py-1.5 text-xs">
+                                            <MaterialIcon name="groups" className="text-base!" />
+                                            <span>
+                                                <strong>{rosterPlayers.length}</strong> players
+                                            </span>
+                                        </span>
+                                    ) : null}
                                 </div>
-                            </div>
-                            <ul className="rt-player-cards-grid space-y-3 md:space-y-0">
-                                {visibleRosterPlayers.map((p) => {
-                                    const canEditPlayer = canManagePlayers && !p.is_playing;
-                                    const isPlaying = Boolean(session?.is_active && p.is_playing);
 
-                                    return (
-                                    <li
-                                        key={p.id}
-                                        role={canEditPlayer ? 'button' : undefined}
-                                        tabIndex={canEditPlayer && !busy ? 0 : undefined}
-                                        onClick={() => {
-                                            if (canEditPlayer && !busy) onEditPlayerClick(p);
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (!canEditPlayer || busy) return;
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                e.preventDefault();
-                                                onEditPlayerClick(p);
-                                            }
-                                        }}
-                                        className={`flex items-stretch overflow-hidden rounded-lg border text-sm shadow-sm ${
-                                            isPlaying
-                                                ? 'rt-playing-player-card'
-                                                : 'border-[#2a2a2d] bg-[#2a2a2d]'
-                                        } ${
-                                            canEditPlayer
-                                                ? 'cursor-pointer transition-colors hover:border-[#514c53] hover:bg-[#313134] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ce081]/50'
-                                                : ''
-                                        }`}
-                                    >
-                                        <PlayerSkillLevelIndicator skillLevel={p.skill_level} />
-                                        <div className="flex min-w-0 flex-1 items-start justify-between gap-2 px-3 py-3">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                                                    <span className="font-semibold capitalize">
-                                                        <span className="text-lg">
-                                                            {displayName(p)}
-                                                        </span>
-                                                        {p.pronoun ? (
-                                                            <span className="ml-1.5 text-xs font-medium normal-case text-[#c2c1ff]/80">
-                                                                {p.pronoun}
-                                                            </span>
-                                                        ) : null}
-                                                    </span>
-                                                    {p.is_guest ?
-                                                        <span
-                                                            className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
-                                                            title="Guest Player"
-                                                        >Guest</span> : null}
-                                                </div>
-                                                <div className="mt-4 flex items-center gap-4">
-                                                    <PlayerSessionStats p={p} />
-                                                    <PlayerStatusBadge
-                                                        status={playerRosterStatus(
-                                                            p,
-                                                            reservedPlayerIds,
-                                                            Boolean(session?.is_active),
-                                                        )}
-                                                    />
-                                                </div>
+                                {rosterPlayers.length > 0 ? (
+                                    <div className="rt-ranking-toolbar rt-ranking-toolbar--enter mt-5">
+                                        <div className="rt-ranking-toolbar-search group relative">
+                                            <div className="pointer-events-none absolute inset-y-0 left-4 z-10 flex items-center text-[#918f9c]">
+                                                <MaterialIcon name="search" className="text-xl!" />
                                             </div>
-                                            {canEditPlayer ? (
-                                                <div className="flex shrink-0 items-center gap-3">
-                                                    <button
-                                                        type="button"
-                                                        disabled={busy}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onEditPlayerClick(p);
-                                                        }}
-                                                        className="text-[#c2c1ff] hover:text-[#e4e1e6] disabled:opacity-60"
-                                                        aria-label={`Edit ${displayName(p)}`}
-                                                    >
-                                                        <MaterialIcon name="edit" className="text-[16px]!" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        disabled={busy}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onRemoveClick(p);
-                                                        }}
-                                                        className="text-red-300 hover:text-red-200 disabled:opacity-60"
-                                                        aria-label={`Remove ${displayName(p)}`}
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            ) : null}
+                                            <input
+                                                type="search"
+                                                placeholder="Search by name or pronoun…"
+                                                value={playerSearch}
+                                                onChange={(e) => setPlayerSearch(e.target.value)}
+                                                className="rt-input"
+                                                aria-label="Search players"
+                                            />
                                         </div>
-                                    </li>
-                                    );
-                                })}
-                            </ul>
+
+                                        {sessionActive ? (
+                                            <div
+                                                className="rt-ranking-toolbar-filters rt-scroll-inline flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0"
+                                                role="tablist"
+                                                aria-label="Filter by status"
+                                            >
+                                                {STATUS_FILTERS.map((filter) => {
+                                                    const count = statusCounts[filter.value] ?? 0;
+                                                    const isActive = statusFilter === filter.value;
+                                                    return (
+                                                        <button
+                                                            key={filter.value}
+                                                            type="button"
+                                                            role="tab"
+                                                            aria-selected={isActive}
+                                                            onClick={() => setStatusFilter(filter.value)}
+                                                            className={[
+                                                                'rt-chip inline-flex items-center gap-1.5 px-3 py-1.5 text-xs md:text-sm',
+                                                                isActive ? 'rt-chip-active' : 'rt-chip-idle',
+                                                            ].join(' ')}
+                                                        >
+                                                            {filter.label}
+                                                            <span
+                                                                className={[
+                                                                    'rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums',
+                                                                    isActive
+                                                                        ? 'bg-[#003919]/15 text-[#003919]'
+                                                                        : 'bg-white/8 text-[#c8c5d2]',
+                                                                ].join(' ')}
+                                                            >
+                                                                {count}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : null}
+
+                                        <div className="flex items-center gap-2">
+                                            <label className="sr-only" htmlFor="roster-sort-field">
+                                                Sort players by
+                                            </label>
+                                            <select
+                                                id="roster-sort-field"
+                                                value={rosterSortField}
+                                                onChange={(e) => setRosterSortField(e.target.value)}
+                                                className="rt-roster-sort-select min-w-0 flex-1"
+                                            >
+                                                {ROSTER_SORT_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        Sort: {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setRosterSortDirection((prev) =>
+                                                        prev === 'asc' ? 'desc' : 'asc',
+                                                    )
+                                                }
+                                                aria-label={
+                                                    rosterSortDirection === 'asc'
+                                                        ? 'Sort ascending'
+                                                        : 'Sort descending'
+                                                }
+                                                title={
+                                                    rosterSortDirection === 'asc' ? 'Ascending' : 'Descending'
+                                                }
+                                                className="rt-roster-sort-direction"
+                                            >
+                                                <MaterialIcon
+                                                    name={
+                                                        rosterSortDirection === 'asc'
+                                                            ? 'arrow_upward'
+                                                            : 'arrow_downward'
+                                                    }
+                                                    className="text-[18px]!"
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            {showEmptyRoster ? (
+                                <EmptyState
+                                    icon="groups"
+                                    title="No players yet"
+                                    description="Add members or guests from the match panel to build your roster."
+                                />
+                            ) : null}
+
+                            {showNoFilterResults ? (
+                                <EmptyState
+                                    icon="search_off"
+                                    title="No players match"
+                                    description="Try a different search term or clear your status filter."
+                                />
+                            ) : null}
+
+                            {visibleRosterPlayers.length > 0 ? (
+                                <div className="rt-roster-player-cards-grid">
+                                    {visibleRosterPlayers.map((p, index) => {
+                                        const canEditPlayer = canManagePlayers && !p.is_playing;
+                                        const status = playerRosterStatus(
+                                            p,
+                                            reservedPlayerIds,
+                                            sessionActive,
+                                        );
+
+                                        return (
+                                            <QueueingSessionPlayerCard
+                                                key={p.id}
+                                                player={p}
+                                                status={status}
+                                                sessionActive={sessionActive}
+                                                isYou={user?.id != null && p.user?.id === user.id}
+                                                canEdit={canEditPlayer}
+                                                busy={busy}
+                                                style={{
+                                                    animationDelay: `${0.08 + (index % 10) * 0.04}s`,
+                                                }}
+                                                onEdit={() => onEditPlayerClick(p)}
+                                                onRemove={() => onRemoveClick(p)}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            ) : null}
+
                             {hasMoreRoster ? (
-                                <div className="mt-4 flex justify-center">
+                                <div className="mt-5 flex justify-center">
                                     <button
                                         type="button"
                                         disabled={loadingMoreRoster}
                                         onClick={() => loadMoreRoster()}
-                                        className="rounded-lg border border-[#514c53] bg-[#2a2a2d] px-4 py-2 text-sm font-semibold text-[#c2c1ff] transition-colors hover:border-[#c2c1ff]/50 disabled:opacity-60"
+                                        className="rt-roster-load-more"
                                     >
-                                        {loadingMoreRoster ? 'Loading…' : 'View More'}
+                                        {loadingMoreRoster ? (
+                                            <>
+                                                <MaterialIcon
+                                                    name="progress_activity"
+                                                    className="animate-spin text-base!"
+                                                />
+                                                Loading…
+                                            </>
+                                        ) : (
+                                            <>
+                                                View more
+                                                <span className="text-[#918f9c]">
+                                                    ({sortedRosterPlayers.length - visibleRosterCount} left)
+                                                </span>
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             ) : null}
                         </section>
                     </div>
+                ) : null}
+                    </>
                 ) : null}
             </main>
             <AddQueueingSessionPlayerModal
