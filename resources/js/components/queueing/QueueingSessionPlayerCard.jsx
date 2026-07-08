@@ -134,38 +134,8 @@ export function QueueingSessionPlayerCard({
                                     ) : null}
                                 </h3>
                                 <div className="mt-1.5 flex items-center gap-1.5">
-                                    {/* {isYou ? (
-                                        <span className="rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#c2c1ff]">
-                                            You
-                                        </span>
-                                    ) : null} */}
-                                    {p.is_guest ? (
-                                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#c8c5d2]">
-                                            Guest
-                                        </span>
-                                    ) : null}
                                     <PlayerSkillLevelBadge skillLevel={p.skill_level} />
-                                    {/* {showQueuePosition ? (
-                                        <span
-                                            className="rounded-full border border-white/8 bg-white/5 px-2 py-0.5 text-[9px] font-semibold tabular-nums text-[#c8c5d2]"
-                                            title="Queue position"
-                                        >
-                                            #{p.queue_position}
-                                        </span>
-                                    ) : null} */}
                                 </div>
-                            </div>
-
-                            <div className="flex shrink-0 flex-col items-start gap-1.5">
-                                {/* <PlayerStatusBadge status={status} /> */}
-                                {/* <div className="rt-roster-player-points sm:hidden">
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#918f9c]">
-                                        Pts
-                                    </span>
-                                    <span className="text-lg font-extrabold tabular-nums italic text-[#c2c1ff]">
-                                        {points}
-                                    </span>
-                                </div> */}
                             </div>
                         </div>
 

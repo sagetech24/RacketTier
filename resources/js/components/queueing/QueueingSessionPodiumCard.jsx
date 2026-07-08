@@ -79,14 +79,14 @@ export function QueueingSessionPodiumCard({ player, place, isYou = false }) {
                                             You
                                         </span>
                                     ) : null}
-                                </div>
-                                <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
-                                    <PlayerSkillLevelBadge skillLevel={player.skill_level} />
                                     {player.is_guest ? (
                                         <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c8c5d2]">
                                             Guest
                                         </span>
                                     ) : null}
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
+                                    <PlayerSkillLevelBadge skillLevel={player.skill_level} />
                                 </div>
                             </div>
                         </div>

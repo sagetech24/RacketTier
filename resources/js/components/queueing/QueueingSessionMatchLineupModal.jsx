@@ -11,7 +11,7 @@ function PlayerStatusBadge({ status }) {
     if (!status) return null;
     return (
         <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide ${status.className}`}
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[12px] font-semibold tracking-wide ${status.className}`}
         >
             {status.label}
         </span>
@@ -177,7 +177,7 @@ export function QueueingSessionMatchLineupModal({
                     </p>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 md:px-6">
-                    <div className="space-y-5 md:grid md:grid-cols-2 md:items-start md:gap-6 md:space-y-0">
+                    <div className="space-y-5 md:grid md:grid-cols-1 md:items-start md:gap-6 md:space-y-0">
                         <div className="min-w-0">
                             <label htmlFor="create-match-player-search" className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
                                 Search players
@@ -191,7 +191,7 @@ export function QueueingSessionMatchLineupModal({
                                 onChange={(e) => setMatchLineupSearch(e.target.value)}
                                 className="w-full rounded-xl border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-md text-[#e4e1e6] outline-none placeholder:text-[#918f9c] focus:border-[#4ce081]/50"
                             />
-                            <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[#2a2a2d] bg-[#131316] md:max-h-72">
+                            <div className="mt-2 max-h-80 overflow-y-auto rounded-xl border border-[#2a2a2d] bg-[#131316] md:max-h-72">
                                 {assignableSessionPlayers.length === 0 ? (
                                     <p className="px-3 py-3 text-xs text-[#918f9c]">
                                         No eligible players (must be waiting in queue and not in a match). Add players on the Players tab or wait until a match ends.
@@ -215,23 +215,20 @@ export function QueueingSessionMatchLineupModal({
                                             return (
                                                 <li key={p.id} className="flex items-start justify-between gap-2 px-3 py-2.5">
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-sm font-medium text-[#e4e1e6]">{rosterPlayerLabel(p)}</p>
-                                                        {p.user?.email ? (
-                                                            <p className="truncate text-xs text-[#918f9c]">{p.user.email}</p>
-                                                        ) : null}
+                                                        <p className="truncate md:text-lg text-md font-medium text-[#e4e1e6]">{rosterPlayerLabel(p)}</p>
                                                         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                                                             <CreateMatchPlayerSessionStats p={p} />
                                                             <PlayerStatusBadge status={rosterStatus} />
                                                         </div>
                                                     </div>
-                                                    <div className="flex shrink-0 gap-2 pt-0.5">
+                                                    <div className="flex md:flex-row flex-col shrink-0 gap-2 pt-0.5">
                                                         <button
                                                             type="button"
                                                             disabled={busy || t1Full}
                                                             onClick={() => addPlayerToMatchLineupTeam(1, p.id)}
                                                             className="rounded-lg border border-[#4ce081]/50 px-3 py-1.5 text-xs font-bold text-[#4ce081] disabled:cursor-not-allowed disabled:opacity-40"
                                                         >
-                                                            Team 1
+                                                            Assign to Team 1
                                                         </button>
                                                         <button
                                                             type="button"
@@ -239,7 +236,7 @@ export function QueueingSessionMatchLineupModal({
                                                             onClick={() => addPlayerToMatchLineupTeam(2, p.id)}
                                                             className="rounded-lg border border-white/30 px-3 py-1.5 text-xs font-bold text-[#e4e1e6] disabled:cursor-not-allowed disabled:opacity-40"
                                                         >
-                                                            Team 2
+                                                            Assign to Team 2
                                                         </button>
                                                     </div>
                                                 </li>

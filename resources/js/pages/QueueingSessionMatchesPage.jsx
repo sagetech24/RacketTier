@@ -1,131 +1,121 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchGameSession, postFinishGameSessionMatch } from '../api/gameSession.js';
+import { postFinishGameSessionMatch } from '../api/gameSession.js';
 import {
     deleteQueueingSessionMatch,
     patchUpdateQueueingSessionMatch,
     postStartQueueingSessionMatch,
 } from '../api/queueingSession.js';
+import { EmptyState } from '../components/app/EmptyState.jsx';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
+import { QueueingSessionFinishedMatches } from '../components/queueing/QueueingSessionFinishedMatches.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
+import { QueueingSessionMatchCard } from '../components/queueing/QueueingSessionMatchCard.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { QueueingSessionMatchLineupModal } from '../components/queueing/QueueingSessionMatchLineupModal.jsx';
+import { QueueingSessionMatchesLoading } from '../components/queueing/QueueingSessionMatchesLoading.jsx';
 import { lineupToTeams } from '../lib/queueingMatchLineup.js';
+import { lineupDisplayNamesByTeam } from '../lib/queueingMatchDisplay.js';
 import {
     useInvalidateQueueingSession,
     useQueueingSessionMatchesQuery,
     useQueueingSessionQuery,
 } from '../hooks/queries/useQueueingSessionQuery.js';
+import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-function formatTime(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString();
-}
-
-/** @param {string | null | undefined} iso */
-function formatTimeOnly(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-}
-
-/** @param {string | null | undefined} start @param {string | null | undefined} end */
-function durationInSeconds(start, end) {
-    if (!start || !end) return null;
-    const startMs = new Date(start).getTime();
-    const endMs = new Date(end).getTime();
-    if (Number.isNaN(startMs) || Number.isNaN(endMs)) return null;
-    return Math.max(0, Math.round((endMs - startMs) / 1000));
-}
-
-/** @param {string | null | undefined} start @param {string | null | undefined} end */
-function formatDuration(start, end) {
-    const totalSeconds = durationInSeconds(start, end);
-    if (totalSeconds == null) return '—';
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m`;
-    if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
-    return `${seconds}s`;
-}
+const INITIAL_LOADING_MIN_MS = 2000;
 
 const MATCH_STATUS_TABS = ['ongoing', 'queueing', 'finished'];
 
-/** @type {Record<string, string>} */
-const MATCH_TAB_LABELS = {
-    ongoing: 'Playing',
-    queueing: 'Queueing',
-    finished: 'Finished',
+/** @type {Record<string, { label: string, icon: string }>} */
+const MATCH_TAB_META = {
+    ongoing: { label: 'Playing', icon: 'sports_tennis' },
+    queueing: { label: 'Queueing', icon: 'hourglass_top' },
+    finished: { label: 'Finished', icon: 'emoji_events' },
+};
+
+/** @type {Record<string, { title: string, description: string, icon: string }>} */
+const MATCH_EMPTY_STATES = {
+    ongoing: {
+        title: 'No matches on court',
+        description: 'Start a queued match to see live games here.',
+        icon: 'sports_tennis',
+    },
+    queueing: {
+        title: 'No matches queued',
+        description: 'Create a match to line up players for the next game.',
+        icon: 'hourglass_top',
+    },
+    finished: {
+        title: 'No results yet',
+        description: 'Completed matches and scores will appear here.',
+        icon: 'emoji_events',
+    },
 };
 
 function sectionTitle(status) {
-    if (status === 'queueing') return 'Queueing';
-    if (status === 'ongoing') return 'Playing';
-    if (status === 'finished') return 'Finished';
-    return status;
+    return MATCH_TAB_META[status]?.label ?? status;
 }
 
-/** @param {boolean} active */
-function matchStatusTabClass(active) {
-    return active
-        ? 'bg-[#c2c1ff]/25 text-white border-[#c2c1ff]/50'
-        : 'bg-transparent text-[#918f9c] border-transparent hover:text-[#e4e1e6]';
-}
-
-/** @param {{ status?: string }} props */
-function MatchStatusIndicator({ status }) {
-    const label = sectionTitle(status);
-    const circleClass =
-        status === 'ongoing'
-            ? 'rt-match-status-circle rt-match-status-circle-ongoing'
-            : status === 'finished'
-              ? 'rt-match-status-circle rt-match-status-circle-finished'
-              : 'rt-match-status-circle rt-match-status-circle-queueing';
+/**
+ * @param {{
+ *   status: string,
+ *   rows: Array<Record<string, unknown>>,
+ *   canManageMatches: boolean,
+ *   canEndMatch: boolean,
+ *   busy: boolean,
+ *   onStartQueuedMatch: (matchId: number) => void,
+ *   onEditMatch: (row: Record<string, unknown>) => void,
+ *   onRemoveMatch: (row: Record<string, unknown>) => void,
+ *   onEndMatch: (row: Record<string, unknown>) => void,
+ * }} props
+ */
+function MatchCardsList({
+    status,
+    rows,
+    canManageMatches,
+    canEndMatch,
+    busy,
+    onStartQueuedMatch,
+    onEditMatch,
+    onRemoveMatch,
+    onEndMatch,
+}) {
+    if (rows.length === 0) {
+        const empty = MATCH_EMPTY_STATES[status] ?? MATCH_EMPTY_STATES.queueing;
+        return (
+            <EmptyState
+                icon={empty.icon}
+                title={empty.title}
+                description={empty.description}
+            />
+        );
+    }
 
     return (
-        <span className="inline-flex items-center" role="status" aria-label={label} title={label}>
-            <span className={circleClass} aria-hidden />
-        </span>
+        <ul className="rt-match-cards-grid space-y-3 md:space-y-0">
+            {rows.map((row, index) => (
+                <li key={row.id}>
+                    <QueueingSessionMatchCard
+                        row={row}
+                        index={index}
+                        canManageMatches={canManageMatches}
+                        canEndMatch={canEndMatch}
+                        busy={busy}
+                        onStartQueuedMatch={onStartQueuedMatch}
+                        onEditMatch={onEditMatch}
+                        onRemoveMatch={onRemoveMatch}
+                        onEndMatch={onEndMatch}
+                    />
+                </li>
+            ))}
+        </ul>
     );
-}
-
-/** @param {unknown} lineup */
-function lineupDisplayNamesByTeam(lineup) {
-    const rows = Array.isArray(lineup) ? lineup : [];
-    const label = (p) => p.name || p.guest_name || 'Player';
-    const team1 = rows.filter((p) => p.team === 1).map(label);
-    const team2 = rows.filter((p) => p.team === 2).map(label);
-    if (team1.length === 0 && team2.length === 0 && rows.length === 2) {
-        return { team1: [label(rows[0])], team2: [label(rows[1])] };
-    }
-    return { team1, team2 };
-}
-
-/** @param {string[]} names @param {string} multiSeparator */
-function formatLineupSide(names, multiSeparator) {
-    if (names.length === 0) return null;
-    if (names.length === 1) return names[0];
-    return names.join(multiSeparator);
-}
-
-/** @param {'finished' | 'ongoing' | 'queueing' | string | undefined} status @param {number | null | undefined} winningTeam @param {1 | 2} teamNo */
-function lineupTeamSideClass(status, winningTeam, teamNo) {
-    const base = 'text-lg font-semibold capitalize md:text-xl';
-    if (status !== 'finished' || (winningTeam !== 1 && winningTeam !== 2)) {
-        return `${base} text-[#918f9c]`;
-    }
-    if (winningTeam === teamNo) {
-        return `${base} text-[#4ce081]`;
-    }
-    return `${base} text-red-400`;
 }
 
 /**
@@ -157,259 +147,6 @@ function winnerPickerLabelClass(teamNo, selectedWinningTeam) {
     return 'text-red-400';
 }
 
-/**
- * @param {{
- *   status: string,
- *   rows: Array<Record<string, unknown>>,
- *   canManageMatches: boolean,
- *   canEndMatch: boolean,
- *   busy: boolean,
- *   onStartQueuedMatch: (matchId: number) => void,
- *   onEditMatch: (row: Record<string, unknown>) => void,
- *   onRemoveMatch: (row: Record<string, unknown>) => void,
- *   onEndMatch: (row: Record<string, unknown>) => void,
- * }} props
- */
-function MatchCardsList({
-    status,
-    rows,
-    canManageMatches,
-    canEndMatch,
-    busy,
-    onStartQueuedMatch,
-    onEditMatch,
-    onRemoveMatch,
-    onEndMatch,
-}) {
-    if (rows.length === 0) {
-        return (
-            <p className="flex min-h-18 items-center justify-center rounded-xl border border-[#45454a] bg-[#1b1b1e] text-sm italic text-[#918f9c] md:col-span-2">
-                No {sectionTitle(status).toLowerCase()} matches.
-            </p>
-        );
-    }
-
-    return (
-        <ul className="rt-match-cards-grid space-y-3 md:space-y-0">
-            {rows.map((row) => (
-                <li
-                    key={row.id}
-                    className={`rounded-xl border p-4 ${
-                        row.status === 'ongoing'
-                            ? 'rt-ongoing-match-card border-orange-400'
-                            : row.status === 'finished'
-                              ? 'rt-finished-match-card'
-                              : 'border-[#45454a] bg-[#1b1b1e]'
-                    }`}
-                >
-                    <div className="mb-2 flex items-start justify-between gap-3">
-                        <p className="min-w-0 flex-1 text-xl font-semibold leading-snug text-[#e4e1e6]">
-                            <LineupDisplay lineup={row.lineup} status={row.status} winningTeam={row.winning_team} />
-                        </p>
-                        <MatchStatusIndicator status={row.status} />
-                    </div>
-                    <div className="mb-2 flex flex-col gap-0.5 text-xs text-[#918f9c] md:flex-row md:flex-wrap md:gap-x-4">
-                        <span>
-                            <span className="font-bold">Started:</span>
-                            <span className="font-normal"> {formatTime(row.started_at)}</span>
-                        </span>
-                        <span>
-                            <span className="font-bold">Finished:</span>
-                            <span className="font-normal"> {formatTime(row.finished_at)}</span>
-                        </span>
-                    </div>
-                    <p
-                        className={`mt-1 text-sm text-[#c8c5d2] ${
-                            row.winning_team == null && (row.team1_score == null || row.team2_score == null)
-                                ? 'hidden'
-                                : 'mb-4'
-                        }`}
-                    >
-                        {row.team1_score != null && row.team2_score != null ? (
-                            <>
-                                Score: {row.team1_score} - {row.team2_score}
-                                {row.winning_team ? ` · Winner: Team ${row.winning_team}` : ''}
-                            </>
-                        ) : row.winning_team ? (
-                            <>Winner: Team {row.winning_team}</>
-                        ) : null}
-                    </p>
-                    {canManageMatches && row.status === 'queueing' ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => onStartQueuedMatch(row.id)}
-                                className="rounded-full bg-[#A2A2D4] px-3 py-1 text-xs font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Start
-                            </button>
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => onEditMatch(row)}
-                                className="rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-3 py-1 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Edit
-                            </button>
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => onRemoveMatch(row)}
-                                className="rounded-full border border-red-400/30 bg-red-400/20 px-3 py-1 text-xs font-bold text-red-400/80 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Remove
-                            </button>
-                        </div>
-                    ) : null}
-                    {canManageMatches && row.status === 'ongoing' ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {canEndMatch ? (
-                                <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={() => onEndMatch(row)}
-                                    className="rounded-full bg-[#e4b555] px-3 py-1 text-xs font-bold text-[#714e07] disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    End
-                                </button>
-                            ) : null}
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => onRemoveMatch(row)}
-                                className="rounded-full border border-red-400/30 bg-red-400/20 px-3 py-1 text-xs font-bold text-red-400/80 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    ) : null}
-                </li>
-            ))}
-        </ul>
-    );
-}
-
-/** e.g. singles: "John VS Sam" · doubles: "John, Peter VS Jason & Sam" */
-/** @param {{ lineup: unknown, status?: string, winningTeam?: number | null }} props */
-function LineupDisplay({ lineup, status, winningTeam }) {
-    const { team1, team2 } = lineupDisplayNamesByTeam(lineup);
-    const left = formatLineupSide(team1, '/');
-    const right = formatLineupSide(team2, '/');
-    if (!left && !right) return '—';
-    if (!left) return right ?? '—';
-    if (!right) return left;
-    return (
-        <>
-            <span className={lineupTeamSideClass(status, winningTeam, 1)}>{left}</span>
-            {' '}
-            <span className="mx-1.5 text-lg text-[#e4e1e6] md:text-xl">VS</span>
-            {' '}
-            <span className={lineupTeamSideClass(status, winningTeam, 2)}>{right}</span>
-        </>
-    );
-}
-
-/** @param {number | null | undefined} winningTeam @param {1 | 2} teamNo */
-function finishedTeamBadgeClass(winningTeam, teamNo) {
-    const base =
-        'flex items-center truncate rounded-full border px-3 py-1 text-[10px] capitalize';
-    if (winningTeam !== 1 && winningTeam !== 2) {
-        return `${base} border-[#45454a] bg-[#2a2a2d] text-[#c8c5d2]`;
-    }
-    return winningTeam === teamNo
-        ? `${base} border-[#4ce081]/40 bg-[#4ce081]/15 text-[#4ce081]`
-        : `${base} border-red-400/40 bg-red-400/10 text-red-400`;
-}
-
-/** @param {{ rows: Array<Record<string, unknown>> }} props */
-function FinishedMatchesTable({ rows }) {
-    if (rows.length === 0) {
-        return (
-            <p className="flex min-h-18 items-center justify-center rounded-xl border border-[#45454a] bg-[#1b1b1e] text-sm italic text-[#918f9c]">
-                No finished matches.
-            </p>
-        );
-    }
-
-    return (
-        <div className="rt-scroll-inline overflow-x-auto rounded-xl border border-[#45454a] bg-[#1b1b1e]">
-            <table className="w-full min-w-[720px] border-collapse text-left">
-                <thead>
-                    <tr className="border-b border-[#45454a] text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
-                        <th scope="col" className="px-3 py-3">Team 1</th>
-                        <th scope="col" className="px-3 py-3">Team 2</th>
-                        <th scope="col" className="px-3 py-3">Winning Team</th>
-                        <th scope="col" className="px-3 py-3">Dates</th>
-                        <th scope="col" className="px-3 py-3">Duration</th>
-                        <th scope="col" className="px-3 py-3">&nbsp;</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((row) => {
-                        const { team1, team2 } = lineupDisplayNamesByTeam(row.lineup);
-                        const winningTeam = row.winning_team === 1 || row.winning_team === 2 ? row.winning_team : null;
-                        const durationSeconds = durationInSeconds(row.started_at, row.finished_at);
-                        const passedValidation = durationSeconds != null && durationSeconds > 8 * 60;
-                        const winnerNames = winningTeam === 1 ? team1 : winningTeam === 2 ? team2 : [];
-                        const winnerLabel =
-                            winningTeam == null
-                                ? '—'
-                                : `Team ${winningTeam}`;
-                        return (
-                            <tr key={row.id} className="border-b border-[#2a2a2d] last:border-b-0">
-                                <td className="px-3 py-3 align-middle md:whitespace-nowrap">
-                                    {team1.length > 0 ? (
-                                        <span className="flex flex-col items-start gap-1 md:flex-row md:flex-nowrap">
-                                            {team1.map((name, i) => (
-                                                <span key={i} className={finishedTeamBadgeClass(winningTeam, 1)}>
-                                                    {name}
-                                                </span>
-                                            ))}
-                                        </span>
-                                    ) : (
-                                        <span className="text-sm text-[#918f9c]">—</span>
-                                    )}
-                                </td>
-                                <td className="px-3 py-3 align-middle md:whitespace-nowrap">
-                                    {team2.length > 0 ? (
-                                        <span className="flex flex-col items-start gap-1 md:flex-row md:flex-nowrap">
-                                            {team2.map((name, i) => (
-                                                <span key={i} className={finishedTeamBadgeClass(winningTeam, 2)}>
-                                                    {name}
-                                                </span>
-                                            ))}
-                                        </span>
-                                    ) : (
-                                        <span className="text-sm text-[#918f9c]">—</span>
-                                    )}
-                                </td>
-                                <td className="px-3 py-3 align-middle text-sm font-semibold capitalize text-[#4ce081]">
-                                    {winnerLabel}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3 align-middle text-sm text-[#c8c5d2]">
-                                    <span className="block">
-                                        <span className="text-[12px] mr-1">Start:</span>
-                                        <span className="text-[12px] italic">{formatTimeOnly(row.started_at)}</span>
-                                    </span>
-                                    <span className="block">
-                                        <span className="text-[12px] mr-1">End:</span>
-                                        <span className="text-[12px] italic">{formatTimeOnly(row.finished_at)}</span>
-                                    </span>
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3 align-middle text-start text-xs tabular-nums text-[#c8c5d2]">
-                                    {formatDuration(row.started_at, row.finished_at)}
-                                </td>
-                                <td className={`px-3 py-3 align-middle text-sm w-18 ${passedValidation ? 'bg-[#4ce081]/50' : ''}`} />
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-    );
-}
-
 export function QueueingSessionMatchesPage() {
     const { id: idParam } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -433,6 +170,7 @@ export function QueueingSessionMatchesPage() {
     } = useQueueingSessionMatchesQuery(sessionId, { session });
 
     const loading = sessionLoading || matchesLoading;
+    const showLoading = useMinimumLoadingDuration(loading, INITIAL_LOADING_MIN_MS);
     const error =
         sessionId == null
             ? 'Invalid session.'
@@ -679,40 +417,67 @@ export function QueueingSessionMatchesPage() {
 
     const canManageMatches = Boolean(session?.can_manage) && Boolean(session?.is_active);
     const canEndMatch = canManageMatches && session?.status === 'ongoing';
+    const activeTabIndex = Math.max(0, availableMatchTabs.indexOf(activeMatchTab ?? ''));
+    const activeCount = (grouped[activeMatchTab] ?? []).length;
 
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
             <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
-                {loading ? <div className="h-36 animate-pulse rounded-xl bg-[#2a2a2d]" /> : null}
-                {error ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</p> : null}
-                {actionError ? <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{actionError}</p> : null}
+                {showLoading ? <QueueingSessionMatchesLoading /> : null}
+                {error ? (
+                    <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                        {error}
+                    </p>
+                ) : null}
+                {actionError ? (
+                    <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                        {actionError}
+                    </p>
+                ) : null}
 
-                {session ? <QueueingSessionHeader session={session} /> : null}
+                {!showLoading && session ? <QueueingSessionHeader session={session} /> : null}
 
-                {!loading && !error ? (
-                    <div className="space-y-4">
-                        <div>
-                            <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
-                                {sectionTitle(activeMatchTab ?? 'ongoing')}{' '}
-                                <span className="text-[#c2c1ff]">Matches</span>
-                                {!session?.is_active ? (
-                                    <span className="text-[#c2c1ff]">
-                                        {' '}
-                                        ({(grouped[activeMatchTab] ?? []).length})
+                {!showLoading && !error ? (
+                    <div className="rt-matches-content space-y-4">
+                        <div className="rt-matches-head">
+                            <div className="mb-1 flex flex-wrap items-end justify-between gap-3">
+                                <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
+                                    {sectionTitle(activeMatchTab ?? 'ongoing')}{' '}
+                                    <span className="text-[#c2c1ff]">Matches</span>
+                                </h1>
+                                {activeCount > 0 ? (
+                                    <span className="rt-matches-count-pill tabular-nums">
+                                        {activeCount} total
                                     </span>
                                 ) : null}
-                            </h1>
+                            </div>
+                            {!session?.is_active ? (
+                                <p className="text-sm text-[#918f9c]">
+                                    Session ended — showing {(grouped.finished ?? []).length} finished match
+                                    {(grouped.finished ?? []).length === 1 ? '' : 'es'}.
+                                </p>
+                            ) : null}
+
                             <div
-                                className={`mb-4 w-full rounded-xl border border-[#45454a] bg-[#1b1b1e] p-1 ${
+                                className={`rt-match-tabs mt-4 w-full rounded-xl border border-[#45454a] bg-[#1b1b1e] p-1 ${
                                     session?.is_active ? 'flex' : 'hidden'
                                 }`}
                                 role="tablist"
                                 aria-label="Match status"
                             >
+                                <span
+                                    className="rt-match-tabs__indicator"
+                                    aria-hidden
+                                    style={{
+                                        width: `${100 / availableMatchTabs.length}%`,
+                                        transform: `translateX(${activeTabIndex * 100}%)`,
+                                    }}
+                                />
                                 {availableMatchTabs.map((tab) => {
                                     const count = (grouped[tab] ?? []).length;
                                     const isActive = tab === activeMatchTab;
+                                    const meta = MATCH_TAB_META[tab];
                                     return (
                                         <button
                                             key={tab}
@@ -722,11 +487,15 @@ export function QueueingSessionMatchesPage() {
                                             aria-controls={`match-tab-panel-${tab}`}
                                             id={`match-tab-${tab}`}
                                             onClick={() => setActiveMatchTab(tab)}
-                                            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors md:px-3 md:py-2.5 md:text-sm ${matchStatusTabClass(isActive)}`}
+                                            className={[
+                                                'rt-match-tab',
+                                                isActive ? 'rt-match-tab--active' : '',
+                                            ].join(' ')}
                                         >
-                                            <span>{MATCH_TAB_LABELS[tab]}</span>
+                                            <MaterialIcon name={meta.icon} className="text-[16px]!" />
+                                            <span>{meta.label}</span>
                                             {count > 0 ? (
-                                                <span className="tabular-nums text-[10px] opacity-80">({count})</span>
+                                                <span className="rt-match-tab-count tabular-nums">{count}</span>
                                             ) : null}
                                         </button>
                                     );
@@ -739,32 +508,49 @@ export function QueueingSessionMatchesPage() {
                             className="rt-match-tabs-scroller flex w-full snap-x snap-mandatory overflow-x-auto scroll-smooth"
                             onScroll={handleMatchTabScroll}
                         >
-                            {availableMatchTabs.map((status) => (
-                                <section
-                                    key={status}
-                                    id={`match-tab-panel-${status}`}
-                                    role="tabpanel"
-                                    aria-labelledby={`match-tab-${status}`}
-                                    aria-hidden={status !== activeMatchTab}
-                                    className="w-full min-w-full shrink-0 snap-start"
-                                >
-                                    {status === 'finished' ? (
-                                        <FinishedMatchesTable rows={grouped[status] ?? []} />
-                                    ) : (
-                                        <MatchCardsList
-                                            status={status}
-                                            rows={grouped[status] ?? []}
-                                            canManageMatches={canManageMatches}
-                                            canEndMatch={canEndMatch}
-                                            busy={busy}
-                                            onStartQueuedMatch={onStartQueuedMatch}
-                                            onEditMatch={openEditMatchModal}
-                                            onRemoveMatch={openRemoveMatchConfirm}
-                                            onEndMatch={openFinishMatchModal}
-                                        />
-                                    )}
-                                </section>
-                            ))}
+                            {availableMatchTabs.map((status) => {
+                                const rows = grouped[status] ?? [];
+                                const isActivePanel = status === activeMatchTab;
+                                return (
+                                    <section
+                                        key={status}
+                                        id={`match-tab-panel-${status}`}
+                                        role="tabpanel"
+                                        aria-labelledby={`match-tab-${status}`}
+                                        aria-hidden={!isActivePanel}
+                                        className={[
+                                            'w-full min-w-full shrink-0 snap-start',
+                                            isActivePanel ? 'rt-match-panel--enter' : '',
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' ')}
+                                    >
+                                        {status === 'finished' ? (
+                                            rows.length === 0 ? (
+                                                <EmptyState
+                                                    icon={MATCH_EMPTY_STATES.finished.icon}
+                                                    title={MATCH_EMPTY_STATES.finished.title}
+                                                    description={MATCH_EMPTY_STATES.finished.description}
+                                                />
+                                            ) : (
+                                                <QueueingSessionFinishedMatches rows={rows} />
+                                            )
+                                        ) : (
+                                            <MatchCardsList
+                                                status={status}
+                                                rows={rows}
+                                                canManageMatches={canManageMatches}
+                                                canEndMatch={canEndMatch}
+                                                busy={busy}
+                                                onStartQueuedMatch={onStartQueuedMatch}
+                                                onEditMatch={openEditMatchModal}
+                                                onRemoveMatch={openRemoveMatchConfirm}
+                                                onEndMatch={openFinishMatchModal}
+                                            />
+                                        )}
+                                    </section>
+                                );
+                            })}
                         </div>
                     </div>
                 ) : null}
@@ -857,7 +643,10 @@ export function QueueingSessionMatchesPage() {
                                     />
                                     <div className="mt-2 text-xs line-clamp-1 leading-snug text-[#918f9c] capitalize">
                                         <span className="font-bold">Players:</span>
-                                        <span className="font-normal capitalize"> {finishTeams.team1.length > 0 ? finishTeams.team1.join(', ') : '—'}</span>
+                                        <span className="font-normal capitalize">
+                                            {' '}
+                                            {finishTeams.team1.length > 0 ? finishTeams.team1.join(', ') : '—'}
+                                        </span>
                                     </div>
                                 </div>
                                 <div>
@@ -872,7 +661,10 @@ export function QueueingSessionMatchesPage() {
                                     />
                                     <div className="mt-2 text-xs leading-snug text-[#918f9c]">
                                         <span className="font-bold">Players:</span>
-                                        <span className="font-normal capitalize"> {finishTeams.team2.length > 0 ? finishTeams.team2.join(', ') : '—'}</span>
+                                        <span className="font-normal capitalize">
+                                            {' '}
+                                            {finishTeams.team2.length > 0 ? finishTeams.team2.join(', ') : '—'}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -908,7 +700,7 @@ export function QueueingSessionMatchesPage() {
                 open={removeMatchConfirm != null}
                 title={
                     removeMatchConfirm?.status === 'ongoing'
-                        ? `Cancel match${removeMatchConfirm.matchNo != null ? ` #${removeMatchConfirm.matchNo}` : ''}?`
+                        ? `Cancel match${removeMatchConfirm?.matchNo != null ? ` #${removeMatchConfirm.matchNo}` : ''}?`
                         : `Remove match${removeMatchConfirm?.matchNo != null ? ` #${removeMatchConfirm.matchNo}` : ''}?`
                 }
                 description={
