@@ -1,0 +1,52 @@
+---
+description: End agent responses with a change summary and commit message, then stage, commit, and push
+alwaysApply: true
+---
+
+RULE: Commit Message Summary (commit + push)
+
+OBJECTIVE:
+After work that creates, updates, or deletes repository files, close the response with a short change summary and a **commit message**, then **stage, commit, and push**. Detailed workflow: `.cursor/skills/commit-message-summary/SKILL.md`.
+
+DEPENDENCY:
+- Detailed workflow and templates: `.cursor/skills/commit-message-summary/SKILL.md`
+
+WHEN TO INCLUDE:
+- Implementation, fixes, refactors, styles, tests, or docs that touched the codebase
+- User asked for a commit message
+
+WHEN TO SKIP:
+- Question-only or review-only turns with no file changes
+- User explicitly opted out of commit/push or the commit footer for that turn
+- Clean working tree (nothing to commit)
+
+REQUIREMENTS:
+
+1. SUMMARY
+- 2–5 bullets: what changed and why (group by feature, not every filename)
+
+2. COMMIT MESSAGE
+- Format: `<type>: <imperative subject>` optional body for why
+- Types: feat, fix, style, refactor, test, docs, chore
+- Align with existing repo commit style (see recent `git log`)
+
+3. FOOTER (last section of the response)
+Use this structure (update **Git:** after the push succeeds):
+
+---
+## Commit message
+
+```
+<message here>
+```
+
+**Changed:** <brief roll-up>
+
+**Git:** committed and pushed to `<remote>/<branch>` (`<short-sha>`)
+
+4. EXECUTE
+- After drafting the message: `git add` relevant files → `git commit` (HEREDOC) → `git push`
+- Prefer separate commits when unrelated concerns are mixed, then one push
+- Do not commit secrets (`.env`, credentials)
+- Never update git config; never skip hooks unless the user asks
+- Never amend or force-push unless the user explicitly requests it
