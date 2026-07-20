@@ -97,6 +97,70 @@ class QueueingSessionIndexTest extends TestCase
         $response->assertJsonPath('finished_today.0.is_active', false);
     }
 
+    public function test_queueing_index_reflects_draft_snapshot_player_and_match_counts(): void
+    {
+        $host = User::factory()->create();
+        $opponent = User::factory()->create();
+
+        $create = $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Draft Counts',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ])->assertCreated();
+
+        $sessionId = (int) $create->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $host->id,
+            'skill_level' => 3,
+        ])->assertOk();
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $opponent->id,
+            'skill_level' => 3,
+        ])->assertOk();
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'guest_name' => 'Walk-in',
+            'skill_level' => 2,
+        ])->assertOk();
+
+        $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
+        $players = collect($show->json('data.players'));
+        $this->assertCount(3, $players);
+
+        $hostPlayerId = (int) $players->firstWhere('user.id', $host->id)['id'];
+        $opponentPlayerId = (int) $players->firstWhere('user.id', $opponent->id)['id'];
+
+        $matchId = (int) $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches', [
+            'lineup' => [
+                ['id' => $hostPlayerId, 'team' => 1],
+                ['id' => $opponentPlayerId, 'team' => 2],
+            ],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches/'.$matchId.'/start')
+            ->assertOk();
+
+        $this->actingAs($host)->postJson('/auth/game-sessions/'.$sessionId.'/finish-match', [
+            'team1_score' => 21,
+            'team2_score' => 10,
+            'queueing_session_match_id' => $matchId,
+        ])->assertOk();
+
+        $this->assertSame(0, GameSessionPlayer::query()->where('game_session_id', $sessionId)->count());
+
+        $response = $this->actingAs($host)->getJson('/auth/game-sessions?session_context=queueing');
+
+        $response->assertOk();
+        $row = collect($response->json('data'))->firstWhere('id', $sessionId);
+        $this->assertNotNull($row);
+        $this->assertSame(3, $row['participant_count']);
+        $this->assertSame(1, $row['completed_matches_count']);
+    }
+
     public function test_facility_index_does_not_include_finished_today_key(): void
     {
         $host = User::factory()->create();

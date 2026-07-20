@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
+use App\Services\QueueingSessionDraftHydrator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class GameSessionIndexController extends Controller
 {
+    public function __construct(
+        private QueueingSessionDraftHydrator $draftHydrator,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -43,6 +48,7 @@ class GameSessionIndexController extends Controller
             ->limit($isAdminQueueingBrowse ? 100 : 25);
 
         $sessions = $query->get();
+        $this->draftHydrator->applyListCounts($sessions);
 
         $payload = [
             'data' => GameSessionResource::collection($sessions)->toArray($request),
@@ -67,6 +73,8 @@ class GameSessionIndexController extends Controller
                 ->orderByDesc('updated_at')
                 ->limit($user->isAdmin() ? 100 : 25)
                 ->get();
+
+            $this->draftHydrator->applyListCounts($finishedToday);
 
             $payload['finished_today'] = GameSessionResource::collection($finishedToday)->toArray($request);
         }

@@ -112,7 +112,10 @@ class GameSessionResource extends JsonResource
                 'name' => $this->creator?->name,
                 'email' => $this->creator?->email,
             ]),
-            'participant_count' => $this->whenCounted('players'),
+            'participant_count' => $this->when(
+                isset($this->players_count) || $this->relationLoaded('players'),
+                fn (): int => (int) ($this->players_count ?? $this->players->count()),
+            ),
             'players' => $this->whenLoaded('players', function () use ($eloByUser, $walletBalanceByUser, $tierRowsForSport) {
                 return $this->players->sortBy([
                     ['is_playing', 'desc'],

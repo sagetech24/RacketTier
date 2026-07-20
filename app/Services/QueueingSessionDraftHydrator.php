@@ -12,6 +12,30 @@ use Illuminate\Support\Collection;
 
 class QueueingSessionDraftHydrator
 {
+    /**
+     * Overlay roster / completed-match counts from the live draft onto list envelopes
+     * without hydrating player models (for index cards).
+     *
+     * Draft sessions keep players and matches in the snapshot, so Eloquent
+     * `withCount('players')` stays at 0 until the session is persisted.
+     *
+     * @param  iterable<int, GameSession>  $sessions
+     */
+    public function applyListCounts(iterable $sessions): void
+    {
+        $store = app(QueueingSessionDraftStore::class);
+
+        foreach ($sessions as $session) {
+            if (! $session instanceof GameSession || ! $session->isDraft()) {
+                continue;
+            }
+
+            $draft = $store->load((int) $session->id);
+            $session->setAttribute('players_count', count($draft->players));
+            $session->completed_matches_count = (int) ($draft->sessionMeta['completed_matches_count'] ?? 0);
+        }
+    }
+
     public function hydrate(GameSession $envelope): GameSession
     {
         if (! $envelope->isDraft()) {
