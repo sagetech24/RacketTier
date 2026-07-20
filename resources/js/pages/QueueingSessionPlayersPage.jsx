@@ -31,6 +31,9 @@ const ROSTER_PAGE_SIZE = 10;
 const INITIAL_LOADING_MIN_MS = 2000;
 
 const ROSTER_SORT_OPTIONS = [
+    { value: 'total_games', label: 'Total games' },
+    { value: 'wins', label: 'No. of wins' },
+    { value: 'losses', label: 'No. of losses' },
     { value: 'status', label: 'Status' },
     { value: 'rank', label: 'Skill level' },
     { value: 'name', label: 'Name' },
@@ -95,8 +98,8 @@ export function QueueingSessionPlayersPage() {
     const [actionError, setActionError] = useState('');
     const [visibleRosterCount, setVisibleRosterCount] = useState(ROSTER_PAGE_SIZE);
     const [loadingMoreRoster, setLoadingMoreRoster] = useState(false);
-    const [rosterSortField, setRosterSortField] = useState('status');
-    const [rosterSortDirection, setRosterSortDirection] = useState('asc');
+    const [rosterSortField, setRosterSortField] = useState('total_games');
+    const [rosterSortDirection, setRosterSortDirection] = useState('desc');
     const [statusFilter, setStatusFilter] = useState('all');
     const [playerSearch, setPlayerSearch] = useState('');
     const [editPlayerModal, setEditPlayerModal] = useState(
@@ -163,6 +166,18 @@ export function QueueingSessionPlayersPage() {
             let cmp = 0;
 
             switch (rosterSortField) {
+                case 'total_games': {
+                    const aGames = (a.wins_count ?? 0) + (a.losses_count ?? 0);
+                    const bGames = (b.wins_count ?? 0) + (b.losses_count ?? 0);
+                    cmp = aGames - bGames;
+                    break;
+                }
+                case 'wins':
+                    cmp = (a.wins_count ?? 0) - (b.wins_count ?? 0);
+                    break;
+                case 'losses':
+                    cmp = (a.losses_count ?? 0) - (b.losses_count ?? 0);
+                    break;
                 case 'rank': {
                     const aRank = a.skill_level ?? 99;
                     const bRank = b.skill_level ?? 99;
@@ -371,24 +386,24 @@ export function QueueingSessionPlayersPage() {
                         <section className="mt-4 min-w-0" aria-label="Session roster">
                             <div className="rt-roster-head mb-5">
                                 <div className="flex flex-wrap items-end justify-between gap-3">
-                                    <div>
+                                    <div className="flex items-center justify-between gap-3 w-full">
                                         <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">
                                             Current <span className="text-[#c2c1ff]">Players</span>
                                         </h1>
-                                        <p className="mt-2 text-sm text-[#918f9c]">
-                                            {sessionActive
-                                                ? 'Tap a player to edit details. Status updates live as matches progress.'
-                                                : 'Final roster for this session.'}
-                                        </p>
-                                    </div>
-                                    {rosterPlayers.length > 0 ? (
-                                        <span className="rt-qs-dash-stats rt-qs-dash-stats--enter border border-white/10 rounded-full px-4 py-1.5 text-xs">
-                                            <MaterialIcon name="groups" className="text-base!" />
-                                            <span>
-                                                <strong>{rosterPlayers.length}</strong> players
+                                        {rosterPlayers.length > 0 ? (
+                                            <span className="rt-qs-dash-stats rt-qs-dash-stats--enter border border-white/20 rounded-full px-3 py-1 md:px-4 md:py-1.5 md:text-lg! text-xs! flex items-center gap-1">
+                                                <MaterialIcon name="groups" className="text-lg! md:text-xl!" />
+                                                <span className="text-xs! md:text-sm!">
+                                                    <strong>{rosterPlayers.length}</strong> players
+                                                </span>
                                             </span>
-                                        </span>
-                                    ) : null}
+                                        ) : null}
+                                    </div>
+                                    <p className="text-sm md:text-lg text-[#918f9c]">
+                                        {sessionActive
+                                            ? 'Tap a player to edit details. Status updates live as matches progress.'
+                                            : 'Final roster for this session.'}
+                                    </p>
                                 </div>
 
                                 {rosterPlayers.length > 0 ? (
