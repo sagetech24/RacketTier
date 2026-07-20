@@ -109,7 +109,7 @@ function DashboardSnapshot({ tierLabel, totalPointBalance, rating, primarySport,
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400 bg-red-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-400">
                         <span className="animate-pulse flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full animate-pulse bg-red-400" aria-hidden></span>
-                            <span>Playing</span>
+                            <span>Active</span>
                         </span>
                     </span>
                 ) : null}
