@@ -225,8 +225,8 @@ export function QueueingSessionPage() {
                                                     Leader<span className="text-[#c2c1ff]">board</span>
                                                 </h2>
                                                 {leaderboard.length > 0 ? (
-                                                    <span className="rt-qs-dash-stats rt-qs-dash-stats--enter border border-white/40 rounded-full px-4 py-1 md:text-md! text-xs!">
-                                                        <MaterialIcon name="groups" className="text-md!" />
+                                                    <span className="rt-qs-dash-stats rt-qs-dash-stats--enter border border-white/40 rounded-full px-4 py-1 md:text-lg! text-xs!">
+                                                        <MaterialIcon name="groups" />
                                                         <span>
                                                             <strong>{leaderboard.length}</strong> players
                                                         </span>
@@ -257,7 +257,6 @@ export function QueueingSessionPage() {
 
                                     {topThree.length > 0 ? (
                                         <div className="mb-6">
-                                            <p className="rt-section-eyebrow">Podium</p>
                                             <div className="rt-ranking-podium">
                                                 {topThree.map((player, idx) => (
                                                     <QueueingSessionPodiumCard
@@ -273,7 +272,6 @@ export function QueueingSessionPage() {
 
                                     {restLeaderboard.length > 0 ? (
                                         <div>
-                                            <p className="rt-section-eyebrow">Standings</p>
                                             <div className="rt-ranking-list flex flex-col gap-2 md:gap-3">
                                                 {restLeaderboard.map((player) => (
                                                     <QueueingSessionListRow

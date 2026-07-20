@@ -42,26 +42,26 @@ export function QueueingSessionLeaderboardStats({
         >
             <span className="inline-flex items-center normal-case">
                 <span className="inline-flex items-center gap-0.5">
-                    <MaterialIcon name="arrow_upward" className="text-[13px]! text-[#4ce081]" />
-                    <span className="font-bold tabular-nums text-[#4ce081]">{wins}</span>
+                    <MaterialIcon name="arrow_upward" className="text-xs! sm:text-sm! md:text-lg! text-[#4ce081]" />
+                    <span className="font-bold tabular-nums text-xs! sm:text-sm! md:text-lg! text-[#4ce081]">{wins}</span>
                 </span>
                 <span className="text-[#918f9c]">-</span>
                 <span className="inline-flex items-center gap-0.5">
-                    <MaterialIcon name="arrow_downward" className="text-[13px]! text-red-300/90" />
-                    <span className="font-bold tabular-nums text-red-300/90">{losses}</span>
+                    <MaterialIcon name="arrow_downward" className="text-xs! sm:text-sm! md:text-lg! text-red-300/90" />
+                    <span className="font-bold tabular-nums text-xs! sm:text-sm! md:text-lg! text-red-300/90">{losses}</span>
                 </span>
             </span>
             {!omitPoints ? (
                 <span>
-                    <span className="font-bold text-[#c2c1ff]">{points}</span> PTS
+                    <span className="font-bold text-[#c2c1ff] text-xs! sm:text-sm! md:text-md!">{points}</span> PTS
                 </span>
             ) : null}
             <span>
-                <span className="font-bold text-[#e4e1e6]">{winPct}</span> Win%
+                <span className="font-bold text-[#e4e1e6] text-xs! sm:text-sm! md:text-md!">{winPct} Win%</span>
             </span>
             {!compact ? (
                 <span className="hidden sm:inline">
-                    <span className="font-bold text-[#e4e1e6]">{total}</span> Played
+                    <span className="font-bold text-[#e4e1e6] text-xs! sm:text-sm! md:text-md!">{total}</span> Played
                 </span>
             ) : null}
         </div>

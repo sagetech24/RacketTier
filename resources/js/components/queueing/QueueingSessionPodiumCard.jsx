@@ -99,7 +99,7 @@ export function QueueingSessionPodiumCard({ player, place, isYou = false }) {
                     </div>
                 </div>
 
-                <div className="mt-3 md:hidden">
+                <div className="ml-14 mt-3 md:hidden">
                     <QueueingSessionLeaderboardStats
                         wins={player.wins}
                         losses={player.losses}
@@ -115,7 +115,7 @@ export function QueueingSessionPodiumCard({ player, place, isYou = false }) {
                     <p className="text-2xl font-extrabold tabular-nums italic text-[#c2c1ff]">
                         {points}
                     </p>
-                    <div className="mt-3 w-full">
+                    <div className="mt-3 w-full flex justify-center">
                         <QueueingSessionLeaderboardStats
                             wins={player.wins}
                             losses={player.losses}
