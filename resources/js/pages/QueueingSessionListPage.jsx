@@ -158,14 +158,14 @@ function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, 
                     className={queueSessionCardActionClass('nav', { active: navPath === paths.players })}
                 >
                     <MaterialIcon name="groups" className="rt-queue-card-btn__icon" />
-                    Players
+                    Players ({row.participant_count ?? 0})
                 </Link>
                 <Link
                     to={paths.matches}
                     className={queueSessionCardActionClass('nav', { active: navPath === paths.matches })}
                 >
                     <MaterialIcon name="sports_score" className="rt-queue-card-btn__icon" />
-                    Matches
+                    Matches ({row.completed_matches_count ?? 0})
                 </Link>
             </footer>
         </article>
