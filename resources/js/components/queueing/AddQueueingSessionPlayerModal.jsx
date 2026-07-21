@@ -72,7 +72,10 @@ export function AddQueueingSessionPlayerModal({
         } else {
             setGuestName('');
             setPronoun(isGuest ? '' : (member?.pronoun ?? ''));
-            setSkillLevel('');
+            // Members: default from sport tier (passed as skill_level); QM can change.
+            setSkillLevel(
+                !isGuest && member?.skill_level != null ? String(member.skill_level) : '',
+            );
         }
 
         setSuccessMessage('');
@@ -213,6 +216,12 @@ export function AddQueueingSessionPlayerModal({
                                 </option>
                             ))}
                         </select>
+                        {!isGuest && !isEdit && member?.skill_level != null ? (
+                            <p className="mt-1.5 text-[11px] text-[#918f9c]">
+                                Pre-filled from this member&apos;s sport tier. You can change it before
+                                adding.
+                            </p>
+                        ) : null}
                     </div>
 
                     <div className="flex gap-2 pt-1">

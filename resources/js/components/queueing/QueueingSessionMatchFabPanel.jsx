@@ -182,7 +182,7 @@ export function QueueingSessionMatchFabPanel({
     }
 
     /**
-     * @param {{ id: number, name: string, pronoun?: string | null }} member
+     * @param {{ id: number, name: string, pronoun?: string | null, skill_level?: number | null }} member
      */
     function handleSelectMember(member) {
         setAddMemberPickerOpen(false);
@@ -193,6 +193,7 @@ export function QueueingSessionMatchFabPanel({
                 id: member.id,
                 name: member.name,
                 pronoun: member.pronoun ?? null,
+                skill_level: member.skill_level ?? null,
             },
         });
     }

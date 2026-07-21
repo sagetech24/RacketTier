@@ -40,7 +40,12 @@ function MemberSportStats({ stats, sportName }) {
  *   rosterUserIds: Set<number>,
  *   busy?: boolean,
  *   onClose: () => void,
- *   onSelectMember: (member: { id: number, name: string, pronoun?: string | null }) => void,
+ *   onSelectMember: (member: {
+ *     id: number,
+ *     name: string,
+ *     pronoun?: string | null,
+ *     skill_level?: number | null,
+ *   }) => void,
  * }} props
  */
 export function QueueingSessionAddMemberPickerModal({
@@ -126,13 +131,20 @@ export function QueueingSessionAddMemberPickerModal({
                                 key={r.id}
                                 type="button"
                                 disabled={busy}
-                                onClick={() =>
+                                onClick={() => {
+                                    const tierNo = r.tier?.tier_no;
+                                    const skillLevel =
+                                        typeof tierNo === 'number' && tierNo >= 1 && tierNo <= 5
+                                            ? tierNo
+                                            : null;
+
                                     onSelectMember({
                                         id: r.id,
                                         name: r.name,
                                         pronoun: r.pronoun ?? null,
-                                    })
-                                }
+                                        skill_level: skillLevel,
+                                    });
+                                }}
                                 className="flex w-full items-center justify-between gap-2 rounded-lg border border-[#514c53] bg-white/10 px-3 py-2 text-left text-md transition-colors hover:border-[#4ce081]/50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 <span className="flex min-w-0 flex-1 flex-col">
