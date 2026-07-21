@@ -492,9 +492,9 @@ export function QueueingSessionMatchesPage() {
                                             ].join(' ')}
                                         >
                                             <MaterialIcon name={meta.icon} className="text-[16px]!" />
-                                            <span>{meta.label}</span>
+                                            <span className="text-sm">{meta.label}</span>
                                             {count > 0 ? (
-                                                <span className="rt-match-tab-count tabular-nums">{count}</span>
+                                                <span className="rt-match-tab-count tabular-nums text-sm">{count}</span>
                                             ) : null}
                                         </button>
                                     );

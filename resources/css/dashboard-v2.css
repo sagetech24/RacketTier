@@ -2297,7 +2297,7 @@
     border-radius: 9999px;
     background-color: rgb(255 255 255 / 0.08);
     padding: 0.05rem 0.35rem;
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
     font-weight: 700;
     opacity: 0.85;
 }
@@ -2525,12 +2525,12 @@
 
 .rt-match-team-trophy--left {
     left: 1.5rem;
-    transform: rotate(-18deg);
+    transform: rotate(0deg);
 }
 
 .rt-match-team-trophy--right {
     right: 1.5rem;
-    transform: rotate(16deg);
+    transform: rotate(0deg);
 }
 
 .rt-match-team--1 .rt-match-team-avatar {

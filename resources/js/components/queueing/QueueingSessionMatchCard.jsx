@@ -189,11 +189,7 @@ export function QueueingSessionMatchCard({
                     {status === 'ongoing' && row.started_at ? (
                         <span className="rt-match-meta-item rt-match-meta-item--end">
                             <MaterialIcon name="timer" className="text-[14px]! text-[#4ce081]" />
-                            <span>
-                                <span className="font-semibold text-[#e4e1e6]">Duration</span>
-                                {' '}
-                                <LiveMatchDuration startedAt={row.started_at} />
-                            </span>
+                            <LiveMatchDuration startedAt={row.started_at} />
                         </span>
                     ) : null}
 
