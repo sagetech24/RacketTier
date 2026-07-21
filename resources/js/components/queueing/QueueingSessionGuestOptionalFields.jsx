@@ -1,6 +1,8 @@
 import { ToggleField } from '../app/ToggleSwitch.jsx';
 
 /**
+ * Session stores “optional” flags; these toggles expose the inverse “require” wording.
+ *
  * @param {{
  *   optionalGuestSkill: boolean,
  *   optionalGuestGender: boolean,
@@ -19,20 +21,20 @@ export function QueueingSessionGuestOptionalFields({
     return (
         <div className="space-y-3">
             <ToggleField
-                checked={optionalGuestSkill}
-                onChange={onOptionalGuestSkillChange}
+                checked={!optionalGuestSkill}
+                onChange={(requireSkill) => onOptionalGuestSkillChange(!requireSkill)}
                 disabled={disabled}
                 layout="card"
-                label="Do not require skill level when adding guest player"
-                description="Guests can join without a tier level. Turn off to make skill level mandatory."
+                label="Require skill level for guest players"
+                description="When on, guests must pick a tier level before joining."
             />
             <ToggleField
-                checked={optionalGuestGender}
-                onChange={onOptionalGuestGenderChange}
+                checked={!optionalGuestGender}
+                onChange={(requireGender) => onOptionalGuestGenderChange(!requireGender)}
                 disabled={disabled}
                 layout="card"
-                label="Do not require Gender when adding guest player"
-                description="Guests can join without a gender/pronoun. Turn off to make it mandatory."
+                label="Require gender for guest players"
+                description="When on, guests must pick a gender/pronoun before joining."
             />
         </div>
     );
