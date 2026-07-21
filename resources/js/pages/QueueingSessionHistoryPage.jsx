@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ToggleField } from '../components/app/ToggleSwitch.jsx';
 import '../../css/dashboard-v2.css';
-import { fetchQueueingSessionHistory, deleteQueueingSession } from '../api/queueingSession.js';
+import {
+    fetchQueueingSessionHistory,
+    deleteQueueingSession,
+    postDuplicateQueueingSession,
+} from '../api/queueingSession.js';
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
-import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -26,13 +29,23 @@ function formatTime(iso) {
  * @param {{
  *   row: import('../api/gameSession.js').GameSessionDetail,
  *   onRemove?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
+ *   onDuplicate?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
  *   removeSubmitting?: boolean,
+ *   duplicateSubmitting?: boolean,
  *   isAdmin?: boolean,
  * }} props
  */
-function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
+function HistoryCard({
+    row,
+    onRemove,
+    onDuplicate,
+    removeSubmitting,
+    duplicateSubmitting,
+    isAdmin = false,
+}) {
     const paths = queueingSessionNavPaths(row.id);
     const showRemove = canDeleteQueueingSession(row, isAdmin);
+    const showDuplicate = Boolean(row.can_manage) && Boolean(onDuplicate);
     return (
         <article className="h-full rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 md:p-5">
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -50,7 +63,10 @@ function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
             </div>
             <p className="flex justify-between items-center text-sm text-[#c8c5d2]/90 capitalize">
                 <span className="inline-flex items-center gap-1">
-                    QM: {row.created_by?.name ?? 'Unknown'} <span className="ml-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">{row.match_type}</span>
+                    QM: {row.created_by?.name ?? 'Unknown'}{' '}
+                    <span className="ml-2 inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">
+                        {row.match_type}
+                    </span>
                 </span>
                 {row.is_host ? (
                     <span className="inline-block rounded-full bg-[#c2c1ff]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2c1ff]">
@@ -71,6 +87,16 @@ function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
                 </div>
             </div>
             <div className="mt-3 flex w-full flex-wrap gap-2 md:gap-4">
+                {showDuplicate ? (
+                    <button
+                        type="button"
+                        disabled={duplicateSubmitting}
+                        onClick={() => onDuplicate(row)}
+                        className={`${queueingSessionTabClass(true)} text-center text-white border-white/70 disabled:opacity-50 md:flex-1 px-3 py-2 rounded-lg`}
+                    >
+                        Copy
+                    </button>
+                ) : null}
                 {showRemove && onRemove ? (
                     <button
                         type="button"
@@ -106,6 +132,7 @@ function HistoryCard({ row, onRemove, removeSubmitting, isAdmin = false }) {
 
 export function QueueingSessionHistoryPage() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const isAdmin = userIsAdmin(user);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -118,6 +145,10 @@ export function QueueingSessionHistoryPage() {
     const [removeRow, setRemoveRow] = useState(null);
     const [removeSubmitting, setRemoveSubmitting] = useState(false);
     const [removeError, setRemoveError] = useState('');
+    /** @type {import('../api/gameSession.js').GameSessionDetail | null} */
+    const [duplicateRow, setDuplicateRow] = useState(null);
+    const [duplicateSubmitting, setDuplicateSubmitting] = useState(false);
+    const [duplicateError, setDuplicateError] = useState('');
     const cursorRef = useRef(null);
     const loadMoreRef = useRef(null);
     const loadingMoreRef = useRef(false);
@@ -222,6 +253,31 @@ export function QueueingSessionHistoryPage() {
         }
     }
 
+    function openDuplicateConfirm(row) {
+        setDuplicateRow(row);
+        setDuplicateError('');
+    }
+
+    function closeDuplicateConfirm() {
+        setDuplicateRow(null);
+        setDuplicateError('');
+    }
+
+    async function onConfirmDuplicate() {
+        if (!duplicateRow) return;
+        setDuplicateSubmitting(true);
+        setDuplicateError('');
+        try {
+            const created = await postDuplicateQueueingSession(duplicateRow.id);
+            closeDuplicateConfirm();
+            navigate(`/queueing-session/${created.id}/players`);
+        } catch (e) {
+            setDuplicateError(e instanceof Error ? e.message : 'Could not duplicate session.');
+        } finally {
+            setDuplicateSubmitting(false);
+        }
+    }
+
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
@@ -229,9 +285,13 @@ export function QueueingSessionHistoryPage() {
                 <div className="mb-4 md:mb-6">
                     <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
                         {isAdmin ? (
-                            <>Session <span className="text-[#c2c1ff]">History</span></>
+                            <>
+                                Session <span className="text-[#c2c1ff]">History</span>
+                            </>
                         ) : (
-                            <>My Session <span className="text-[#c2c1ff]">History</span></>
+                            <>
+                                My Session <span className="text-[#c2c1ff]">History</span>
+                            </>
                         )}
                     </h1>
                     <p className="mt-2 text-sm text-[#c8c5d2]/80 md:max-w-2xl md:text-base">
@@ -288,7 +348,9 @@ export function QueueingSessionHistoryPage() {
                                 row={row}
                                 isAdmin={isAdmin}
                                 onRemove={openRemoveConfirm}
+                                onDuplicate={openDuplicateConfirm}
                                 removeSubmitting={removeSubmitting}
+                                duplicateSubmitting={duplicateSubmitting}
                             />
                         ))}
 
@@ -326,6 +388,28 @@ export function QueueingSessionHistoryPage() {
                 {removeError ? (
                     <p className="mt-3 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
                         {removeError}
+                    </p>
+                ) : null}
+            </ConfirmActionModal>
+
+            <ConfirmActionModal
+                open={Boolean(duplicateRow)}
+                title="Duplicate this queue?"
+                description={
+                    duplicateRow
+                        ? `Creates a new active queue with the same settings and players from ${duplicateRow.queue_name?.trim() || `session #${duplicateRow.id}`}. Matches are not copied — you can edit the roster afterward.`
+                        : undefined
+                }
+                busy={duplicateSubmitting}
+                confirmLabel="Duplicate queue"
+                confirmBusyLabel="Duplicating…"
+                confirmClassName="flex-1 rounded-lg bg-[#0f8d47] py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                onCancel={() => closeDuplicateConfirm()}
+                onConfirm={() => onConfirmDuplicate()}
+            >
+                {duplicateError ? (
+                    <p className="mt-3 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                        {duplicateError}
                     </p>
                 ) : null}
             </ConfirmActionModal>

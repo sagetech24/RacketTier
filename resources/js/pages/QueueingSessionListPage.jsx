@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
-import { fetchQueueingSessions, patchUpdateQueueingSession, deleteQueueingSession } from '../api/queueingSession.js';
+import {
+    fetchQueueingSessions,
+    patchUpdateQueueingSession,
+    deleteQueueingSession,
+    postDuplicateQueueingSession,
+} from '../api/queueingSession.js';
 import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
 import { QueueingSessionGuestOptionalFields } from '../components/queueing/QueueingSessionGuestOptionalFields.jsx';
 import {
@@ -11,6 +16,7 @@ import {
     normalizeAutoMatchCriteria,
     parseAutoMatchCriteria,
 } from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
+import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { QueueingSessionPageLoading } from '../components/queueing/QueueingSessionPageLoading.jsx';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
@@ -44,12 +50,25 @@ function formatTime(iso) {
  *   isAdmin?: boolean,
  *   onEdit?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
  *   onDelete?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
+ *   onDuplicate?: (row: import('../api/gameSession.js').GameSessionDetail) => void,
  *   deleteSubmitting?: boolean,
+ *   duplicateSubmitting?: boolean,
  * }} props
  */
-function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, onDelete, deleteSubmitting }) {
+function QueueingSessionCard({
+    row,
+    navPath,
+    viewOnly,
+    isAdmin = false,
+    onEdit,
+    onDelete,
+    onDuplicate,
+    deleteSubmitting,
+    duplicateSubmitting,
+}) {
     const paths = queueingSessionNavPaths(row.id);
     const showDelete = canDeleteQueueingSession(row, isAdmin);
+    const showDuplicate = Boolean(row.can_manage) && !row.is_active && Boolean(onDuplicate);
     const isActive = row.is_active && !viewOnly;
 
     return (
@@ -76,6 +95,17 @@ function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, 
                 </h2>
                 {!viewOnly && row.can_manage && onEdit ? (
                     <div className="rt-queue-card-manage">
+                        {showDuplicate ? (
+                            <button
+                                type="button"
+                                disabled={duplicateSubmitting}
+                                onClick={() => onDuplicate(row)}
+                                className={queueSessionCardActionClass('edit', { iconOnly: true })}
+                                aria-label="Duplicate queue"
+                            >
+                                <MaterialIcon name="content_copy" className="rt-queue-card-btn__icon" />
+                            </button>
+                        ) : null}
                         <button
                             type="button"
                             onClick={() => onEdit(row)}
@@ -96,17 +126,30 @@ function QueueingSessionCard({ row, navPath, viewOnly, isAdmin = false, onEdit, 
                             </button>
                         ) : null}
                     </div>
-                ) : showDelete && onDelete ? (
+                ) : showDuplicate || (showDelete && onDelete) ? (
                     <div className="rt-queue-card-manage">
-                        <button
-                            type="button"
-                            disabled={deleteSubmitting}
-                            onClick={() => onDelete(row)}
-                            className={queueSessionCardActionClass('danger', { iconOnly: true })}
-                            aria-label={row.is_active ? 'Delete queue' : 'Remove queue'}
-                        >
-                            <MaterialIcon name="delete_outline" className="rt-queue-card-btn__icon" />
-                        </button>
+                        {showDuplicate ? (
+                            <button
+                                type="button"
+                                disabled={duplicateSubmitting}
+                                onClick={() => onDuplicate(row)}
+                                className={queueSessionCardActionClass('edit', { iconOnly: true })}
+                                aria-label="Duplicate queue"
+                            >
+                                <MaterialIcon name="content_copy" className="rt-queue-card-btn__icon" />
+                            </button>
+                        ) : null}
+                        {showDelete && onDelete ? (
+                            <button
+                                type="button"
+                                disabled={deleteSubmitting}
+                                onClick={() => onDelete(row)}
+                                className={queueSessionCardActionClass('danger', { iconOnly: true })}
+                                aria-label={row.is_active ? 'Delete queue' : 'Remove queue'}
+                            >
+                                <MaterialIcon name="delete_outline" className="rt-queue-card-btn__icon" />
+                            </button>
+                        ) : null}
                     </div>
                 ) : null}
             </div>
@@ -174,6 +217,7 @@ export function QueueingSessionListPage() {
     const { user } = useAuth();
     const isAdmin = userIsAdmin(user);
     const location = useLocation();
+    const navigate = useNavigate();
     const navPath = normalizedAppPath(location.pathname);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -198,6 +242,10 @@ export function QueueingSessionListPage() {
     const [deleteRow, setDeleteRow] = useState(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [deleteError, setDeleteError] = useState('');
+    /** @type {import('../api/gameSession.js').GameSessionDetail | null} */
+    const [duplicateRow, setDuplicateRow] = useState(null);
+    const [duplicateSubmitting, setDuplicateSubmitting] = useState(false);
+    const [duplicateError, setDuplicateError] = useState('');
 
     function openEditModal(row) {
         setEditRow(row);
@@ -263,6 +311,31 @@ export function QueueingSessionListPage() {
     function closeDeleteConfirm() {
         setDeleteRow(null);
         setDeleteError('');
+    }
+
+    function openDuplicateConfirm(row) {
+        setDuplicateRow(row);
+        setDuplicateError('');
+    }
+
+    function closeDuplicateConfirm() {
+        setDuplicateRow(null);
+        setDuplicateError('');
+    }
+
+    async function onConfirmDuplicate() {
+        if (!duplicateRow) return;
+        setDuplicateSubmitting(true);
+        setDuplicateError('');
+        try {
+            const created = await postDuplicateQueueingSession(duplicateRow.id);
+            closeDuplicateConfirm();
+            navigate(`/queueing-session/${created.id}/players`);
+        } catch (e) {
+            setDuplicateError(e instanceof Error ? e.message : 'Could not duplicate session.');
+        } finally {
+            setDuplicateSubmitting(false);
+        }
     }
 
     async function onConfirmDelete() {
@@ -463,7 +536,9 @@ export function QueueingSessionListPage() {
                                             isAdmin={isAdmin}
                                             onEdit={row.can_manage ? openEditModal : undefined}
                                             onDelete={openDeleteConfirm}
+                                            onDuplicate={row.can_manage ? openDuplicateConfirm : undefined}
                                             deleteSubmitting={deleteSubmitting}
+                                            duplicateSubmitting={duplicateSubmitting}
                                         />
                                     ))}
                                 </div>
@@ -604,6 +679,28 @@ export function QueueingSessionListPage() {
                     </div>
                 </div>
             ) : null}
+
+            <ConfirmActionModal
+                open={Boolean(duplicateRow)}
+                title="Duplicate this queue?"
+                description={
+                    duplicateRow
+                        ? `Creates a new active queue with the same settings and players from ${duplicateRow.queue_name?.trim() || `session #${duplicateRow.id}`}. Matches are not copied — you can edit the roster afterward.`
+                        : undefined
+                }
+                busy={duplicateSubmitting}
+                confirmLabel="Duplicate queue"
+                confirmBusyLabel="Duplicating…"
+                confirmClassName="flex-1 rounded-lg bg-[#0f8d47] py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                onCancel={() => closeDuplicateConfirm()}
+                onConfirm={() => onConfirmDuplicate()}
+            >
+                {duplicateError ? (
+                    <p className="mt-3 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                        {duplicateError}
+                    </p>
+                ) : null}
+            </ConfirmActionModal>
         </AppShell>
     );
 }

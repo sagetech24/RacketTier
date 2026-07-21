@@ -101,6 +101,36 @@ export async function postCreateQueueingSession(payload) {
 }
 
 /**
+ * Duplicate a finished queueing session (settings + roster, no matches).
+ * @param {number|string} sessionId
+ */
+export async function postDuplicateQueueingSession(sessionId) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/duplicate`,
+        {},
+    );
+    if (!res.ok) {
+        let msg = 'Could not duplicate queueing session.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') {
+                msg = j.message;
+            } else if (j.errors && typeof j.errors === 'object') {
+                const first = Object.values(j.errors)[0];
+                if (Array.isArray(first) && first[0]) {
+                    msg = String(first[0]);
+                }
+            }
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
  * @param {{
  *   q?: string,
  *   sort?: 'updated_desc' | 'updated_asc' | 'created_desc' | 'created_asc',

@@ -21,6 +21,7 @@ use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
 use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\QueueingGameSessionDestroyController;
+use App\Http\Controllers\QueueingGameSessionDuplicateController;
 use App\Http\Controllers\QueueingGameSessionEndController;
 use App\Http\Controllers\QueueingGameSessionHistoryController;
 use App\Http\Controllers\QueueingGameSessionStoreController;
@@ -128,6 +129,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/auth/queueing-sessions/history', QueueingGameSessionHistoryController::class)
         ->name('auth.queueing-sessions.history');
     Route::post('/auth/queueing-sessions', [QueueingGameSessionStoreController::class, 'store'])->name('auth.queueing-sessions.store');
+    Route::post('/auth/queueing-sessions/{gameSession}/duplicate', QueueingGameSessionDuplicateController::class)
+        ->name('auth.queueing-sessions.duplicate');
     Route::patch('/auth/queueing-sessions/{gameSession}', QueueingGameSessionUpdateController::class)
         ->name('auth.queueing-sessions.update');
     Route::delete('/auth/queueing-sessions/{gameSession}', QueueingGameSessionDestroyController::class)
