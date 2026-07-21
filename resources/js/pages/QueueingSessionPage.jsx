@@ -234,11 +234,11 @@ export function QueueingSessionPage() {
                                                 ) : null}
                                             </div>
                                             {isViewOnly ? (
-                                                <p className="mt-2 text-sm text-[#918f9c]">
+                                                <p className="mt-2 text-sm md:text-lg text-[#918f9c]">
                                                     Final standings after the session ended.
                                                 </p>
                                             ) : (
-                                                <p className="mt-2 text-sm text-[#918f9c]">
+                                                <p className="mt-2 text-sm md:text-lg text-[#918f9c]">
                                                     Live session points — updated after each match.
                                                 </p>
                                             )}

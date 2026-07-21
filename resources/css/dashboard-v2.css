@@ -65,7 +65,7 @@
 .rt-input {
     width: 100%;
     border-radius: 0.75rem;
-    border: 1px solid #353438;
+    border: 1px solid #525153;
     background-color: #0f0f12;
     padding: 1rem 1rem 1rem 3rem;
     font-size: 0.875rem;
@@ -1914,11 +1914,11 @@
 }
 
 .rt-roster-sort-select {
-    border-radius: 0.75rem;
-    border: 1px solid #353438;
+    border-radius: 0.35rem;
+    border: 1px solid #525153;
     background-color: #131316;
-    padding: 0.625rem 0.75rem;
-    font-size: 0.8125rem;
+    padding: 0.925rem 0.75rem;
+    font-size: 0.6125rem;
     font-weight: 600;
     color: #e4e1e6;
     transition:
@@ -1934,13 +1934,13 @@
 
 .rt-roster-sort-direction {
     display: inline-flex;
-    height: 2.5rem;
+    height: 3rem;
     width: 2.5rem;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 0.75rem;
-    border: 1px solid #353438;
+    border-radius: 0.35rem;
+    border: 1px solid #525153;
     background-color: #131316;
     color: #c2c1ff;
     transition:

@@ -417,7 +417,7 @@ export function QueueingSessionPlayersPage() {
                                                 placeholder="Search by name or pronoun…"
                                                 value={playerSearch}
                                                 onChange={(e) => setPlayerSearch(e.target.value)}
-                                                className="rt-input"
+                                                className="rt-input border border-white/10 px-4 py-2 text-xs! md:text-sm!"
                                                 aria-label="Search players"
                                             />
                                         </div>
@@ -468,7 +468,7 @@ export function QueueingSessionPlayersPage() {
                                                 id="roster-sort-field"
                                                 value={rosterSortField}
                                                 onChange={(e) => setRosterSortField(e.target.value)}
-                                                className="rt-roster-sort-select min-w-0 flex-1"
+                                                className="rt-roster-sort-select min-w-0 flex-1 text-xs! md:text-sm!"
                                             >
                                                 {ROSTER_SORT_OPTIONS.map((option) => (
                                                     <option key={option.value} value={option.value}>
