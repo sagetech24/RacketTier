@@ -39,10 +39,10 @@ Facility-owned. One scored match, then the session ends.
 
 Member-organized, multi-match, with a live leaderboard.
 
-1. **Create session** (`/queueing-session/new`): creator becomes **Queue Master**; set sport, queue name, singles/doubles, **win/loss points**, "skip scores", and **auto-match criteria**. The session is created as a **draft** (JSON snapshot) until it ends.
-2. **Manage roster** (`/queueing-session/:id/players`): add members (with per-sport tier + stats) or guests, set skill level (1–5: Starter → Sensie) and pronoun.
-3. **Build matches** (`/queueing-session/:id/matches`): **auto-generate** proposals (by skill level balanced/same-level, FIFO sequence, W/L statistics, genderless-mixed teams) or build manually. Matches flow `queueing → ongoing → finished`.
-4. **Record results**: enter scores or pick the winner (skip-scores). Finished players rotate to the **end of the queue** (FIFO); the session **stays active** across many matches.
+1. **Create session** (`/queueing-session/new`): creator becomes **Queue Master**; set sport, queue name, singles/doubles, **win/loss points**, skip scores (default on), optional guest skill/gender requirements, and **auto-match criteria**. The session is created as a **draft** (JSON snapshot) until it ends. Or **duplicate** a finished session from History / Finished today to copy settings + roster (no matches).
+2. **Manage roster** (`/queueing-session/:id/players`): add members (skill defaults from sport tier) or guests; sort by games / wins / losses.
+3. **Build matches** (`/queueing-session/:id/matches`): **auto-generate** fairness-first proposals (games count + last-match win/loss brackets, plus skill / FIFO / W/L / gender criteria) or build manually. Drag players to adjust lineups, then **Queue** or **Start**. Matches flow `queueing → ongoing → finished`.
+4. **Record results**: enter scores or pick the winner (skip-scores). Finished players rotate to the **end of the queue** (FIFO); last-match result is tracked for the next auto-match pass. The session **stays active** across many matches.
 5. **Live leaderboard** (`/queueing-session/:id`): wins, losses, matches played, points earned, win %.
 6. **End session**: QM stops the session → the draft is **persisted** to real rows and every finished match is **replayed** to commit ELO/wallets atomically → a **summary report** (ranked players + totals) is generated.
 
@@ -64,6 +64,20 @@ Dashboard (`/dashboard`), Rankings/leaderboard (`/ranking`), Activity feed (`/ac
 - **Style:** extrabold tracking-tight headings, rounded-xl cards, pill badges, gradient CTAs, radial "glow" backgrounds, mobile bottom nav + match FAB.
 
 > A copy-paste-ready brief for building a new landing page from this product is maintained at [`docs/landing-page-prompt.md`](docs/landing-page-prompt.md).
+
+## Changelog
+
+Full release notes: [`CHANGELOG.md`](CHANGELOG.md).
+
+### 2026-07-21 — Queueing session power-up
+
+| Area | What shipped |
+|------|----------------|
+| **Duplicate session** | QM/admin recreates a finished queue with the same settings and roster; opens Players for tweaks. Matches/stats are not copied. |
+| **Fairness auto-match** | Proposals prefer fewer games played and use last-match win/loss brackets, then existing skill/FIFO/W/L/gender criteria. |
+| **Match lineup UX** | Shared drag-and-drop lineup for create + auto-match; **Queue** or **Start** on each proposal. |
+| **Roster & guests** | Member skill defaults from sport tier; optional guest skill/gender per session; roster sort by games/wins/losses; Skip Score Entry on by default. |
+| **Polish & fixes** | Match card/tabs/leaderboard UI; draft player/match counts on cards; no artificial skeleton delay; wordmark nested-link fix. |
 
 ## Requirements
 
