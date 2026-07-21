@@ -5,11 +5,13 @@ import {
     postStartQueueingSessionMatch,
 } from '../../api/queueingSession.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
+import { DraggableMatchLineup } from './DraggableMatchLineup.jsx';
 
 /**
  * @typedef {import('../../api/queueingSession.js').AutoMatchCriteria} AutoMatchCriteria
  * @typedef {import('../../api/queueingSession.js').AutoMatchProposal} AutoMatchProposal
  * @typedef {import('../../api/queueingSession.js').AutoProposalsResponse} AutoProposalsResponse
+ * @typedef {{ team1: number[], team2: number[] }} LineupDraft
  */
 
 /** @param {AutoMatchCriteria | undefined} criteria */
@@ -41,56 +43,53 @@ function groupByTeam(players) {
     return { team1, team2 };
 }
 
-/** @param {number | null | undefined} skillLevel */
-function skillLevelLabel(skillLevel) {
-    if (skillLevel == null) return null;
-    const names = {
-        1: 'Starter',
-        2: 'Beginner',
-        3: 'Intermediate',
-        4: 'Sempai',
-        5: 'Sensie',
-    };
-    const level = Math.min(5, Math.max(1, skillLevel));
-    return `Lvl ${level ?? '-'}`;
-    // return `Lvl ${level} — ${names[level] ?? 'Skill'}`;
+/**
+ * @param {AutoMatchProposal[]} proposals
+ * @returns {Record<string, LineupDraft>}
+ */
+function draftsFromProposals(proposals) {
+    /** @type {Record<string, LineupDraft>} */
+    const drafts = {};
+    for (const proposal of proposals) {
+        const { team1, team2 } = groupByTeam(proposal.players);
+        drafts[proposal.proposal_id] = {
+            team1: team1.map((p) => p.game_session_player_id),
+            team2: team2.map((p) => p.game_session_player_id),
+        };
+    }
+    return drafts;
 }
 
-/** @param {AutoMatchProposal['players'][number]} p */
-function PlayerRow({ p }) {
-    const skillLabel = skillLevelLabel(p.skill_level);
+/**
+ * @param {AutoMatchProposal} proposal
+ * @param {LineupDraft | undefined} draft
+ */
+function lineupFromDraft(proposal, draft) {
+    if (!draft) {
+        return proposal.lineup.map((row) => ({ id: row.id, team: row.team }));
+    }
+    return [
+        ...draft.team1.map((id) => ({ id, team: /** @type {1} */ (1) })),
+        ...draft.team2.map((id) => ({ id, team: /** @type {2} */ (2) })),
+    ];
+}
 
-    return (
-        <div className="flex items-start justify-between gap-2 rounded-lg border border-[#c2c1ff]/30 shadow-sm bg-[#131316] p-3">
-            <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold capitalize text-[#e4e1e6] mb-1 text-sm md:text-lg">{p.name}</p>
-                {skillLabel ? (
-                    <p className="inline-flex items-center gap-0.5" title="Skill level">
-                        <MaterialIcon name="star" className="text-[15px]! md:text-xl! text-[#c2c1ff]" />
-                        <span className="font-medium text-[#c2c1ff] truncate text-xs md:text-lg">{skillLabel}</span>
-                    </p>
-                ) : null}
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[#918f9c]">
-                    <span className="inline-flex items-center gap-0.5" title="Wins">
-                        <MaterialIcon name="arrow_upward" className="text-[13px]! md:text-xl! text-[#4ce081]" />
-                        <span className="tabular-nums font-medium text-[#e4e1e6] text-xs md:text-lg">{p.wins_count}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-0.5" title="Losses">
-                        <MaterialIcon name="arrow_downward" className="text-[13px]! md:text-xl! text-red-300/90" />
-                        <span className="tabular-nums font-medium text-[#e4e1e6] text-xs md:text-lg">{p.losses_count}</span>
-                    </span>
-                </div>
-            </div>
-            {p.is_guest ? (
-                <span
-                    className="shrink-0 rounded-full border border-[#747374] bg-[#c2c1ff]/20 px-1.5 py-0.5 text-[10px] md:text-[12px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
-                    title="Guest player"
-                >
-                    Guest
-                </span>
-            ) : null}
-        </div>
-    );
+/**
+ * @param {AutoMatchProposal} proposal
+ * @param {number[]} ids
+ */
+function playersForIds(proposal, ids) {
+    return ids
+        .map((id) => proposal.players.find((p) => p.game_session_player_id === id))
+        .filter(Boolean)
+        .map((p) => ({
+            id: p.game_session_player_id,
+            name: p.name,
+            skill_level: p.skill_level,
+            wins_count: p.wins_count,
+            losses_count: p.losses_count,
+            is_guest: p.is_guest,
+        }));
 }
 
 /**
@@ -99,6 +98,8 @@ function PlayerRow({ p }) {
  *   index: number,
  *   busy: boolean,
  *   matchType: 'singles' | 'doubles',
+ *   draft: LineupDraft,
+ *   onDraftChange: (proposalId: string, next: LineupDraft) => void,
  *   onApproveAndQueue: (proposal: AutoMatchProposal) => void,
  *   onApproveAndStart: (proposal: AutoMatchProposal) => void,
  *   onSkip: (proposalId: string) => void,
@@ -109,19 +110,24 @@ function ProposalCard({
     index,
     busy,
     matchType,
+    draft,
+    onDraftChange,
     onApproveAndQueue,
     onApproveAndStart,
     onSkip,
 }) {
-    const { team1, team2 } = groupByTeam(proposal.players);
+    const team1Players = playersForIds(proposal, draft.team1);
+    const team2Players = playersForIds(proposal, draft.team2);
 
     return (
-        <li className="rounded-xl border border-[#c2c1ff]/50 shadow-lg bg-[#1b1b1e] p-4">
+        <li className="rounded-xl border border-[#c2c1ff]/50 bg-[#1b1b1e] p-4 shadow-lg">
             <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="mb-2 font-semibold text-[#e4e1e6] text-sm md:text-lg">Suggested match #{index + 1}</p>
+                <p className="mb-2 text-xl font-semibold text-[#e4e1e6]">
+                    Suggested Match #{index + 1}
+                </p>
                 {proposal.bracket_label ? (
                     <span
-                        className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wide text-[#c2c1ff]"
+                        className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-3 py-1 text-[10px] md:text-[16px] font-semibold capitalize tracking-wide text-[#c2c1ff]"
                         title="Match grouping bracket"
                     >
                         {proposal.bracket_label}
@@ -129,48 +135,23 @@ function ProposalCard({
                 ) : null}
             </div>
 
-            {matchType === 'doubles' ? (
-                <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <p className="mb-1.5 text-[12px] md:text-[14px] font-bold uppercase tracking-wide text-[#4ce081]">Team 1</p>
-                        <div className="space-y-2">
-                            {team1.map((p) => (
-                                <PlayerRow key={p.game_session_player_id} p={p} />
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <p className="mb-1.5 text-[12px] md:text-[14px] font-bold uppercase tracking-wide text-[#c8c5d2]">Team 2</p>
-                        <div className="space-y-2">
-                            {team2.map((p) => (
-                                <PlayerRow key={p.game_session_player_id} p={p} />
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <div className="grid grid-cols-2 items-stretch gap-2">
-                    <div>
-                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#4ce081]">Player 1</p>
-                        {team1.map((p) => (
-                            <PlayerRow key={p.game_session_player_id} p={p} />
-                        ))}
-                    </div>
-                    <div>
-                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#c8c5d2]">Player 2</p>
-                        {team2.map((p) => (
-                            <PlayerRow key={p.game_session_player_id} p={p} />
-                        ))}
-                    </div>
-                </div>
-            )}
+            <DraggableMatchLineup
+                matchType={matchType}
+                team1={team1Players}
+                team2={team2Players}
+                disabled={busy}
+                title={null}
+                showHint
+                framed={false}
+                onChange={(next) => onDraftChange(proposal.proposal_id, next)}
+            />
 
             <div className="mt-3 grid grid-cols-3 gap-2">
                 <button
                     type="button"
                     disabled={busy}
                     onClick={() => onApproveAndQueue(proposal)}
-                    className="inline-flex items-center justify-center gap-1 rounded-full bg-[#4ce081] px-3 py-1 md:py-2 text-xs font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-1 rounded-full bg-[#4ce081] px-3 py-1 text-xs font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50 md:py-2"
                 >
                     <MaterialIcon name="playlist_add" className="text-lg! md:text-xl!" />
                     <span className="text-sm! md:text-base! md:inline">Queue</span>
@@ -179,7 +160,7 @@ function ProposalCard({
                     type="button"
                     disabled={busy}
                     onClick={() => onApproveAndStart(proposal)}
-                    className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c2c1ff]/50 bg-[#c2c1ff]/20 px-3 py-1 md:py-2 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c2c1ff]/50 bg-[#c2c1ff]/20 px-3 py-1 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50 md:py-2"
                 >
                     <MaterialIcon name="play_arrow" className="text-[16px]!" />
                     <span className="text-xs! md:text-base! md:inline">Start</span>
@@ -188,7 +169,7 @@ function ProposalCard({
                     type="button"
                     disabled={busy}
                     onClick={() => onSkip(proposal.proposal_id)}
-                    className="inline-flex items-center justify-center gap-1 rounded-full border border-white/30 bg-transparent px-3 py-1 md:py-2 text-xs font-bold text-white/70 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-white/30 bg-transparent px-3 py-1 text-xs font-bold text-white/70 disabled:cursor-not-allowed disabled:opacity-50 md:py-2"
                 >
                     <MaterialIcon name="skip_next" className="text-[16px]!" />
                     <span className="text-xs! md:text-base! md:inline">Skip</span>
@@ -215,6 +196,8 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [skippedIds, setSkippedIds] = useState(/** @type {Set<string>} */ (new Set()));
+    /** @type {[Record<string, LineupDraft>, (v: Record<string, LineupDraft>) => void]} */
+    const [draftById, setDraftById] = useState({});
     const refreshSeedRef = useRef(0);
 
     const reload = useCallback(
@@ -232,6 +215,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                         refreshSeedRef.current > 0 ? refreshSeedRef.current : undefined,
                 });
                 setData(res);
+                setDraftById(draftsFromProposals(res.proposals ?? []));
             } catch (e) {
                 setData({
                     criteria: criteria ?? undefined,
@@ -241,6 +225,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                     has_stats: false,
                     match_type: 'singles',
                 });
+                setDraftById({});
                 setError(e instanceof Error ? e.message : 'Could not load match suggestions.');
             } finally {
                 setLoading(false);
@@ -254,17 +239,21 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
             setData(null);
             setError('');
             setSkippedIds(new Set());
+            setDraftById({});
             refreshSeedRef.current = 0;
             return;
         }
         reload();
     }, [open, reload]);
 
-    /** @param {AutoMatchProposal} proposal */
+    /**
+     * @param {AutoMatchProposal} proposal
+     */
     async function createMatchFromProposal(proposal) {
         if (sessionId == null) return null;
+        const draft = draftById[proposal.proposal_id];
         return postCreateQueueingSessionMatch(sessionId, {
-            lineup: proposal.lineup.map((row) => ({ id: row.id, team: row.team })),
+            lineup: lineupFromDraft(proposal, draft),
         });
     }
 
@@ -349,6 +338,14 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
         });
     }
 
+    /**
+     * @param {string} proposalId
+     * @param {LineupDraft} next
+     */
+    function onDraftChange(proposalId, next) {
+        setDraftById((prev) => ({ ...prev, [proposalId]: next }));
+    }
+
     function onRefreshClick() {
         setSkippedIds(new Set());
         void reload({ bumpRefreshSeed: true });
@@ -380,22 +377,22 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                             </button>
                         ) : null}
                     </div>
-                    <p className="my-2 text-base! md:text-lg! text-[#918f9c]">
-                        Queue a suggestion, start it immediately, or skip to dismiss. Priority: Skill → W/L → Sequence.
+                    <p className="my-2 text-base! text-[#918f9c] md:text-lg!">
+                        Drag to rearrange, then queue or start. Priority: Skill → W/L → Sequence.
                     </p>
                     {chips.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                             {chips.map((chip) => (
                                 <span
                                     key={chip}
-                                    className="rounded-full text-xs border border-[#45454a] bg-[#c2c1ff] px-2 py-1 font-semibold text-[#131316]"
+                                    className="rounded-full border border-[#45454a] bg-[#c2c1ff] px-2 py-1 text-xs font-semibold text-[#131316]"
                                 >
                                     {chip}
                                 </span>
                             ))}
                         </div>
                     ) : null}
-                    <p className="mt-2 text-base! md:text-lg! text-[#918f9c]">
+                    <p className="mt-2 text-base! text-[#918f9c] md:text-lg!">
                         {totalEligible} eligible · {required} player(s) per {matchType} match
                     </p>
                 </div>
@@ -420,18 +417,25 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                         </div>
                     ) : (
                         <ul className="space-y-3">
-                            {visibleProposals.map((proposal, index) => (
-                                <ProposalCard
-                                    key={proposal.proposal_id}
-                                    proposal={proposal}
-                                    index={index}
-                                    busy={busy}
-                                    matchType={matchType}
-                                    onApproveAndQueue={onApproveAndQueue}
-                                    onApproveAndStart={onApproveAndStart}
-                                    onSkip={onSkip}
-                                />
-                            ))}
+                            {visibleProposals.map((proposal, index) => {
+                                const draft =
+                                    draftById[proposal.proposal_id] ??
+                                    draftsFromProposals([proposal])[proposal.proposal_id];
+                                return (
+                                    <ProposalCard
+                                        key={proposal.proposal_id}
+                                        proposal={proposal}
+                                        index={index}
+                                        busy={busy}
+                                        matchType={matchType}
+                                        draft={draft}
+                                        onDraftChange={onDraftChange}
+                                        onApproveAndQueue={onApproveAndQueue}
+                                        onApproveAndStart={onApproveAndStart}
+                                        onSkip={onSkip}
+                                    />
+                                );
+                            })}
                         </ul>
                     )}
                 </div>
@@ -441,7 +445,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                         type="button"
                         disabled={busy || loading}
                         onClick={onRefreshClick}
-                        className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 py-2.5 text-sm font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 py-2.5 text-sm font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <MaterialIcon name="refresh" className="text-[16px]! md:text-xl!" />
                         <span className="text-sm! md:text-lg! md:inline">Refresh</span>
@@ -450,7 +454,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                         type="button"
                         disabled={busy || loading || visibleProposals.length === 0}
                         onClick={() => void onApproveAll(visibleProposals)}
-                        className="inline-flex items-center justify-center gap-1 flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <MaterialIcon name="playlist_add" className="text-[16px]! md:text-xl!" />
                         <span className="text-sm! md:text-lg! md:inline">Queue All</span>
@@ -459,7 +463,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                         type="button"
                         disabled={busy}
                         onClick={onClose}
-                        className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-red-300/50 bg-red-100/10 py-2.5 text-sm font-bold text-red-300/70 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-red-300/50 bg-red-100/10 py-2.5 text-sm font-bold text-red-300/70 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <MaterialIcon name="close" className="text-[16px]! md:text-xl!" />
                         <span className="text-sm! md:text-lg! md:inline">Exit</span>

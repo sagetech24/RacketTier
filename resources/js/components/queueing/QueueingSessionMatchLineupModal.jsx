@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import {
-    playerRosterStatus,
     reservedQueueingPlayerIds,
     rosterPlayerLabel,
 } from '../../lib/queueingMatchLineup.js';
+import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
+import { DraggableMatchLineup } from './DraggableMatchLineup.jsx';
 
 /** @param {number | null | undefined} skillLevel */
 function skillLevelLabel(skillLevel) {
@@ -13,26 +13,13 @@ function skillLevelLabel(skillLevel) {
     return `Lvl ${level}`;
 }
 
-/** @param {{ status: { label: string, className: string } | null }} props */
-function PlayerStatusBadge({ status }) {
-    if (!status) return null;
-    return (
-        <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] md:text-[12px] font-semibold uppercase tracking-wide ${status.className}`}
-        >
-            {status.label}
-        </span>
-    );
-}
-
 /**
  * @param {{
  *   p: NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number],
- *   status?: { label: string, className: string } | null,
  *   trailing?: import('react').ReactNode,
  * }} props
  */
-function LineupPlayerCard({ p, status = null, trailing = null }) {
+function LineupPlayerCard({ p, trailing = null }) {
     const skillLabel = skillLevelLabel(p.skill_level);
     const isGuest = Boolean(p.is_guest || p.guest_name);
 
@@ -71,7 +58,6 @@ function LineupPlayerCard({ p, status = null, trailing = null }) {
                             {p.losses_count ?? 0}
                         </span>
                     </span>
-                    {/* <PlayerStatusBadge status={status} /> */}
                 </div>
             </div>
             <div className="flex shrink-0 flex-col items-end">
@@ -175,15 +161,44 @@ export function QueueingSessionMatchLineupModal({
     }
 
     /**
-     * @param {1 | 2} team
      * @param {number} playerId
      */
-    function removePlayerFromMatchLineupTeam(team, playerId) {
+    function removePlayerFromMatchLineup(playerId) {
         setMatchLineupTeams((prev) => ({
-            team1: team === 1 ? prev.team1.filter((id) => id !== playerId) : prev.team1,
-            team2: team === 2 ? prev.team2.filter((id) => id !== playerId) : prev.team2,
+            team1: prev.team1.filter((id) => id !== playerId),
+            team2: prev.team2.filter((id) => id !== playerId),
         }));
     }
+
+    const lineupTeam1Players = useMemo(() => {
+        const rows = Array.isArray(session.players) ? session.players : [];
+        return matchLineupTeams.team1
+            .map((id) => rows.find((row) => row.id === id))
+            .filter(Boolean)
+            .map((p) => ({
+                id: p.id,
+                name: rosterPlayerLabel(p),
+                skill_level: p.skill_level ?? null,
+                wins_count: p.wins_count ?? 0,
+                losses_count: p.losses_count ?? 0,
+                is_guest: Boolean(p.is_guest || p.guest_name),
+            }));
+    }, [session.players, matchLineupTeams.team1]);
+
+    const lineupTeam2Players = useMemo(() => {
+        const rows = Array.isArray(session.players) ? session.players : [];
+        return matchLineupTeams.team2
+            .map((id) => rows.find((row) => row.id === id))
+            .filter(Boolean)
+            .map((p) => ({
+                id: p.id,
+                name: rosterPlayerLabel(p),
+                skill_level: p.skill_level ?? null,
+                wins_count: p.wins_count ?? 0,
+                losses_count: p.losses_count ?? 0,
+                is_guest: Boolean(p.is_guest || p.guest_name),
+            }));
+    }, [session.players, matchLineupTeams.team2]);
 
     /** @returns {{ id: number, team?: number }[] | null} */
     function buildMatchLineupPayload() {
@@ -283,16 +298,10 @@ export function QueueingSessionMatchLineupModal({
                                         {matchLineupSearchResults.map((p) => {
                                             const t1Full = matchLineupTeams.team1.length >= matchLineupMaxPerTeam;
                                             const t2Full = matchLineupTeams.team2.length >= matchLineupMaxPerTeam;
-                                            const rosterStatus = playerRosterStatus(
-                                                p,
-                                                reservedPlayerIds,
-                                                Boolean(session.is_active),
-                                            );
                                             return (
                                                 <li key={p.id}>
                                                     <LineupPlayerCard
                                                         p={p}
-                                                        status={rosterStatus}
                                                         trailing={
                                                             <div className="flex flex-col gap-2">
                                                                 <button
@@ -324,60 +333,14 @@ export function QueueingSessionMatchLineupModal({
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-[#c2c1ff]/50 bg-[#1b1b1e] p-4 shadow-lg">
-                            <p className="mb-3 text-xl md:text-2xl font-semibold text-[#e4e1e6]">Match Lineup</p>
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2">
-                                {[1, 2].map((team) => {
-                                    const ids = team === 1 ? matchLineupTeams.team1 : matchLineupTeams.team2;
-                                    const accent =
-                                        team === 1
-                                            ? 'text-[#4ce081]'
-                                            : 'text-[#c8c5d2]';
-                                    return (
-                                        <div key={team} className="min-w-0">
-                                            <p
-                                                className={`mb-1.5 text-[12px] md:text-[18px] font-bold uppercase tracking-wide ${accent}`}
-                                            >
-                                                {teamLabel} {team} ({ids.length}/{matchLineupMaxPerTeam})
-                                            </p>
-                                            <div className="space-y-2">
-                                                {ids.map((pid) => {
-                                                    const p = session.players?.find((row) => row.id === pid);
-                                                    if (!p) return null;
-                                                    return (
-                                                        <LineupPlayerCard
-                                                            key={pid}
-                                                            p={p}
-                                                            trailing={
-                                                                <button
-                                                                    type="button"
-                                                                    disabled={busy}
-                                                                    onClick={() =>
-                                                                        removePlayerFromMatchLineupTeam(
-                                                                            /** @type {1 | 2} */ (team),
-                                                                            pid,
-                                                                        )
-                                                                    }
-                                                                    className="inline-flex items-center justify-center text-red-300/70 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-                                                                    aria-label={`Remove ${rosterPlayerLabel(p)} from ${teamLabel.toLowerCase()} ${team}`}
-                                                                >
-                                                                    <MaterialIcon name="close" className="text-[16px]! md:text-2xl!" />
-                                                                </button>
-                                                            }
-                                                        />
-                                                    );
-                                                })}
-                                                {ids.length === 0 ? (
-                                                    <div className="rounded-lg border border-dashed border-[#45454a] bg-[#131316] px-3 py-4 text-center text-xs text-[#918f9c] md:text-sm">
-                                                        Assign from search results
-                                                    </div>
-                                                ) : null}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                        <DraggableMatchLineup
+                            matchType={matchType}
+                            team1={lineupTeam1Players}
+                            team2={lineupTeam2Players}
+                            disabled={busy}
+                            onChange={setMatchLineupTeams}
+                            onRemove={removePlayerFromMatchLineup}
+                        />
                     </div>
                 </div>
 
