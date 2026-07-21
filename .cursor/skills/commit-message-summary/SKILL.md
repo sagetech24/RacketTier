@@ -1,55 +1,64 @@
 ---
 name: commit-message-summary
 description: >-
-  Summarizes agent work, drafts a Git commit message from session changes, then
-  stages, commits, and pushes. Use when finishing implementation tasks, after
-  creating or updating files, or when the user asks for a commit message.
+  Summarizes agent work and drafts a Git commit message from session changes.
+  On normal implementation turns, only output a copy-paste commit footer — do
+  not run git. When the user explicitly invokes this skill (e.g.
+  /commit-message-summary), stage, commit, and push in one go.
 ---
 
 # Commit Message Summary
 
 ## Purpose
 
-At the end of work that changed the repository, produce a short **change summary** and a **commit message**, then **stage, commit, and push** those changes.
+Two modes:
+
+1. **Default (end of implementation responses)** — produce a short **change summary** and a **recommended commit message** the user can copy. **Do not** run `git add`, `git commit`, or `git push`.
+2. **Skill invocation** — when the user explicitly calls this skill (e.g. `/commit-message-summary`), inventory changes, draft the message(s), then **stage, commit, and push** in the same turn.
 
 ## When to apply
 
+### Footer only (no git)
+
 - After creating, updating, or deleting project files
-- When the user asks for a commit message or change summary
 - At the end of any implementation or fix task (paired with the project rule)
 
-Skip the summary **and** do not commit/push when:
+Skip the footer when:
 - The turn was question-only or review-only with **no** file changes
-- The user explicitly said not to commit, push, or include a commit message
+- The user explicitly said not to include a commit message
+
+### Execute git (skill call only)
+
+Run add → commit → push **only** when the user invokes this skill by name or slash command (e.g. `/commit-message-summary`, “run commit-message-summary”).
+
+Do **not** execute git when:
+- The turn only finished ordinary implementation work (footer only)
+- The user opted out of commit/push
 - There is nothing to commit (clean working tree)
 
-## Workflow
+## Workflow A — end-of-response footer (default)
+
+1. Summarize changes (2–5 bullets): what changed and why
+2. Draft the commit message using this repo’s style
+3. Present the **Recommended commit message** footer below
+4. **Stop** — do not stage, commit, or push
+
+## Workflow B — skill invocation (git actions)
 
 1. **Inventory changes** (run in parallel):
-   - `git status` — untracked and modified files
-   - `git diff` — unstaged changes
-   - `git diff --staged` — staged changes
-   - `git log -8 --oneline` — match repo commit style
-   - If git is unavailable, use the files you edited in the session
+   - `git status`
+   - `git diff` / `git diff --staged`
+   - `git log -8 --oneline`
+2. **Summarize** (2–5 bullets) and **draft** commit message(s)
+3. **Present** the commit message footer
+4. **Stage, commit, and push**:
+   - Do not commit secrets (`.env`, credentials, private keys)
+   - Stage only relevant files
+   - Prefer separate commits when unrelated concerns are mixed, then one push
+   - Commit with a HEREDOC; then `git push` (or `git push -u origin HEAD` if needed)
+   - Confirm with `git status` and report the short SHA / remote
 
-2. **Summarize for the user** (2–5 bullets):
-   - What was created, updated, or removed
-   - Why it matters (behavior, bug fix, UX), not a raw file list
-   - Group related files; omit noise (formatting-only unless that was the task)
-
-3. **Draft the commit message** using this repo's style (see below)
-
-4. **Present the summary and commit message** in the footer format below
-
-5. **Stage, commit, and push** (required unless the user opted out):
-   - Do **not** commit secrets (`.env`, credentials, private keys)
-   - Stage only relevant files for this logical change
-   - Commit with a HEREDOC message (see below)
-   - Push the current branch to its remote (`git push` or `git push -u origin HEAD` if needed)
-   - After push, run `git status` and confirm success in the response
-   - If the working tree mixes unrelated concerns, prefer **separate commits** (one message each), then a single push
-
-### Commit command
+### Commit command (skill invocation only)
 
 ```bash
 git add <relevant-files>
@@ -96,13 +105,29 @@ Return finished players to the end of the queue per queue-system rules.
 
 **Rules:**
 - Subject line ~50–72 characters when possible; body only if it adds context
-- One logical change per message; if the session mixed unrelated work, use **separate** commits
+- One logical change per message; if the session mixed unrelated work, use **separate** commits (on skill invocation) or suggest separate messages in the footer (default mode)
 - Do not include secrets, `.env`, or credentials in the message or summary
 - Do not stage or commit files that should stay local (e.g. `.env`)
 
-## Response footer (required when there are changes)
+## Response footer
 
-End the user-facing response with this block. Run add/commit/push **after** drafting it (same turn), then update the status line to reflect the result:
+### Default (no git)
+
+```markdown
+---
+
+## Recommended commit message
+
+\`\`\`
+<paste-ready commit message here>
+\`\`\`
+
+**Changed:** <one-line roll-up>
+
+_Manual commit only — not executed by the agent. Invoke /commit-message-summary to add, commit, and push._
+```
+
+### After skill invocation (git ran)
 
 ```markdown
 ---
@@ -113,14 +138,14 @@ End the user-facing response with this block. Run add/commit/push **after** draf
 <commit message that was used>
 \`\`\`
 
-**Changed:** <one-line roll-up, e.g. "3 files — React leaderboard, session API resource">
+**Changed:** <one-line roll-up>
 
 **Git:** committed and pushed to `<remote>/<branch>` (`<short-sha>`)
 ```
 
-If commit or push failed, keep the message block and report the failure clearly instead of claiming success.
+If commit or push failed, keep the message block and report the failure clearly.
 
-If multiple commits were created:
+If multiple commits were created on skill invocation:
 
 ```markdown
 ### Commit 1
@@ -138,8 +163,9 @@ style: ...
 
 ## What not to do
 
-- Do not skip add/commit/push after a successful summary unless the user opted out or there is nothing to commit
-- Do not amend or force-push unless the user's commit rules allow it and they asked
+- Do **not** auto-run add/commit/push at the end of ordinary implementation turns
+- Do **not** skip add/commit/push when the user explicitly invoked this skill and there are changes to commit
+- Do not amend or force-push unless the user’s commit rules allow it and they asked
 - Do not invent changes — only describe what was actually done in the session or diff
 - Do not bury the commit block inside long prose; keep it as the **last** section of the response
 - Never update git config
