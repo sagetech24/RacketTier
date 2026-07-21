@@ -45,7 +45,7 @@ function MatchTeamBlock({ names, teamNo, status, winningTeam }) {
         .join(' ');
 
     const trophyClass = [
-        'rt-match-team-trophy text-[30px]!',
+        'rt-match-team-trophy text-[18px]!',
         teamNo === 1 ? 'rt-match-team-trophy--left' : 'rt-match-team-trophy--right',
     ].join(' ');
 

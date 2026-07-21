@@ -2524,13 +2524,13 @@
 }
 
 .rt-match-team-trophy--left {
-    left: 0.35rem;
-    transform: rotate(-20deg);
+    left: 1.5rem;
+    transform: rotate(-18deg);
 }
 
 .rt-match-team-trophy--right {
-    right: 0.35rem;
-    transform: rotate(20deg);
+    right: 1.5rem;
+    transform: rotate(16deg);
 }
 
 .rt-match-team--1 .rt-match-team-avatar {
