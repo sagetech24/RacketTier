@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\GameSession;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreQueueingSessionPlayerRequest extends FormRequest
@@ -25,11 +26,28 @@ class StoreQueueingSessionPlayerRequest extends FormRequest
      */
     public function rules(): array
     {
+        $session = $this->route('gameSession');
+        $isGuest = $this->isGuestPayload();
+        $requireGuestSkill = $isGuest && $session instanceof GameSession && $session->requiresGuestSkillLevel();
+        $requireGuestGender = $isGuest && $session instanceof GameSession && $session->requiresGuestGender();
+        $requireSkill = ! $isGuest || $requireGuestSkill;
+
         return [
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'guest_name' => ['nullable', 'string', 'max:191'],
-            'pronoun' => ['nullable', 'string', 'in:He/Him,She/Her,They/Them,Other'],
-            'skill_level' => ['required', 'integer', 'min:1', 'max:5'],
+            'pronoun' => [
+                Rule::requiredIf($requireGuestGender),
+                'nullable',
+                'string',
+                'in:He/Him,She/Her,They/Them,Other',
+            ],
+            'skill_level' => [
+                Rule::requiredIf($requireSkill),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:5',
+            ],
         ];
     }
 
@@ -46,5 +64,12 @@ class StoreQueueingSessionPlayerRequest extends FormRequest
                 $validator->errors()->add('user_id', 'Provide exactly one of user_id or guest_name.');
             }
         });
+    }
+
+    private function isGuestPayload(): bool
+    {
+        $guest = $this->input('guest_name');
+
+        return $guest !== null && trim((string) $guest) !== '';
     }
 }

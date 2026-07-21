@@ -7,6 +7,7 @@ import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.j
 import { SportCard } from '../components/dashboard/SportCard.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
+import { QueueingSessionGuestOptionalFields } from '../components/queueing/QueueingSessionGuestOptionalFields.jsx';
 import {
     DEFAULT_AUTO_MATCH_CRITERIA,
     QueueingSessionAutoMatchCriteriaField,
@@ -27,6 +28,8 @@ export function CreateQueueingSessionPage() {
     const [winPoints, setWinPoints] = useState('30');
     const [lossPoints, setLossPoints] = useState('8');
     const [skipScores, setSkipScores] = useState(true);
+    const [optionalGuestSkill, setOptionalGuestSkill] = useState(true);
+    const [optionalGuestGender, setOptionalGuestGender] = useState(true);
     const [autoMatchCriteria, setAutoMatchCriteria] = useState(DEFAULT_AUTO_MATCH_CRITERIA);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
@@ -84,6 +87,8 @@ export function CreateQueueingSessionPage() {
                 win_points: w,
                 loss_points: l,
                 skip_scores: skipScores,
+                optional_guest_skill: optionalGuestSkill,
+                optional_guest_gender: optionalGuestGender,
                 ...normalizedCriteria,
             });
             navigate(`/queueing-session/${data.id}`, { replace: true });
@@ -156,31 +161,29 @@ export function CreateQueueingSessionPage() {
                                     className="w-full rounded-lg border border-[#484848] bg-[#131316] outline-none focus:ring-1 focus:ring-green-400 px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60 md:py-3 md:text-base"
                                 />
                             </div>
-                            <div>
-                                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
-                                <div className="flex">
-                                    {(['singles', 'doubles']).map((t) => (
-                                        <button
-                                            key={t}
-                                            type="button"
-                                            onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
-                                            className={
-                                                matchType === t
-                                                    ? 'flex-1 rounded-full rounded-l-none bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
-                                                    : 'flex-1 rounded-full rounded-r-none border border-[#484848] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
-                                            }
-                                            style={{
-                                                borderRadius: t === 'singles' ? '10px 0 0 10px' : '0 10px 10px 0',
-                                                borderLeft: t === 'singles' ? 'none' : '1px solid #2a2a2d',
-                                                borderRight: t === 'singles' ? '1px solid #2a2a2d' : 'none',
-                                            }}
-                                        >
-                                            {t === 'singles' ? 'Singles' : 'Doubles'}
-                                        </button>
-                                    ))}
+                            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                                <div className="col-span-2">
+                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
+                                    <div className="flex">
+                                        {(['singles', 'doubles']).map((t) => (
+                                            <button
+                                                key={t}
+                                                type="button"
+                                                onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
+                                                className={
+                                                    matchType === t
+                                                        ? 'flex-1 rounded-l-none bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
+                                                        : 'flex-1 rounded-r-none border border-[#484848] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
+                                                }
+                                                style={{
+                                                    borderRadius: t === 'singles' ? '0.5rem 0 0 0.5rem' : '0 0.5rem 0.5rem 0',
+                                                }}
+                                            >
+                                                {t === 'singles' ? 'Singles' : 'Doubles'}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
                                     <input
@@ -205,6 +208,14 @@ export function CreateQueueingSessionPage() {
                                 </div>
                             </div>
                             <QueueingSessionSkipScoresField checked={skipScores} onChange={setSkipScores} disabled={submitting} />
+                            <QueueingSessionGuestOptionalFields
+                                optionalGuestSkill={optionalGuestSkill}
+                                optionalGuestGender={optionalGuestGender}
+                                onOptionalGuestSkillChange={setOptionalGuestSkill}
+                                onOptionalGuestGenderChange={setOptionalGuestGender}
+                                disabled={submitting}
+                            />
+
                             <QueueingSessionAutoMatchCriteriaField
                                 value={autoMatchCriteria}
                                 onChange={setAutoMatchCriteria}

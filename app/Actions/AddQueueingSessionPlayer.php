@@ -72,7 +72,7 @@ class AddQueueingSessionPlayer
     /**
      * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
      */
-    public function executeGuest(GameSession $session, string $guestName, ?string $pronoun, int $skillLevel): array
+    public function executeGuest(GameSession $session, string $guestName, ?string $pronoun, ?int $skillLevel): array
     {
         if (! $session->isQueueing()) {
             abort(422, 'This action only applies to queueing sessions.');
@@ -167,7 +167,7 @@ class AddQueueingSessionPlayer
     /**
      * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
      */
-    private function executeGuestDraft(GameSession $session, string $guestName, ?string $pronoun, int $skillLevel): array
+    private function executeGuestDraft(GameSession $session, string $guestName, ?string $pronoun, ?int $skillLevel): array
     {
         $created = null;
         $this->draftStore->mutate($session, function ($draft) use ($guestName, $pronoun, $skillLevel, &$created) {

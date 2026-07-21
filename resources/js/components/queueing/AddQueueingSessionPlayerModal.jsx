@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 const PRONOUN_OPTIONS = [
-    { value: '', label: 'Select pronoun' },
+    { value: '', label: 'Select gender' },
     { value: 'He/Him', label: 'He/Him' },
     { value: 'She/Her', label: 'She/Her' },
     { value: 'They/Them', label: 'They/Them' },
@@ -27,9 +27,11 @@ const labelClassName = 'mb-1 block text-[10px] font-black uppercase tracking-wid
  *   intent?: 'add' | 'edit',
  *   member?: { name: string, pronoun?: string | null, skill_level?: number | null } | null,
  *   guest?: { name?: string, pronoun?: string | null, skill_level?: number | null } | null,
+ *   optionalGuestSkill?: boolean,
+ *   optionalGuestGender?: boolean,
  *   busy?: boolean,
  *   onCancel: () => void,
- *   onConfirm: (payload: { guest_name?: string, pronoun?: string | null, skill_level: number }) => void | Promise<void>,
+ *   onConfirm: (payload: { guest_name?: string, pronoun?: string | null, skill_level: number | null }) => void | Promise<void>,
  * }} props
  */
 export function AddQueueingSessionPlayerModal({
@@ -38,6 +40,8 @@ export function AddQueueingSessionPlayerModal({
     intent = 'add',
     member = null,
     guest = null,
+    optionalGuestSkill = true,
+    optionalGuestGender = true,
     busy = false,
     onCancel,
     onConfirm,
@@ -49,6 +53,8 @@ export function AddQueueingSessionPlayerModal({
 
     const isGuest = mode === 'guest';
     const isEdit = intent === 'edit';
+    const requireSkill = isGuest ? !optionalGuestSkill : true;
+    const requireGender = isGuest ? !optionalGuestGender : false;
 
     useEffect(() => {
         if (!open) return;
@@ -88,7 +94,9 @@ export function AddQueueingSessionPlayerModal({
           ? 'Add a Guest Player'
           : 'Add Player';
     const canSubmit = isGuest
-        ? guestName.trim() !== '' && skillLevel !== ''
+        ? guestName.trim() !== '' &&
+          (!requireSkill || skillLevel !== '') &&
+          (!requireGender || pronoun !== '')
         : skillLevel !== '';
     const submitLabel = busy
         ? isEdit
@@ -105,7 +113,7 @@ export function AddQueueingSessionPlayerModal({
         const payload = {
             ...(isGuest ? { guest_name: guestName.trim() } : {}),
             ...(isGuest ? { pronoun: pronoun !== '' ? pronoun : null } : {}),
-            skill_level: Number(skillLevel),
+            skill_level: skillLevel !== '' ? Number(skillLevel) : null,
         };
 
         try {
@@ -164,13 +172,14 @@ export function AddQueueingSessionPlayerModal({
                             </div>
                             <div>
                                 <label htmlFor="rt-add-player-pronoun" className={labelClassName}>
-                                    Pronoun
+                                    Gender{requireGender ? '' : ' (optional)'}
                                 </label>
                                 <select
                                     id="rt-add-player-pronoun"
                                     value={pronoun}
                                     onChange={(e) => setPronoun(e.target.value)}
                                     disabled={busy}
+                                    required={requireGender}
                                     className={inputClassName}
                                 >
                                     {PRONOUN_OPTIONS.map((option) => (
@@ -185,13 +194,14 @@ export function AddQueueingSessionPlayerModal({
 
                     <div>
                         <label htmlFor="rt-add-player-skill-level" className={labelClassName}>
-                            Tier Level
+                            Tier Level{isGuest && !requireSkill ? ' (optional)' : ''}
                         </label>
                         <select
                             id="rt-add-player-skill-level"
                             value={skillLevel}
                             onChange={(e) => setSkillLevel(e.target.value)}
                             disabled={busy}
+                            required={requireSkill}
                             className={inputClassName}
                         >
                             <option value="" className="bg-[#131316]">

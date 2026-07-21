@@ -300,7 +300,7 @@ export function QueueingSessionPlayersPage() {
                 ? {
                       guest_name: payload.guest_name,
                       pronoun: payload.pronoun ?? null,
-                      skill_level: payload.skill_level,
+                      skill_level: payload.skill_level ?? null,
                   }
                 : {
                       skill_level: payload.skill_level,
@@ -592,6 +592,8 @@ export function QueueingSessionPlayersPage() {
                 intent="edit"
                 member={editPlayerModal?.mode === 'member' ? editPlayerModal.member ?? null : null}
                 guest={editPlayerModal?.mode === 'guest' ? editPlayerModal.guest ?? null : null}
+                optionalGuestSkill={session?.optional_guest_skill !== false}
+                optionalGuestGender={session?.optional_guest_gender !== false}
                 busy={busy}
                 onCancel={() => {
                     if (!busy) setEditPlayerModal(null);

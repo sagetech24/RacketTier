@@ -21,6 +21,8 @@ class GameSession extends Model
         'win_points',
         'loss_points',
         'skip_scores',
+        'optional_guest_skill',
+        'optional_guest_gender',
         'auto_match_criteria',
         'completed_matches_count',
         'sport_id',
@@ -47,6 +49,8 @@ class GameSession extends Model
         return [
             'is_active' => 'boolean',
             'skip_scores' => 'boolean',
+            'optional_guest_skill' => 'boolean',
+            'optional_guest_gender' => 'boolean',
             'auto_match_criteria' => 'array',
             'win_points' => 'integer',
             'loss_points' => 'integer',
@@ -175,5 +179,15 @@ class GameSession extends Model
         $stored = is_array($this->auto_match_criteria) ? $this->auto_match_criteria : null;
 
         return AutoMatchCriteria::fromStored($stored);
+    }
+
+    public function requiresGuestSkillLevel(): bool
+    {
+        return ! (bool) ($this->optional_guest_skill ?? true);
+    }
+
+    public function requiresGuestGender(): bool
+    {
+        return ! (bool) ($this->optional_guest_gender ?? true);
     }
 }

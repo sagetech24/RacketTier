@@ -23,7 +23,7 @@ class UpdateQueueingSessionPlayer
         GameSessionPlayer $player,
         string $guestName,
         ?string $pronoun,
-        int $skillLevel,
+        ?int $skillLevel,
     ): void {
         if (! $session->isQueueing()) {
             abort(422, 'This action only applies to queueing sessions.');

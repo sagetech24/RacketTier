@@ -16,6 +16,8 @@ class UpdateQueueingGameSession
         int $winPoints,
         int $lossPoints,
         bool $skipScores,
+        bool $optionalGuestSkill = true,
+        bool $optionalGuestGender = true,
         ?AutoMatchCriteria $autoMatchCriteria = null,
     ): GameSession {
         if (! $session->isQueueing()) {
@@ -30,12 +32,14 @@ class UpdateQueueingGameSession
             abort(422, 'This session is no longer active.');
         }
 
-        return DB::transaction(function () use ($session, $queueName, $winPoints, $lossPoints, $skipScores, $autoMatchCriteria): GameSession {
+        return DB::transaction(function () use ($session, $queueName, $winPoints, $lossPoints, $skipScores, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria): GameSession {
             $updates = [
                 'queue_name' => $queueName,
                 'win_points' => $winPoints,
                 'loss_points' => $lossPoints,
                 'skip_scores' => $skipScores,
+                'optional_guest_skill' => $optionalGuestSkill,
+                'optional_guest_gender' => $optionalGuestGender,
             ];
 
             if ($autoMatchCriteria !== null) {

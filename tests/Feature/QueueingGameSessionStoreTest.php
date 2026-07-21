@@ -38,6 +38,8 @@ class QueueingGameSessionStoreTest extends TestCase
         $this->assertNull($session->facility_id);
         $this->assertSame('Friday Night Smash', $session->queue_name);
         $this->assertFalse($session->skip_scores);
+        $this->assertTrue($session->optional_guest_skill);
+        $this->assertTrue($session->optional_guest_gender);
         $this->assertSame([
             'skill_level' => true,
             'skill_match_mode' => 'balanced',
@@ -46,6 +48,8 @@ class QueueingGameSessionStoreTest extends TestCase
             'genderless_mixed' => true,
         ], $session->auto_match_criteria);
         $response->assertJsonPath('data.auto_match_criteria.skill_level', true);
+        $response->assertJsonPath('data.optional_guest_skill', true);
+        $response->assertJsonPath('data.optional_guest_gender', true);
     }
 
     public function test_create_queueing_session_can_set_auto_match_criteria(): void

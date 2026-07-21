@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { fetchQueueingSessions, patchUpdateQueueingSession, deleteQueueingSession } from '../api/queueingSession.js';
 import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
+import { QueueingSessionGuestOptionalFields } from '../components/queueing/QueueingSessionGuestOptionalFields.jsx';
 import {
     DEFAULT_AUTO_MATCH_CRITERIA,
     QueueingSessionAutoMatchCriteriaField,
@@ -191,6 +192,8 @@ export function QueueingSessionListPage() {
     const [editWinPoints, setEditWinPoints] = useState('30');
     const [editLossPoints, setEditLossPoints] = useState('8');
     const [editSkipScores, setEditSkipScores] = useState(false);
+    const [editOptionalGuestSkill, setEditOptionalGuestSkill] = useState(true);
+    const [editOptionalGuestGender, setEditOptionalGuestGender] = useState(true);
     const [editAutoMatchCriteria, setEditAutoMatchCriteria] = useState(DEFAULT_AUTO_MATCH_CRITERIA);
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [editError, setEditError] = useState('');
@@ -205,6 +208,8 @@ export function QueueingSessionListPage() {
         setEditWinPoints(String(row.win_points ?? 30));
         setEditLossPoints(String(row.loss_points ?? 8));
         setEditSkipScores(Boolean(row.skip_scores));
+        setEditOptionalGuestSkill(row.optional_guest_skill !== false);
+        setEditOptionalGuestGender(row.optional_guest_gender !== false);
         setEditAutoMatchCriteria(parseAutoMatchCriteria(row.auto_match_criteria));
         setEditError('');
     }
@@ -240,6 +245,8 @@ export function QueueingSessionListPage() {
                 win_points: w,
                 loss_points: l,
                 skip_scores: editSkipScores,
+                optional_guest_skill: editOptionalGuestSkill,
+                optional_guest_gender: editOptionalGuestGender,
                 ...normalizedCriteria,
             });
             setRows((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
@@ -518,6 +525,13 @@ export function QueueingSessionListPage() {
                             <QueueingSessionSkipScoresField
                                 checked={editSkipScores}
                                 onChange={setEditSkipScores}
+                                disabled={editSubmitting}
+                            />
+                            <QueueingSessionGuestOptionalFields
+                                optionalGuestSkill={editOptionalGuestSkill}
+                                optionalGuestGender={editOptionalGuestGender}
+                                onOptionalGuestSkillChange={setEditOptionalGuestSkill}
+                                onOptionalGuestGenderChange={setEditOptionalGuestGender}
                                 disabled={editSubmitting}
                             />
                             <QueueingSessionAutoMatchCriteriaField

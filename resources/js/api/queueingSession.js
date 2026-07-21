@@ -6,6 +6,8 @@ import { deleteJson, patchJson, postJson } from '../lib/http.js';
  *   win_points: number,
  *   loss_points: number,
  *   skip_scores?: boolean,
+ *   optional_guest_skill?: boolean,
+ *   optional_guest_gender?: boolean,
  *   skill_level?: boolean,
  *   skill_match_mode?: 'balanced' | 'same_level',
  *   wl_statistics?: boolean,
@@ -66,6 +68,8 @@ export async function deleteQueueingSession(sessionId) {
  *   win_points: number,
  *   loss_points: number,
  *   skip_scores?: boolean,
+ *   optional_guest_skill?: boolean,
+ *   optional_guest_gender?: boolean,
  *   skill_level?: boolean,
  *   skill_match_mode?: 'balanced' | 'same_level',
  *   wl_statistics?: boolean,
@@ -445,7 +449,7 @@ export async function deleteQueueingSessionMatch(sessionId, matchId) {
 
 /**
  * @param {number|string} sessionId
- * @param {{ user_id?: number, guest_name?: string, pronoun?: string | null, skill_level: number }} body
+ * @param {{ user_id?: number, guest_name?: string, pronoun?: string | null, skill_level?: number | null }} body
  */
 export async function postAddQueueingSessionPlayer(sessionId, body) {
     const res = await postJson(
@@ -469,7 +473,7 @@ export async function postAddQueueingSessionPlayer(sessionId, body) {
 /**
  * @param {number|string} sessionId
  * @param {number|string} playerRowId
- * @param {{ guest_name?: string, pronoun?: string | null, skill_level: number }} body
+ * @param {{ guest_name?: string, pronoun?: string | null, skill_level?: number | null }} body
  */
 export async function patchUpdateQueueingSessionPlayer(sessionId, playerRowId, body) {
     const res = await patchJson(

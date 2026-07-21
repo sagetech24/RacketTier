@@ -197,7 +197,7 @@ export function QueueingSessionMatchFabPanel({
     }
 
     /**
-     * @param {{ guest_name?: string, pronoun?: string | null, skill_level: number }} payload
+     * @param {{ guest_name?: string, pronoun?: string | null, skill_level?: number | null }} payload
      */
     async function handleConfirmAddPlayer(payload) {
         if (sessionId == null || !addPlayerModal) return;
@@ -208,7 +208,7 @@ export function QueueingSessionMatchFabPanel({
                 ? {
                       guest_name: payload.guest_name,
                       pronoun: payload.pronoun ?? null,
-                      skill_level: payload.skill_level,
+                      skill_level: payload.skill_level ?? null,
                   }
                 : {
                       user_id: addPlayerModal.member?.id,
@@ -477,6 +477,8 @@ export function QueueingSessionMatchFabPanel({
                 mode={addPlayerModal?.mode ?? 'guest'}
                 intent="add"
                 member={addPlayerModal?.mode === 'member' ? addPlayerModal.member ?? null : null}
+                optionalGuestSkill={localSession?.optional_guest_skill !== false}
+                optionalGuestGender={localSession?.optional_guest_gender !== false}
                 busy={busy}
                 onCancel={() => {
                     if (!busy) setAddPlayerModal(null);

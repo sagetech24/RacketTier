@@ -20,7 +20,9 @@ class QueueingSessionPlayersUpdateController extends Controller
         UpdateQueueingSessionPlayer $action,
     ): JsonResponse {
         $validated = $request->validated();
-        $skillLevel = (int) $validated['skill_level'];
+        $skillLevel = array_key_exists('skill_level', $validated) && $validated['skill_level'] !== null
+            ? (int) $validated['skill_level']
+            : null;
 
         if ($gameSessionPlayer->isGuest()) {
             $pronoun = isset($validated['pronoun']) && trim((string) $validated['pronoun']) !== ''
@@ -35,7 +37,7 @@ class QueueingSessionPlayersUpdateController extends Controller
                 $skillLevel,
             );
         } else {
-            $action->executeMember($gameSession, $gameSessionPlayer, $skillLevel);
+            $action->executeMember($gameSession, $gameSessionPlayer, (int) $skillLevel);
         }
 
         $gameSession->refresh();

@@ -18,7 +18,9 @@ class QueueingSessionPlayersStoreController extends Controller
         AddQueueingSessionPlayer $action,
     ): JsonResponse {
         $validated = $request->validated();
-        $skillLevel = (int) $validated['skill_level'];
+        $skillLevel = array_key_exists('skill_level', $validated) && $validated['skill_level'] !== null
+            ? (int) $validated['skill_level']
+            : null;
         $pronoun = isset($validated['pronoun']) && trim((string) $validated['pronoun']) !== ''
             ? trim((string) $validated['pronoun'])
             : null;
@@ -31,7 +33,7 @@ class QueueingSessionPlayersStoreController extends Controller
                 $skillLevel,
             );
         } else {
-            $action->executeMember($gameSession, (int) $validated['user_id'], $skillLevel, $pronoun);
+            $action->executeMember($gameSession, (int) $validated['user_id'], (int) $skillLevel, $pronoun);
         }
 
         $gameSession->refresh();

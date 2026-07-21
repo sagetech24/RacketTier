@@ -26,12 +26,14 @@ class CreateQueueingGameSession
         int $winPoints,
         int $lossPoints,
         bool $skipScores = false,
+        bool $optionalGuestSkill = true,
+        bool $optionalGuestGender = true,
         ?AutoMatchCriteria $autoMatchCriteria = null,
     ): array {
         $sport = Sport::query()->where('slug', $sportSlug)->firstOrFail();
         $autoMatchCriteria ??= AutoMatchCriteria::defaults();
 
-        return DB::transaction(function () use ($creator, $sport, $queueName, $matchType, $winPoints, $lossPoints, $skipScores, $autoMatchCriteria): array {
+        return DB::transaction(function () use ($creator, $sport, $queueName, $matchType, $winPoints, $lossPoints, $skipScores, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria): array {
             $session = GameSession::query()->create([
                 'facility_id' => null,
                 'session_context' => 'queueing',
@@ -42,6 +44,8 @@ class CreateQueueingGameSession
                 'win_points' => $winPoints,
                 'loss_points' => $lossPoints,
                 'skip_scores' => $skipScores,
+                'optional_guest_skill' => $optionalGuestSkill,
+                'optional_guest_gender' => $optionalGuestGender,
                 'auto_match_criteria' => $autoMatchCriteria->toStoredArray(),
                 'completed_matches_count' => 0,
                 'sport_id' => $sport->id,
