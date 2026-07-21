@@ -25,10 +25,7 @@ import {
     useQueueingSessionMatchesQuery,
     useQueueingSessionQuery,
 } from '../hooks/queries/useQueueingSessionQuery.js';
-import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const INITIAL_LOADING_MIN_MS = 2000;
 
 const MATCH_STATUS_TABS = ['ongoing', 'queueing', 'finished'];
 
@@ -170,7 +167,6 @@ export function QueueingSessionMatchesPage() {
     } = useQueueingSessionMatchesQuery(sessionId, { session });
 
     const loading = sessionLoading || matchesLoading;
-    const showLoading = useMinimumLoadingDuration(loading, INITIAL_LOADING_MIN_MS);
     const error =
         sessionId == null
             ? 'Invalid session.'
@@ -424,7 +420,7 @@ export function QueueingSessionMatchesPage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
             <DashboardV2Header user={user} profileLoading={false} />
             <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
-                {showLoading ? <QueueingSessionMatchesLoading /> : null}
+                {loading ? <QueueingSessionMatchesLoading /> : null}
                 {error ? (
                     <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
                         {error}
@@ -436,9 +432,9 @@ export function QueueingSessionMatchesPage() {
                     </p>
                 ) : null}
 
-                {!showLoading && session ? <QueueingSessionHeader session={session} /> : null}
+                {!loading && session ? <QueueingSessionHeader session={session} /> : null}
 
-                {!showLoading && !error ? (
+                {!loading && !error ? (
                     <div className="rt-matches-content space-y-4">
                         <div className="rt-matches-head">
                             <div className="mb-1 flex flex-wrap items-end justify-between gap-3">

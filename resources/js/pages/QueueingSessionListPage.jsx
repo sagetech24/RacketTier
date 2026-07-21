@@ -20,12 +20,9 @@ import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
-import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
 import { normalizedAppPath, queueingSessionNavPaths, queueSessionCardActionClass } from '../lib/queueingSessionNav.js';
 import { canDeleteQueueingSession } from '../lib/queueingSessionPermissions.js';
 import { userIsAdmin } from '../lib/userRoles.js';
-
-const INITIAL_LOADING_MIN_MS = 2000;
 
 function formatTime(iso) {
     if (!iso) return '—';
@@ -314,8 +311,7 @@ export function QueueingSessionListPage() {
     const showActiveSection = status !== 'finished';
     const showFinishedSection = status !== 'active';
 
-    const isAwaitingInitialData = loading && rows.length === 0 && !error;
-    const showInitialSkeleton = useMinimumLoadingDuration(isAwaitingInitialData, INITIAL_LOADING_MIN_MS);
+    const showInitialSkeleton = loading && rows.length === 0 && !error;
     const isRefreshing = loading && rows.length > 0 && !showInitialSkeleton;
     const contentKey = `${debouncedQ}-${status}-${mineOnly}-${sort}`;
 

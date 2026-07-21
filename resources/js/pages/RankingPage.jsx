@@ -9,12 +9,10 @@ import { RankingPageLoading } from '../components/ranking/RankingPageLoading.jsx
 import { RankingPodiumCard } from '../components/ranking/RankingPodiumCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
-import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
 import { useSportsQuery } from '../hooks/queries/useSportsQuery.js';
 
 const DEFAULT_SPORT_SLUG = 'pickleball';
 const REST_VISIBLE_COUNT = 10;
-const INITIAL_LOADING_MIN_MS = 2000;
 
 function isCurrentUserRow(row, userId) {
     return userId != null && row.user?.id === userId;
@@ -120,9 +118,8 @@ export function RankingPage() {
         return candidate;
     }, [user?.id, search, rankings, viewerRanking, displayedUserIds]);
 
-    const isAwaitingInitialData =
+    const showInitialSkeleton =
         activeFilter == null || (loading && rankings.length === 0 && !error);
-    const showInitialSkeleton = useMinimumLoadingDuration(isAwaitingInitialData, INITIAL_LOADING_MIN_MS);
     const isRefreshing = loading && rankings.length > 0 && !showInitialSkeleton;
     const contentKey = `${activeFilter}-${debouncedSearch}`;
 

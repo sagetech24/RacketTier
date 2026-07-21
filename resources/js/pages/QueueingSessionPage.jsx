@@ -16,10 +16,6 @@ import {
     useInvalidateQueueingSession,
     useQueueingSessionQuery,
 } from '../hooks/queries/useQueueingSessionQuery.js';
-import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
-
-const INITIAL_LOADING_MIN_MS = 2000;
-
 /**
  * @param {import('../api/gameSession.js').GameSessionDetail['players'] extends (infer U)[] | undefined ? U : never} row
  */
@@ -131,8 +127,7 @@ export function QueueingSessionPage() {
           ]
         : [];
 
-    const isAwaitingInitialData = loading && !session && !error;
-    const showInitialSkeleton = useMinimumLoadingDuration(isAwaitingInitialData, INITIAL_LOADING_MIN_MS);
+    const showInitialSkeleton = loading && !session && !error;
     const isRefreshing = loading && Boolean(session) && !showInitialSkeleton;
     const contentKey = `${sessionId}-${session?.updated_at ?? 'loading'}`;
 

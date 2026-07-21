@@ -25,10 +25,8 @@ import {
     useQueueingSessionMatchesQuery,
     useQueueingSessionQuery,
 } from '../hooks/queries/useQueueingSessionQuery.js';
-import { useMinimumLoadingDuration } from '../hooks/useMinimumLoadingDuration.js';
 
 const ROSTER_PAGE_SIZE = 10;
-const INITIAL_LOADING_MIN_MS = 2000;
 
 const ROSTER_SORT_OPTIONS = [
     { value: 'total_games', label: 'Total games' },
@@ -344,8 +342,7 @@ export function QueueingSessionPlayersPage() {
         setRemoveTarget(null);
     }
 
-    const isAwaitingInitialData = loading && !session && !error;
-    const showInitialSkeleton = useMinimumLoadingDuration(isAwaitingInitialData, INITIAL_LOADING_MIN_MS);
+    const showInitialSkeleton = loading && !session && !error;
     const showEmptyRoster = !showInitialSkeleton && rosterPlayers.length === 0;
     const showNoFilterResults =
         !showInitialSkeleton && rosterPlayers.length > 0 && sortedRosterPlayers.length === 0;

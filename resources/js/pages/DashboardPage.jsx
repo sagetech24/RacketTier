@@ -173,14 +173,7 @@ export function DashboardPage() {
     const { data: summary, isLoading: loading, isError } = useDashboardSummaryQuery();
     const [activityItems, setActivityItems] = useState([]);
     const [activityLoading, setActivityLoading] = useState(true);
-    // TEST ONLY — remove after checking skeleton loading UI
-    const [skeletonTestDelay, setSkeletonTestDelay] = useState(true);
     const error = isError ? 'Could not load your dashboard. Refresh and try again.' : '';
-
-    useEffect(() => {
-        const timer = setTimeout(() => setSkeletonTestDelay(false), 2000);
-        return () => clearTimeout(timer);
-    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -205,7 +198,7 @@ export function DashboardPage() {
 
     const user = summary?.user ?? authUser;
     const displayName = greetingFirstName(user);
-    const showSkeleton = loading || skeletonTestDelay;
+    const showSkeleton = loading;
     const profileLoading = showSkeleton && !summary;
     const played = summary?.stats?.matches_played ?? 0;
     const won = summary?.stats.matches_won ?? 0;
