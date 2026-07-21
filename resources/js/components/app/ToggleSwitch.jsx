@@ -87,9 +87,9 @@ export function ToggleField({
                 className={layout === 'card' ? 'mt-0.5' : ''}
             />
             <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold leading-snug text-[#e4e1e6]">{label}</span>
+                <span className="block text-sm md:text-lg! font-semibold leading-snug text-[#e4e1e6]">{label}</span>
                 {description ? (
-                    <span className="mt-1 block text-xs leading-relaxed text-[#918f9c]">{description}</span>
+                    <span className="mt-1 block text-xs md:text-base! text-[#918f9c] leading-relaxed">{description}</span>
                 ) : null}
             </span>
         </label>

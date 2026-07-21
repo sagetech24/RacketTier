@@ -161,7 +161,7 @@ export function CreateQueueingSessionPage() {
                                     className="w-full rounded-lg border border-[#484848] bg-[#131316] outline-none focus:ring-1 focus:ring-green-400 px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60 md:py-3 md:text-base"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4">
                                 <div className="col-span-2">
                                     <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
                                     <div className="flex">

@@ -89,8 +89,8 @@ export function QueueingSessionAutoMatchCriteriaField({
         <div className="space-y-1 border-t-2 border-[#2a2a2d] pt-4">
             {showHeading ? (
                 <div>
-                    <p className="text-sm font-bold uppercase tracking-wide text-[#918f9c]">Auto-Match Setup</p>
-                    <p className="mt-1 text-xs text-[#918f9c]">
+                    <p className="text-sm font-bold uppercase tracking-wide text-[#dddddd]">Auto-Match Setup</p>
+                    <p className="mt-1 text-xs md:text-base! text-[#918f9c]">
                         Choose how auto-generated matches pick players. Priority: Skill Level → W/L Statistics →
                         Sequence.
                     </p>
@@ -111,7 +111,7 @@ export function QueueingSessionAutoMatchCriteriaField({
                     <div className="pt-0">
                         <label
                             htmlFor="rt-auto-match-skill-mode"
-                            className="mb-1 block text-xs font-bold uppercase tracking-wide text-[#918f9c] sm:text-[12px]"
+                            className="block text-xs md:text-sm! mb-2 font-bold uppercase tracking-wide text-[#dddddd] sm:text-[12px]"
                         >
                             Skill matching
                         </label>
@@ -125,7 +125,7 @@ export function QueueingSessionAutoMatchCriteriaField({
                                         e.target.value === 'same_level' ? 'same_level' : 'balanced',
                                 })
                             }
-                            className="w-full rounded-lg border border-[#45454a] bg-[#1b1b1e] px-3 py-2 text-xs text-[#e4e1e6] focus:border-[#c2c1ff]/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                            className="w-full rounded-lg border border-[#45454a] bg-[#1b1b1e] px-3 py-4 text-sm md:text-lg! text-[#e4e1e6] focus:border-[#c2c1ff]/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {SKILL_MATCH_MODE_OPTIONS.map((option) => (
                                 <option key={option.value} value={option.value}>
