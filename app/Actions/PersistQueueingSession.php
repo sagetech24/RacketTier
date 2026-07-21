@@ -83,6 +83,8 @@ class PersistQueueingSession
                 'team' => null,
                 'wins_count' => (int) ($row['wins_count'] ?? 0),
                 'losses_count' => (int) ($row['losses_count'] ?? 0),
+                'last_match_result' => $row['last_match_result'] ?? null,
+                'last_match_id' => isset($row['last_match_id']) ? (int) $row['last_match_id'] : null,
                 'session_points' => (int) ($row['session_points'] ?? 0),
             ]);
             $map[(int) $row['id']] = (int) $player->id;

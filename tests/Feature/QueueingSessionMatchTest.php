@@ -372,6 +372,10 @@ class QueueingSessionMatchTest extends TestCase
         $this->assertSame(8, (int) $guestPlayer->session_points);
         $this->assertSame(1, (int) $hostPlayer->wins_count);
         $this->assertSame(1, (int) $guestPlayer->losses_count);
+        $this->assertSame('win', $hostPlayer->last_match_result);
+        $this->assertSame('loss', $guestPlayer->last_match_result);
+        $this->assertSame($matchId, (int) $hostPlayer->last_match_id);
+        $this->assertSame($matchId, (int) $guestPlayer->last_match_id);
 
         $this->assertSame(30, (int) MemberPointWallet::query()
             ->where('user_id', $host->id)

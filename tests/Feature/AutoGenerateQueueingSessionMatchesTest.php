@@ -43,6 +43,8 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         int $losses = 0,
         ?User $user = null,
         ?string $pronoun = null,
+        ?string $lastMatchResult = null,
+        ?int $lastMatchId = null,
     ): GameSessionPlayer {
         return GameSessionPlayer::query()->create([
             'game_session_id' => $session->id,
@@ -54,6 +56,8 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
             'pronoun' => $pronoun,
             'wins_count' => $wins,
             'losses_count' => $losses,
+            'last_match_result' => $lastMatchResult,
+            'last_match_id' => $lastMatchId,
         ]);
     }
 
@@ -319,10 +323,10 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $host = User::factory()->create();
         $session = $this->seedSinglesSession($host);
 
-        $lowFirst = $this->addPlayer($session, 1, 1);
-        $highSecond = $this->addPlayer($session, 2, 5);
-        $lowThird = $this->addPlayer($session, 3, 1);
-        $highFourth = $this->addPlayer($session, 4, 5);
+        $this->addPlayer($session, 1, 1);
+        $this->addPlayer($session, 2, 5);
+        $this->addPlayer($session, 3, 1);
+        $this->addPlayer($session, 4, 5);
 
         $baseCriteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
         $initial = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $baseCriteria);
@@ -330,7 +334,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
             $session,
             new AutoMatchCriteria(
                 skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED,
-                refreshSeed: 1,
+                refreshSeed: 42,
             ),
         );
 
@@ -342,7 +346,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
             ->all();
 
         $this->assertNotSame($initialPairs, $refreshedPairs);
-        $this->assertStringStartsWith('auto-1-', $refreshed['proposals'][0]['proposal_id']);
+        $this->assertStringStartsWith('auto-42-', $refreshed['proposals'][0]['proposal_id']);
     }
 
     public function test_auto_proposals_endpoint_uses_session_stored_criteria_when_no_query_params(): void
@@ -387,5 +391,118 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.criteria.refresh_seed', 2);
         $response->assertJsonPath('data.proposals.0.proposal_id', 'auto-2-1');
+    }
+
+    public function test_fairness_prioritizes_players_with_fewer_matches(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $playedTwice = $this->addPlayer($session, 1, 5, 2, 0);
+        $playedOnce = $this->addPlayer($session, 2, 1, 1, 0);
+        $fresh = $this->addPlayer($session, 3, 3, 0, 0);
+        $this->addPlayer($session, 4, 2, 2, 1);
+
+        $criteria = new AutoMatchCriteria(
+            skillLevel: false,
+            wlStatistics: false,
+            sequence: true,
+            genderlessMixed: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $ids = collect($result['proposals'][0]['lineup'])->pluck('id')->sort()->values()->all();
+        $this->assertSame(
+            collect([$playedOnce->id, $fresh->id])->sort()->values()->all(),
+            $ids,
+        );
+    }
+
+    public function test_balanced_singles_prefers_winner_bracket_when_available(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $winnerHigh = $this->addPlayer($session, 1, 5, 1, 0, lastMatchResult: 'win', lastMatchId: 10);
+        $winnerLow = $this->addPlayer($session, 2, 1, 1, 0, lastMatchResult: 'win', lastMatchId: 11);
+        $loserA = $this->addPlayer($session, 3, 4, 0, 1, lastMatchResult: 'loss', lastMatchId: 10);
+        $loserB = $this->addPlayer($session, 4, 2, 0, 1, lastMatchResult: 'loss', lastMatchId: 11);
+
+        $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertCount(2, $result['proposals']);
+        $this->assertSame('Winner bracket', $result['proposals'][0]['bracket_label']);
+
+        $firstIds = collect($result['proposals'][0]['lineup'])->pluck('id')->sort()->values()->all();
+        $this->assertSame(
+            collect([$winnerHigh->id, $winnerLow->id])->sort()->values()->all(),
+            $firstIds,
+        );
+
+        $secondIds = collect($result['proposals'][1]['lineup'])->pluck('id')->sort()->values()->all();
+        $this->assertSame(
+            collect([$loserA->id, $loserB->id])->sort()->values()->all(),
+            $secondIds,
+        );
+    }
+
+    public function test_balanced_singles_avoids_loser_vs_loser_when_winners_available(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $loserA = $this->addPlayer($session, 1, 5, 0, 1, lastMatchResult: 'loss', lastMatchId: 1);
+        $winner = $this->addPlayer($session, 2, 3, 1, 0, lastMatchResult: 'win', lastMatchId: 2);
+        $loserB = $this->addPlayer($session, 3, 1, 0, 1, lastMatchResult: 'loss', lastMatchId: 3);
+
+        $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertCount(1, $result['proposals']);
+        $ids = collect($result['proposals'][0]['lineup'])->pluck('id')->sort()->values()->all();
+        $this->assertContains($winner->id, $ids);
+        $this->assertNotSame(
+            collect([$loserA->id, $loserB->id])->sort()->values()->all(),
+            $ids,
+        );
+    }
+
+    public function test_winner_bracket_doubles_uses_recent_winners(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Winner Bracket Doubles',
+            'match_type' => 'doubles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $w1 = $this->addPlayer($session, 1, 5, 1, 0, lastMatchResult: 'win', lastMatchId: 1);
+        $w2 = $this->addPlayer($session, 2, 4, 1, 0, lastMatchResult: 'win', lastMatchId: 2);
+        $w3 = $this->addPlayer($session, 3, 2, 1, 0, lastMatchResult: 'win', lastMatchId: 3);
+        $w4 = $this->addPlayer($session, 4, 1, 1, 0, lastMatchResult: 'win', lastMatchId: 4);
+
+        $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertCount(1, $result['proposals']);
+        $this->assertSame('Winner bracket', $result['proposals'][0]['bracket_label']);
+
+        $lineup = collect($result['proposals'][0]['lineup'])->keyBy('id');
+        $this->assertSame(1, $lineup[$w1->id]['team']);
+        $this->assertSame(1, $lineup[$w4->id]['team']);
+        $this->assertSame(2, $lineup[$w2->id]['team']);
+        $this->assertSame(2, $lineup[$w3->id]['team']);
     }
 }

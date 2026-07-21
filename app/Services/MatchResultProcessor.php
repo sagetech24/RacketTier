@@ -151,7 +151,7 @@ class MatchResultProcessor
      * @param  array<int, int>  $teamMap
      * @param  array<string, mixed>  $breakdown
      */
-    public function applyBreakdownToDraftPlayers(array &$draftPlayers, array $teamMap, array $breakdown): void
+    public function applyBreakdownToDraftPlayers(array &$draftPlayers, array $teamMap, array $breakdown, ?int $matchId = null): void
     {
         $byPlayerId = collect($breakdown['players'] ?? [])
             ->keyBy(fn (array $row): int => (int) ($row['game_session_player_id'] ?? 0));
@@ -164,11 +164,34 @@ class MatchResultProcessor
             }
             if ($row['won'] ?? false) {
                 $draftPlayers[$i]['wins_count'] = (int) ($draftPlayers[$i]['wins_count'] ?? 0) + 1;
+                $draftPlayers[$i]['last_match_result'] = 'win';
             } else {
                 $draftPlayers[$i]['losses_count'] = (int) ($draftPlayers[$i]['losses_count'] ?? 0) + 1;
+                $draftPlayers[$i]['last_match_result'] = 'loss';
+            }
+            if ($matchId !== null) {
+                $draftPlayers[$i]['last_match_id'] = $matchId;
             }
             $draftPlayers[$i]['session_points'] = (int) ($draftPlayers[$i]['session_points'] ?? 0)
                 + (int) ($row['session_points_earned'] ?? 0);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $breakdown
+     */
+    public function applyLastMatchResults(array $breakdown, ?int $matchId = null): void
+    {
+        foreach ($breakdown['players'] ?? [] as $row) {
+            $playerId = (int) ($row['game_session_player_id'] ?? 0);
+            if ($playerId <= 0) {
+                continue;
+            }
+
+            GameSessionPlayer::query()->whereKey($playerId)->update([
+                'last_match_result' => ($row['won'] ?? false) ? 'win' : 'loss',
+                'last_match_id' => $matchId,
+            ]);
         }
     }
 

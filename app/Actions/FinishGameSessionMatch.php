@@ -126,6 +126,7 @@ class FinishGameSessionMatch
                         'team' => null,
                     ]);
                 }
+                $this->matchResultProcessor->applyLastMatchResults($breakdown, (int) $targetQueueingMatch->id);
                 $this->queueingSessionState->recompactQueuePositions($locked->id);
                 $this->queueingSessionState->clearOrphanPlayingPlayers((int) $locked->id);
 
@@ -224,7 +225,7 @@ class FinishGameSessionMatch
                 persistGlobalEffects: false,
             );
 
-            $this->matchResultProcessor->applyBreakdownToDraftPlayers($draft->players, $teamMap, $breakdown);
+            $this->matchResultProcessor->applyBreakdownToDraftPlayers($draft->players, $teamMap, $breakdown, (int) $targetMatch['id']);
 
             $matchId = (int) $targetMatch['id'];
             $playerIds = $playing->pluck('id')->map(fn ($id): int => (int) $id)->all();

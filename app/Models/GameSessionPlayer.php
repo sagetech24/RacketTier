@@ -19,6 +19,8 @@ class GameSessionPlayer extends Model
         'team',
         'wins_count',
         'losses_count',
+        'last_match_result',
+        'last_match_id',
         'session_points',
     ];
 
@@ -33,6 +35,7 @@ class GameSessionPlayer extends Model
             'team' => 'integer',
             'wins_count' => 'integer',
             'losses_count' => 'integer',
+            'last_match_id' => 'integer',
             'session_points' => 'integer',
             'skill_level' => 'integer',
         ];
