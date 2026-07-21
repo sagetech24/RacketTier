@@ -1,11 +1,9 @@
-import { Link } from 'react-router-dom';
-
 /**
  * @param {{ textSize?: string; className?: string }} props
  */
 export function RacketTierWordmark({ textSize = 'text-3xl', className = '' }) {
     return (
-        <Link to="/" className="flex items-center gap-2">
+        <span className="flex items-center gap-2">
             <img src="/images/rt-logo.png" alt="RacketTier" className="w-6 h-6" />
             <span
                 className={[
@@ -18,6 +16,6 @@ export function RacketTierWordmark({ textSize = 'text-3xl', className = '' }) {
             >
                 Racket<span className="italic text-[#c2c1ff]">Tier</span>
             </span>
-        </Link>
+        </span>
     );
 }
