@@ -6,6 +6,7 @@ import {
     postAddQueueingSessionPlayer,
     postCreateQueueingSessionMatch,
     postEndQueueingSession,
+    postStartQueueingSessionMatch,
 } from '../../api/queueingSession.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
@@ -231,11 +232,22 @@ export function QueueingSessionMatchFabPanel({
         }
     }
 
-    async function handleCreateMatch(lineup) {
+    /**
+     * @param {{ id: number, team?: number }[]} lineup
+     * @param {{ start?: boolean }} [options]
+     */
+    async function handleCreateMatch(lineup, options = {}) {
         if (sessionId == null || localSession == null) return;
         setBusy(true);
         try {
-            await postCreateQueueingSessionMatch(sessionId, { lineup });
+            const created = await postCreateQueueingSessionMatch(sessionId, { lineup });
+            if (options.start) {
+                const matchId = created?.id;
+                if (matchId == null) {
+                    throw new Error('Could not start match.');
+                }
+                await postStartQueueingSessionMatch(sessionId, matchId);
+            }
             setCreateMatchOpen(false);
             if (onReload) {
                 await onReload();

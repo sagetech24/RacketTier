@@ -265,6 +265,9 @@ export function QueueingSessionMatchesPage() {
         setEditLineupOpen(true);
     }
 
+    /**
+     * @param {{ id: number, team?: number }[]} lineup
+     */
     async function onSaveEditMatchLineup(lineup) {
         if (sessionId == null || editingMatchId == null) return;
         setActionError('');
