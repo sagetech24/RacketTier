@@ -1,8 +1,8 @@
 /** @param {boolean} active @param {string} [textSize] */
 export function queueingSessionTabClass(active, textSize = 'text-xs') {
     return active
-        ? `rounded-lg border border-white/40 bg-yellow-500/50 px-3 py-1.5 ${textSize} font-semibold text-white`
-        : `rounded-lg border border-[#818184] bg-[#353438] px-3 py-1.5 ${textSize} font-semibold text-[#818184] hover:border-[#4ce081]/60`;
+        ? `${textSize} font-semibold text-white`
+        : `${textSize} font-semibold text-[#818184] hover:text-[#4ce081]/60`;
 }
 
 /** @typedef {'nav' | 'edit' | 'danger'} QueueSessionCardActionVariant */

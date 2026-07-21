@@ -10,6 +10,7 @@ import {
 import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
+import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { queueingSessionNavPaths, queueingSessionTabClass } from '../lib/queueingSessionNav.js';
@@ -47,7 +48,7 @@ function HistoryCard({
     const showRemove = canDeleteQueueingSession(row, isAdmin);
     const showDuplicate = Boolean(row.can_manage) && Boolean(onDuplicate);
     return (
-        <article className="h-full rounded-xl border border-[#2a2a2d] bg-[#1b1b1e] p-4 md:p-5">
+        <article className="h-full rounded-xl border border-[#484848] bg-[#1b1b1e] p-4 md:p-5">
             <div className="mb-2 flex items-center justify-between gap-2">
                 <h2 className="flex min-w-0 items-center gap-2 text-base font-bold md:text-lg">
                     <SportIcon icon={row.sport?.icon} className="text-[#4ce081]" />
@@ -92,37 +93,45 @@ function HistoryCard({
                         type="button"
                         disabled={duplicateSubmitting}
                         onClick={() => onDuplicate(row)}
-                        className={`${queueingSessionTabClass(true)} text-center text-white border-white/70 disabled:opacity-50 md:flex-1 px-3 py-2 rounded-lg`}
+                        className={`${queueingSessionTabClass(true)} flex gap-1 items-center bg-transparent`}
                     >
-                        Copy
+                        <MaterialIcon name="content_copy" className="text-base!" />
+                        Recreate
                     </button>
                 ) : null}
+                |
                 {showRemove && onRemove ? (
                     <button
                         type="button"
                         disabled={removeSubmitting}
                         onClick={() => onRemove(row)}
-                        className={`${queueingSessionTabClass(false)} text-center text-red-300 border-red-400/50 disabled:opacity-50 md:flex-1`}
+                        className={`${queueingSessionTabClass(true)} flex gap-1 items-center bg-transparent`}
                     >
+                        <MaterialIcon name="delete" className="text-base!" />
                         Remove
                     </button>
                 ) : null}
                 <Link
                     to={paths.dash}
-                    className={`${queueingSessionTabClass(false)} text-center text-white/70 border-white/70 md:flex-1`}
+                    className={`${queueingSessionTabClass(true)} flex gap-1 items-center bg-transparent`}
                 >
+                    <MaterialIcon name="summarize" className="text-base!" />
                     Summary
                 </Link>
+                |
                 <Link
                     to={paths.players}
-                    className={`${queueingSessionTabClass(false)} text-center text-white/70 border-white/70 md:flex-1`}
+                    className={`${queueingSessionTabClass(true)} flex gap-1 items-center bg-transparent`}
                 >
+                    <MaterialIcon name="people" className="text-base!" />
                     Players
                 </Link>
+                |
                 <Link
                     to={paths.matches}
-                    className={`${queueingSessionTabClass(false)} text-center text-white/70 border-white/70 md:flex-1`}
+                    className={`${queueingSessionTabClass(true)} flex gap-1 items-center bg-transparent`}
                 >
+                    <MaterialIcon name="gamepad" className="text-base!" />
                     Matches
                 </Link>
             </div>
