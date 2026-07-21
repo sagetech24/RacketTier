@@ -459,7 +459,7 @@ export function QueueingSessionMatchesPage() {
                             ) : null}
 
                             <div
-                                className={`rt-match-tabs mt-4 w-full rounded-xl border border-[#45454a] bg-[#1b1b1e] p-1 ${
+                                className={`rt-match-tabs mt-4 w-full rounded-xl border border-[#45454a] ${
                                     session?.is_active ? 'flex' : 'hidden'
                                 }`}
                                 role="tablist"
@@ -492,9 +492,9 @@ export function QueueingSessionMatchesPage() {
                                             ].join(' ')}
                                         >
                                             <MaterialIcon name={meta.icon} className="text-[16px]!" />
-                                            <span className="text-sm">{meta.label}</span>
+                                            <span>{meta.label}</span>
                                             {count > 0 ? (
-                                                <span className="rt-match-tab-count tabular-nums text-sm">{count}</span>
+                                                <span className="rt-match-tab-count tabular-nums">{count}</span>
                                             ) : null}
                                         </button>
                                     );

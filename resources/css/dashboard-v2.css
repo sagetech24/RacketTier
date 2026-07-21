@@ -2228,7 +2228,7 @@
     display: inline-flex;
     align-items: center;
     border-radius: 9999px;
-    border: 1px solid rgb(194 193 255 / 0.2);
+    border: 1px solid rgba(255, 233, 193, 0.2);
     background-color: rgb(194 193 255 / 0.08);
     padding: 0.25rem 0.65rem;
     font-size: 0.6875rem;
@@ -2250,8 +2250,8 @@
     bottom: 0.25rem;
     left: 0.25rem;
     border-radius: 0.625rem;
-    background: linear-gradient(135deg, rgb(194 193 255 / 0.22), rgb(194 193 255 / 0.1));
-    border: 1px solid rgb(194 193 255 / 0.28);
+    background: linear-gradient(135deg, rgba(82, 139, 82, 0.22), rgba(89, 212, 73, 0.1));
+    border: 1px solid rgba(18, 142, 66, 0.98);
     transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     pointer-events: none;
     z-index: 0;
