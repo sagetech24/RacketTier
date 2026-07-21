@@ -26,7 +26,7 @@ export function CreateQueueingSessionPage() {
     const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
     const [winPoints, setWinPoints] = useState('30');
     const [lossPoints, setLossPoints] = useState('8');
-    const [skipScores, setSkipScores] = useState(false);
+    const [skipScores, setSkipScores] = useState(true);
     const [autoMatchCriteria, setAutoMatchCriteria] = useState(DEFAULT_AUTO_MATCH_CRITERIA);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
