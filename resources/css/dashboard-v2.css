@@ -2504,6 +2504,7 @@
 
 .rt-match-team {
     display: flex;
+    position: relative;
     min-width: 0;
     flex-direction: column;
     align-items: center;
@@ -2511,14 +2512,33 @@
     text-align: center;
 }
 
-.rt-match-team--1 .rt-match-team-avatar {
-    border-color: rgb(76 224 129 / 0.25);
-    background: linear-gradient(145deg, rgb(76 224 129 / 0.14), rgb(76 224 129 / 0.06));
+.rt-match-team-trophy {
+    position: absolute;
+    top: -0.55rem;
+    z-index: 4;
+    font-size: 1.125rem !important;
+    color: #fbbf24;
+    line-height: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.35));
 }
 
+.rt-match-team-trophy--left {
+    left: 0.35rem;
+    transform: rotate(-20deg);
+}
+
+.rt-match-team-trophy--right {
+    right: 0.35rem;
+    transform: rotate(20deg);
+}
+
+.rt-match-team--1 .rt-match-team-avatar {
+    background: linear-gradient(145deg, rgb(65, 101, 78, 0.7), rgba(86, 119, 97, 0.9));
+}
+    
 .rt-match-team--2 .rt-match-team-avatar {
-    border-color: rgb(194 193 255 / 0.25);
-    background: linear-gradient(145deg, rgb(194 193 255 / 0.14), rgb(194 193 255 / 0.06));
+    background: linear-gradient(145deg, rgb(133, 132, 190, 0.7), rgba(112, 111, 183, 0.9));
 }
 
 .rt-match-team--winner .rt-match-team-name {
@@ -2531,32 +2551,53 @@
 
 .rt-match-team-avatars {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 0.35rem;
+    align-items: center;
 }
 
 .rt-match-team-avatar {
     display: inline-flex;
-    height: 2.95rem;
-    width: 2.95rem;
+    position: relative;
+    height: 3.55rem;
+    width: 3.5rem;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
-    border: 1px solid rgb(255 255 255 / 0.1);
-    font-size: 0.75rem;
+    border: 2px solid #1b1b1e;
+    font-size: 1rem;
     font-weight: 800;
     color: #e4e1e6;
 }
 
+.rt-match-team-avatar:not(:first-child) {
+    margin-left: -1.5rem;
+}
+
+.rt-match-team-avatar:nth-child(1) {
+    z-index: 3;
+}
+
+.rt-match-team-avatar:nth-child(2) {
+    z-index: 2;
+}
+
+.rt-match-team-avatar:nth-child(3) {
+    z-index: 1;
+}
+
 .rt-match-team-names {
-    display: flex;
+    display: block;
     min-width: 0;
-    flex-direction: column;
-    gap: 0.1rem;
+    max-width: 100%;
 }
 
 .rt-match-team-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 0.8125rem;
     font-weight: 700;
     line-height: 1.25;
@@ -2583,14 +2624,9 @@
 
 .rt-match-vs span {
     display: inline-flex;
-    height: 1.75rem;
-    width: 1.75rem;
     align-items: center;
     justify-content: center;
-    border-radius: 9999px;
-    border: 1px solid rgb(255 255 255 / 0.08);
-    background-color: rgb(255 255 255 / 0.04);
-    font-size: 0.5625rem;
+    font-size: 1.9625rem;
     font-weight: 800;
     letter-spacing: 0.04em;
     color: #918f9c;

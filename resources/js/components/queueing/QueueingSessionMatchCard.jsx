@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { playerInitials } from '../ranking/rankingUtils.js';
 import {
+    formatDuration,
     formatTimeOnly,
     lineupDisplayNamesByTeam,
     liveDurationSeconds,
@@ -43,8 +44,16 @@ function MatchTeamBlock({ names, teamNo, status, winningTeam }) {
         .filter(Boolean)
         .join(' ');
 
+    const trophyClass = [
+        'rt-match-team-trophy text-[30px]!',
+        teamNo === 1 ? 'rt-match-team-trophy--left' : 'rt-match-team-trophy--right',
+    ].join(' ');
+
     return (
         <div className={teamClass}>
+            {isWinner ? (
+                <MaterialIcon name="trophy" className={trophyClass} filled />
+            ) : null}
             <div className="rt-match-team-avatars" aria-hidden>
                 {names.length > 0 ? (
                     names.map((name, i) => (
@@ -58,21 +67,13 @@ function MatchTeamBlock({ names, teamNo, status, winningTeam }) {
             </div>
             <div className="rt-match-team-names">
                 {names.length > 0 ? (
-                    names.map((name, i) => (
-                        <span key={`${name}-${i}`} className="rt-match-team-name capitalize">
-                            {name}
-                        </span>
-                    ))
+                    <span className="rt-match-team-name capitalize" title={names.join(' & ')}>
+                        {names.join(' & ')}
+                    </span>
                 ) : (
                     <span className="rt-match-team-name text-[#918f9c]">—</span>
                 )}
             </div>
-            {isWinner ? (
-                <span className="rt-match-team-result">
-                    <MaterialIcon name="emoji_events" className="text-[12px]!" />
-                    Winner
-                </span>
-            ) : null}
         </div>
     );
 }
@@ -128,17 +129,17 @@ export function QueueingSessionMatchCard({
                                 #{matchNo}
                             </span>
                         ) : null}
-                        <span className={matchStatusPillClass(status)}>
-                            <span className="rt-match-status-dot" aria-hidden />
-                            {matchStatusLabel(status)}
-                        </span>
+                        {status === 'finished' && row.finished_at ? (
+                            <span className="flex items-center gap-1 text-xs">
+                                <MaterialIcon name="timer" className="text-[14px]! text-slate-300" />
+                                {formatDuration(row.started_at, row.finished_at)}
+                            </span>
+                        ) : null}
                     </div>
-                    {status === 'ongoing' ? (
-                        <span className="rt-match-live-badge" aria-label="Live match">
-                            <span className="rt-match-live-dot" aria-hidden />
-                            Live
-                        </span>
-                    ) : null}
+                    <span className={matchStatusPillClass(status)}>
+                        <span className="rt-match-status-dot" aria-hidden />
+                        {matchStatusLabel(status)}
+                    </span>
                 </header>
 
                 <div className="rt-match-lineup">
@@ -149,7 +150,7 @@ export function QueueingSessionMatchCard({
                         winningTeam={winningTeam}
                     />
                     <div className="rt-match-vs" aria-hidden>
-                        <span>VS</span>
+                        <span className="text-[#918f9c]">VS</span>
                     </div>
                     <MatchTeamBlock
                         names={team2}
@@ -209,16 +210,13 @@ export function QueueingSessionMatchCard({
                 </div>
 
                 {hasScore || winningTeam ? (
-                    <div className="rt-match-score">
+                    <div>
                         {hasScore ? (
                             <span className="rt-match-score-value tabular-nums">
                                 {row.team1_score}
                                 <span className="mx-1.5 text-[#918f9c]">–</span>
                                 {row.team2_score}
                             </span>
-                        ) : null}
-                        {winningTeam ? (
-                            <span className="rt-match-score-winner">Team {winningTeam} won</span>
                         ) : null}
                     </div>
                 ) : null}
