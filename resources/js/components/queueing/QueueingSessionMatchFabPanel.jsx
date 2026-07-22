@@ -299,7 +299,7 @@ export function QueueingSessionMatchFabPanel({
                 />
             ) : null}
 
-            <div ref={fabRef} className="fixed bottom-24 right-5 z-40 flex flex-col items-end md:bottom-8 md:right-8">
+            <div ref={fabRef} className="fixed bottom-24 right-5 z-[999] flex flex-col items-end md:bottom-8 md:right-8">
                 {menuOpen ? (
                     <div
                         className="rt-match-fab-callout mb-3 w-[min(16rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border border-[#686898] bg-[#1b1b1e] p-1.5 shadow-2xl shadow-black/40"
