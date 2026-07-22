@@ -182,8 +182,8 @@ export function FacilitiesPage() {
     return (
         <div className="min-h-[max(884px,100dvh)] bg-[#131316] pb-24 text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto max-w-5xl px-6 py-6">
-                <div className="mb-10 mt-20 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <main className="rt-fixed-header-pad mx-auto max-w-5xl px-6 pb-6">
+                <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                     <div>
                         <h1 className="mb-4 text-4xl font-extrabold leading-none tracking-tighter md:text-5xl">
                             Partner <span className="text-[#c2c1ff]">Facilities</span>

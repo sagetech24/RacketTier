@@ -102,7 +102,7 @@ export function CreateQueueingSessionPage() {
     return (
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
-            <main className="mx-auto min-h-screen w-full max-w-md px-6 pb-32 pt-24 md:max-w-3xl md:px-8 md:pb-20 lg:max-w-5xl">
+            <main className="rt-page-main">
                 <h1 className="mb-2 text-2xl font-extrabold tracking-tight md:text-3xl lg:text-4xl">
                     Create <span className="text-[#c2c1ff]">New Queue</span>
                 </h1>
