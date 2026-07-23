@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Actions\CreditMemberPointWallet;
+use App\Actions\GetSportRankings;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\Ranking;
@@ -136,6 +137,10 @@ class MatchResultProcessor
                 'rating_change' => $after - $before,
                 'session_points_earned' => $sessionPointsEarned,
             ];
+        }
+
+        if ($persistGlobalEffects) {
+            GetSportRankings::bumpSportVersion($sportId);
         }
 
         return [

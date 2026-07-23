@@ -22,6 +22,6 @@ export const queryKeys = {
         sessionId,
         draftVersion,
     ],
-    rankings: (sportId, search) => ['rankings', sportId, search],
+    rankings: (sportId, search = '', limit = 100) => ['rankings', sportId, search, limit],
     queueingSessions: (params) => ['queueing-sessions', params],
 };

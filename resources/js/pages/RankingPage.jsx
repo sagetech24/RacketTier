@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchRankings } from '../api/ranking.js';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
 import { PageHeader } from '../components/app/PageHeader.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { RankingListRow } from '../components/ranking/RankingListRow.jsx';
-import { RankingPageLoading } from '../components/ranking/RankingPageLoading.jsx';
+import { RankingListLoading, RankingPageLoading } from '../components/ranking/RankingPageLoading.jsx';
 import { RankingPodiumCard } from '../components/ranking/RankingPodiumCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
+import {
+    RANKINGS_DEFAULT_LIMIT,
+    usePrefetchRankings,
+    useRankingsQuery,
+} from '../hooks/queries/useRankingsQuery.js';
 import { useSportsQuery } from '../hooks/queries/useSportsQuery.js';
 
 const DEFAULT_SPORT_SLUG = 'pickleball';
@@ -21,13 +25,10 @@ function isCurrentUserRow(row, userId) {
 export function RankingPage() {
     const { user } = useAuth();
     const { data: sports = [] } = useSportsQuery();
+    const prefetchRankings = usePrefetchRankings();
     const [activeFilter, setActiveFilter] = useState(null);
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 350);
-    const [rankings, setRankings] = useState([]);
-    const [viewerRanking, setViewerRanking] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
 
     const filterOptions = useMemo(() => {
         return sports.map((sport) => ({
@@ -51,44 +52,43 @@ export function RankingPage() {
         }
     }, [sports]);
 
+    const {
+        data: rankingsResponse,
+        isPending,
+        isError,
+    } = useRankingsQuery({
+        sportId: activeFilter ? Number(activeFilter) : null,
+        search: debouncedSearch,
+        limit: RANKINGS_DEFAULT_LIMIT,
+        enabled: Boolean(activeFilter),
+    });
+
+    const rankings = rankingsResponse?.data ?? [];
+    const viewerRanking = rankingsResponse?.viewerRanking ?? null;
+
+    // Prefetch other sports while idle so chip switches hit cache.
     useEffect(() => {
-        if (!activeFilter) {
+        if (!activeFilter || sports.length === 0) {
             return undefined;
         }
 
-        let cancelled = false;
-
-        async function loadRankings() {
-            setLoading(true);
-            setError('');
-            try {
-                const { data, viewerRanking: viewerRow } = await fetchRankings({
-                    sportId: Number(activeFilter),
-                    search: debouncedSearch,
-                    limit: 100,
-                });
-                if (!cancelled) {
-                    setRankings(data);
-                    setViewerRanking(viewerRow);
+        const run = () => {
+            for (const sport of sports) {
+                if (String(sport.id) === activeFilter) {
+                    continue;
                 }
-            } catch {
-                if (!cancelled) {
-                    setError('Could not load ranking data right now.');
-                    setRankings([]);
-                    setViewerRanking(null);
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
+                prefetchRankings(sport.id);
             }
+        };
+
+        if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+            const idleId = window.requestIdleCallback(run, { timeout: 2500 });
+            return () => window.cancelIdleCallback(idleId);
         }
 
-        loadRankings();
-        return () => {
-            cancelled = true;
-        };
-    }, [activeFilter, debouncedSearch]);
+        const timeoutId = window.setTimeout(run, 400);
+        return () => window.clearTimeout(timeoutId);
+    }, [activeFilter, sports, prefetchRankings]);
 
     const topThree = useMemo(() => rankings.slice(0, 3), [rankings]);
     const restTopTen = useMemo(() => rankings.slice(3, 3 + REST_VISIBLE_COUNT), [rankings]);
@@ -118,9 +118,8 @@ export function RankingPage() {
         return candidate;
     }, [user?.id, search, rankings, viewerRanking, displayedUserIds]);
 
-    const showInitialSkeleton =
-        activeFilter == null || (loading && rankings.length === 0 && !error);
-    const isRefreshing = loading && rankings.length > 0 && !showInitialSkeleton;
+    const showInitialSkeleton = activeFilter == null;
+    const showListSkeleton = Boolean(activeFilter) && isPending;
     const contentKey = `${activeFilter}-${debouncedSearch}`;
 
     return (
@@ -130,7 +129,7 @@ export function RankingPage() {
                 title="Global Rankings"
                 subtitle="Live skill ratings from recorded matches. Climb the board by winning against stronger opponents."
                 action={
-                    !showInitialSkeleton && rankings.length > 0 ? (
+                    !showInitialSkeleton && !showListSkeleton && rankings.length > 0 ? (
                         <span className="rt-ranking-stats rt-ranking-stats--enter">
                             <MaterialIcon name="groups" className="text-sm!" />
                             <span>
@@ -173,6 +172,8 @@ export function RankingPage() {
                                         role="tab"
                                         aria-selected={isActive}
                                         onClick={() => setActiveFilter(filter.id)}
+                                        onMouseEnter={() => prefetchRankings(Number(filter.id))}
+                                        onFocus={() => prefetchRankings(Number(filter.id))}
                                         className={['rt-chip md:text-sm text-xs px-3 py-1', isActive ? 'rt-chip-active' : 'rt-chip-idle'].join(
                                             ' ',
                                         )}
@@ -185,9 +186,11 @@ export function RankingPage() {
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        {error ? <div className="rt-alert-error">{error}</div> : null}
+                        {isError ? <div className="rt-alert-error">Could not load ranking data right now.</div> : null}
 
-                        {!loading && rankings.length === 0 ? (
+                        {showListSkeleton ? <RankingListLoading /> : null}
+
+                        {!isPending && !isError && rankings.length === 0 ? (
                             <EmptyState
                                 icon="leaderboard"
                                 title="No rankings yet"
@@ -197,14 +200,8 @@ export function RankingPage() {
                             />
                         ) : null}
 
-                        {rankings.length > 0 ? (
-                            <div
-                                key={contentKey}
-                                className={['rt-ranking-content', isRefreshing ? 'rt-ranking-content--refreshing' : '']
-                                    .filter(Boolean)
-                                    .join(' ')}
-                                aria-busy={isRefreshing}
-                            >
+                        {!showListSkeleton && rankings.length > 0 ? (
+                            <div key={contentKey} className="rt-ranking-content">
                                 {topThree.length > 0 ? (
                                     <section className="mb-6" aria-label="Top three players">
                                         <p className="rt-section-eyebrow">Podium</p>

@@ -1,26 +1,9 @@
 const PODIUM_SKELETON_HEIGHTS = ['md:h-48', 'md:h-40', 'md:h-36'];
 const PODIUM_SKELETON_ORDER = ['md:order-2', 'md:order-1', 'md:order-3'];
 
-/**
- * Skeleton for the rankings page — mirrors podium + list layout.
- */
-export function RankingPageLoading() {
+function RankingListSkeletonBlocks() {
     return (
-        <div className="rt-ranking-loading" role="status" aria-live="polite" aria-busy="true" aria-label="Loading rankings">
-            <div className="rt-ranking-toolbar mb-8 md:mb-6">
-                <div className="rt-ranking-loading-block rt-ranking-loading-block--1">
-                    <div className="rt-skeleton h-12 w-full rounded-xl" />
-                </div>
-                <div className="mt-4 flex gap-2 overflow-hidden">
-                    {[1, 2, 3, 4].map((n) => (
-                        <div
-                            key={n}
-                            className={`rt-ranking-loading-block rt-ranking-loading-block--${n + 1} rt-skeleton h-9 w-20 shrink-0 rounded-full`}
-                        />
-                    ))}
-                </div>
-            </div>
-
+        <>
             <div className="rt-ranking-loading-block rt-ranking-loading-block--6 mb-2">
                 <div className="rt-skeleton h-3 w-14 rounded-full" />
             </div>
@@ -63,6 +46,42 @@ export function RankingPageLoading() {
                     </div>
                 ))}
             </div>
+        </>
+    );
+}
+
+/**
+ * Podium + list skeleton (no search/sport toolbar).
+ */
+export function RankingListLoading() {
+    return (
+        <div className="rt-ranking-loading" role="status" aria-live="polite" aria-busy="true" aria-label="Loading rankings">
+            <RankingListSkeletonBlocks />
+        </div>
+    );
+}
+
+/**
+ * Skeleton for the rankings page — mirrors toolbar + podium + list layout.
+ */
+export function RankingPageLoading() {
+    return (
+        <div className="rt-ranking-loading" role="status" aria-live="polite" aria-busy="true" aria-label="Loading rankings">
+            <div className="rt-ranking-toolbar mb-8 md:mb-6">
+                <div className="rt-ranking-loading-block rt-ranking-loading-block--1">
+                    <div className="rt-skeleton h-12 w-full rounded-xl" />
+                </div>
+                <div className="mt-4 flex gap-2 overflow-hidden">
+                    {[1, 2, 3, 4].map((n) => (
+                        <div
+                            key={n}
+                            className={`rt-ranking-loading-block rt-ranking-loading-block--${n + 1} rt-skeleton h-9 w-20 shrink-0 rounded-full`}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <RankingListSkeletonBlocks />
         </div>
     );
 }
