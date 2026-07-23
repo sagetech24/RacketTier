@@ -158,7 +158,7 @@ export function CreateQueueingSessionPage() {
                                     maxLength={120}
                                     placeholder="e.g. Friday night doubles"
                                     autoComplete="off"
-                                    className="w-full rounded-lg border border-[#484848] bg-[#131316] outline-none focus:ring-1 focus:ring-green-400 px-3 py-2.5 text-sm placeholder:text-[#918f9c]/60 md:py-3 md:text-base"
+                                    className="w-full rounded-lg border border-[#484848] bg-[#131316] outline-none focus:ring-1 focus:ring-green-400 px-3 py-2.5 text-base placeholder:text-[#918f9c]/60 md:py-3"
                                 />
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4">
@@ -192,7 +192,7 @@ export function CreateQueueingSessionPage() {
                                         max={30}
                                         value={winPoints}
                                         onChange={(e) => setWinPoints(e.target.value)}
-                                        className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-sm"
+                                        className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-base md:text-sm"
                                     />
                                 </div>
                                 <div>
@@ -203,7 +203,7 @@ export function CreateQueueingSessionPage() {
                                         max={15}
                                         value={lossPoints}
                                         onChange={(e) => setLossPoints(e.target.value)}
-                                        className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-sm"
+                                        className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-base md:text-sm"
                                     />
                                 </div>
                             </div>

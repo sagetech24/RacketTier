@@ -84,12 +84,20 @@
     border: 1px solid #525153;
     background-color: #0f0f12;
     padding: 1rem 1rem 1rem 3rem;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
+    /* 16px on small screens avoids iOS focus zoom; slightly tighter on desktop */
+    font-size: 1rem;
+    line-height: 1.5rem;
     color: #e4e1e6;
     transition:
         border-color 0.2s ease-out,
         box-shadow 0.2s ease-out;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+    .rt-input {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
 }
 
 .rt-input::placeholder {
@@ -1064,12 +1072,19 @@
     border: 1px solid #353438;
     background-color: #131316;
     padding: 0.875rem 0.75rem;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
+    font-size: 1rem;
+    line-height: 1.5rem;
     color: #e4e1e6;
     transition:
         border-color 0.2s ease-out,
         box-shadow 0.2s ease-out;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+    .rt-queue-filter-select {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
 }
 
 .rt-queue-filter-select:focus {
@@ -1934,12 +1949,19 @@
     border: 1px solid #525153;
     background-color: #131316;
     padding: 0.925rem 0.75rem;
-    font-size: 0.6125rem;
+    /* ≥16px on touch avoids iOS focus zoom; compact type only with fine pointer */
+    font-size: 1rem;
     font-weight: 600;
     color: #e4e1e6;
     transition:
         border-color 0.2s ease-out,
         box-shadow 0.2s ease-out;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+    .rt-roster-sort-select {
+        font-size: 0.6125rem;
+    }
 }
 
 .rt-roster-sort-select:focus {

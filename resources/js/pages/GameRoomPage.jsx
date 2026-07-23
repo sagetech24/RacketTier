@@ -804,7 +804,7 @@ export function GameRoomPage() {
                                     placeholder="Search by name, email, or queue…"
                                     autoComplete="off"
                                     spellCheck={false}
-                                    className="min-w-0 flex-1 bg-transparent text-sm text-[#e4e1e6] placeholder:text-[#918f9c] outline-none"
+                                    className="min-w-0 flex-1 bg-transparent text-base text-[#e4e1e6] placeholder:text-[#918f9c] outline-none md:text-sm"
                                     aria-label="Search players"
                                     disabled={!sessionDetail?.players?.length && lobbyPlayerRows.length === 0}
                                 />

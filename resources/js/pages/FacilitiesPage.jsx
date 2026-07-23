@@ -228,7 +228,7 @@ export function FacilitiesPage() {
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
                         placeholder="Search by name or address…"
-                        className="font-body w-full rounded-xl border border-[#353438] bg-[#0e0e11] py-4 pl-12 pr-4 text-sm text-[#e4e1e6] transition-all placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                        className="font-body w-full rounded-xl border border-[#353438] bg-[#0e0e11] py-4 pl-12 pr-4 text-base text-[#e4e1e6] transition-all placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20 md:text-sm"
                         aria-label="Search facilities"
                     />
                     </div>

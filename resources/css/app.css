@@ -16,3 +16,25 @@
     /* Tablet step immediately after mobile (base); pairs with `tab:` utilities */
     --breakpoint-tab: 48rem;
 }
+
+/*
+ * iOS Safari auto-zooms when focusing form controls under 16px, which leaves the
+ * page horizontally/vertically scrollable. Keep controls ≥16px on touch devices.
+ * overflow-x clip stops residual sideways scroll if the visual viewport shifts.
+ */
+@layer base {
+    html,
+    body {
+        overflow-x: clip;
+    }
+
+    @media (hover: none) {
+        input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(
+                [type='button']
+            ):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']),
+        textarea,
+        select {
+            font-size: 16px !important;
+        }
+    }
+}

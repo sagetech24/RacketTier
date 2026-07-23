@@ -414,7 +414,7 @@ export function QueueingSessionPlayersPage() {
                                                 placeholder="Search by name or pronoun…"
                                                 value={playerSearch}
                                                 onChange={(e) => setPlayerSearch(e.target.value)}
-                                                className="rt-input border border-white/10 px-4 py-2 text-xs! md:text-sm!"
+                                                className="rt-input border border-white/10 px-4 py-2"
                                                 aria-label="Search players"
                                             />
                                         </div>

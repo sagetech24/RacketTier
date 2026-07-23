@@ -267,7 +267,7 @@ export function QueueingSessionMatchLineupModal({
                                     placeholder="Name or email…"
                                     value={matchLineupSearch}
                                     onChange={(e) => setMatchLineupSearch(e.target.value)}
-                                    className="w-full rounded-xl border border-[#c2c1ff]/30 bg-[#131316] py-2.5 pr-3 pl-10 text-sm text-[#e4e1e6] outline-none placeholder:text-[#918f9c] focus:border-[#c2c1ff]/60 md:text-lg"
+                                    className="w-full rounded-xl border border-[#c2c1ff]/30 bg-[#131316] py-2.5 pr-3 pl-10 text-base text-[#e4e1e6] outline-none placeholder:text-[#918f9c] focus:border-[#c2c1ff]/60 md:text-lg"
                                 />
                             </div>
 
