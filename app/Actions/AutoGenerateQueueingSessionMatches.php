@@ -118,6 +118,11 @@ class AutoGenerateQueueingSessionMatches
 
         while ($pool->count() >= $required) {
             $selected = $this->selectPlayersForMatch($pool, $required, $matchType, $criteria, $hasStats);
+
+            if ($selected->count() < $required) {
+                break;
+            }
+
             $matchPlayers = $this->orderSelectedForTeams($selected, $criteria, $hasStats);
             $teamAssignments = $this->assignTeams($matchPlayers, $matchType, $criteria);
 
@@ -259,6 +264,9 @@ class AutoGenerateQueueingSessionMatches
         $winners = $pool->filter(fn (GameSessionPlayer $p): bool => $this->lastMatchResult($p) === 'win')->values();
         if ($winners->count() >= 2 && $this->poolHasLastMatchResults($pool)) {
             $anchor = $this->bestBySkillWlSequence($winners, $criteria, $hasStats);
+            if ($anchor === null) {
+                return $pool->take(2)->values();
+            }
             $candidates = $winners->reject(fn (GameSessionPlayer $p): bool => $p->id === $anchor->id)->values();
             $anchorLevel = $this->normalizedSkillLevel($anchor);
             $differentTier = $candidates->filter(
@@ -267,10 +275,13 @@ class AutoGenerateQueueingSessionMatches
             $opponentPool = $differentTier->isNotEmpty() ? $differentTier : $candidates;
             $opponent = $this->pickSinglesOpponent($opponentPool, $anchor, $criteria, $hasStats);
 
-            return collect([$anchor, $opponent]);
+            return collect([$anchor, $opponent])->filter()->values();
         }
 
         $anchor = $this->bestBySkillWlSequence($pool, $criteria, $hasStats);
+        if ($anchor === null) {
+            return $pool->take(2)->values();
+        }
         $anchorLevel = $this->normalizedSkillLevel($anchor);
 
         $candidates = $pool->reject(fn (GameSessionPlayer $p): bool => $p->id === $anchor->id)->values();
@@ -283,7 +294,7 @@ class AutoGenerateQueueingSessionMatches
 
         $opponent = $this->pickSinglesOpponent($opponentPool, $anchor, $criteria, $hasStats);
 
-        return collect([$anchor, $opponent]);
+        return collect([$anchor, $opponent])->filter()->values();
     }
 
     /**
@@ -315,6 +326,10 @@ class AutoGenerateQueueingSessionMatches
     ): Collection {
         $sorted = $this->sortBySkillWlSequence($pool, $criteria, $hasStats);
 
+        if ($sorted->count() < 4) {
+            return $sorted->take(4)->values();
+        }
+
         $p0 = $sorted->first();
         $remaining = $sorted->slice(1)->values();
 
@@ -324,9 +339,16 @@ class AutoGenerateQueueingSessionMatches
         $remaining = $remaining->reject(fn (GameSessionPlayer $p): bool => $p->id === $p3?->id)->values();
 
         $p1 = $this->bestBySkillWlSequence($remaining, $criteria, $hasStats);
+        if ($p1 === null) {
+            return $sorted->take(4)->values();
+        }
+
         $remaining = $remaining->reject(fn (GameSessionPlayer $p): bool => $p->id === $p1->id)->values();
 
         $p2 = $this->worstBySkillWlSequence($remaining, $criteria, $hasStats);
+        if ($p2 === null) {
+            return $sorted->take(4)->values();
+        }
 
         return collect([$p0, $p1, $p2, $p3])->filter()->values();
     }
@@ -392,6 +414,9 @@ class AutoGenerateQueueingSessionMatches
 
         while ($selected->count() < $required && $remaining->isNotEmpty()) {
             $next = $this->bestBySkillWlSequence($remaining, $criteria, $hasStats);
+            if ($next === null) {
+                break;
+            }
             $selected->push($next);
             $remaining = $remaining->reject(fn (GameSessionPlayer $p): bool => $p->id === $next->id)->values();
         }
@@ -536,7 +561,11 @@ class AutoGenerateQueueingSessionMatches
         Collection $pool,
         AutoMatchCriteria $criteria,
         bool $hasStats,
-    ): GameSessionPlayer {
+    ): ?GameSessionPlayer {
+        if ($pool->isEmpty()) {
+            return null;
+        }
+
         return $this->sortBySkillWlSequence($pool, $criteria, $hasStats)->first();
     }
 
@@ -548,7 +577,11 @@ class AutoGenerateQueueingSessionMatches
         AutoMatchCriteria $criteria,
         bool $hasStats,
         ?GameSessionPlayer $preferDifferentPronounFrom = null,
-    ): GameSessionPlayer {
+    ): ?GameSessionPlayer {
+        if ($pool->isEmpty()) {
+            return null;
+        }
+
         $sortKeys = [
             fn (GameSessionPlayer $p): int => $this->matchesPlayed($p),
             fn (GameSessionPlayer $p): int => $this->normalizedSkillLevel($p),
@@ -634,7 +667,11 @@ class AutoGenerateQueueingSessionMatches
         GameSessionPlayer $anchor,
         AutoMatchCriteria $criteria,
         bool $hasStats,
-    ): GameSessionPlayer {
+    ): ?GameSessionPlayer {
+        if ($pool->isEmpty()) {
+            return null;
+        }
+
         if ($pool->count() === 1) {
             return $pool->first();
         }
@@ -717,16 +754,24 @@ class AutoGenerateQueueingSessionMatches
             return $pool;
         }
 
-        $min = (int) $pool->min(fn (GameSessionPlayer $p): int => $this->matchesPlayed($p));
-        $atMin = $pool->filter(fn (GameSessionPlayer $p): bool => $this->matchesPlayed($p) === $min)->values();
-
-        if ($atMin->count() >= $required) {
-            return $atMin;
+        if ($pool->count() <= $required) {
+            return $pool->values();
         }
 
-        return $pool
-            ->filter(fn (GameSessionPlayer $p): bool => $this->matchesPlayed($p) <= $min + 1)
-            ->values();
+        $min = (int) $pool->min(fn (GameSessionPlayer $p): int => $this->matchesPlayed($p));
+        $max = (int) $pool->max(fn (GameSessionPlayer $p): int => $this->matchesPlayed($p));
+
+        for ($band = 0; $band <= ($max - $min); $band++) {
+            $narrowed = $pool
+                ->filter(fn (GameSessionPlayer $p): bool => $this->matchesPlayed($p) <= $min + $band)
+                ->values();
+
+            if ($narrowed->count() >= $required) {
+                return $narrowed;
+            }
+        }
+
+        return $pool->values();
     }
 
     /**

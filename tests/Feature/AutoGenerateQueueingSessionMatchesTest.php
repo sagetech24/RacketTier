@@ -418,6 +418,60 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         );
     }
 
+    public function test_balanced_doubles_widens_fairness_when_min_band_is_undersized(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Fairness Undersize Doubles',
+            'match_type' => 'doubles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        // min=0 has 2 players; min+1 has 3 total — previously crashed under balanced skill.
+        $this->addPlayer($session, 1, 5, 0, 0);
+        $this->addPlayer($session, 2, 4, 0, 0);
+        $this->addPlayer($session, 3, 3, 1, 0);
+        $this->addPlayer($session, 4, 2, 2, 1);
+        $this->addPlayer($session, 5, 1, 2, 2);
+        $this->addPlayer($session, 6, 3, 3, 1);
+        $this->addPlayer($session, 7, 2, 2, 0);
+        $this->addPlayer($session, 8, 4, 1, 1);
+
+        $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertNotEmpty($result['proposals']);
+        $this->assertCount(4, $result['proposals'][0]['lineup']);
+    }
+
+    public function test_balanced_singles_widens_fairness_when_min_band_is_undersized(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $this->addPlayer($session, 1, 5, 0, 0);
+        $this->addPlayer($session, 2, 4, 2, 1);
+        $this->addPlayer($session, 3, 3, 2, 2);
+        $this->addPlayer($session, 4, 2, 3, 1);
+
+        $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertNotEmpty($result['proposals']);
+        $this->assertCount(2, $result['proposals'][0]['lineup']);
+    }
+
     public function test_balanced_singles_prefers_winner_bracket_when_available(): void
     {
         $host = User::factory()->create();
