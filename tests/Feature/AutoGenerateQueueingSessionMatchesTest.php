@@ -6,6 +6,7 @@ use App\Actions\AutoGenerateQueueingSessionMatches;
 use App\Data\AutoMatchCriteria;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Models\QueueingSessionMatch;
 use App\Models\Sport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -558,5 +559,65 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $this->assertSame(1, $lineup[$w4->id]['team']);
         $this->assertSame(2, $lineup[$w2->id]['team']);
         $this->assertSame(2, $lineup[$w3->id]['team']);
+    }
+
+    public function test_auto_proposals_returns_eligibility_breakdown_when_not_enough_players(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Breakdown Test',
+            'match_type' => 'doubles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $playingA = $this->addPlayer($session, 1, 5);
+        $playingB = $this->addPlayer($session, 2, 4);
+        $playingA->update(['is_playing' => true, 'is_waiting' => false]);
+        $playingB->update(['is_playing' => true, 'is_waiting' => false]);
+
+        $queuedA = $this->addPlayer($session, 3, 3);
+        $queuedB = $this->addPlayer($session, 4, 2);
+        $queuedC = $this->addPlayer($session, 5, 1);
+        $queuedD = $this->addPlayer($session, 6, 1);
+
+        QueueingSessionMatch::query()->create([
+            'game_session_id' => $session->id,
+            'match_no' => 1,
+            'status' => 'queueing',
+            'lineup' => [
+                ['game_session_player_id' => $queuedA->id, 'team' => 1],
+                ['game_session_player_id' => $queuedB->id, 'team' => 1],
+                ['game_session_player_id' => $queuedC->id, 'team' => 2],
+                ['game_session_player_id' => $queuedD->id, 'team' => 2],
+            ],
+        ]);
+
+        $this->addPlayer($session, 7, 5);
+        $this->addPlayer($session, 8, 4);
+
+        $response = $this->actingAs($host)->getJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/auto-proposals',
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('data.proposals', []);
+        $response->assertJsonPath('data.total_eligible', 2);
+        $response->assertJsonPath('data.required_per_match', 4);
+        $response->assertJsonPath('data.eligibility_breakdown.total_roster', 8);
+        $response->assertJsonPath('data.eligibility_breakdown.playing', 2);
+        $response->assertJsonPath('data.eligibility_breakdown.queued_in_matches', 4);
+        $response->assertJsonPath('data.eligibility_breakdown.waiting_available', 2);
+        $response->assertJsonPath('data.eligibility_breakdown.not_in_queue', 0);
     }
 }

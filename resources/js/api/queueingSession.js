@@ -309,12 +309,21 @@ export async function fetchQueueingSessionMatches(sessionId) {
  * }} AutoMatchProposal
  *
  * @typedef {{
+ *   total_roster: number,
+ *   playing: number,
+ *   queued_in_matches: number,
+ *   waiting_available: number,
+ *   not_in_queue: number,
+ * }} AutoMatchEligibilityBreakdown
+ *
+ * @typedef {{
  *   criteria?: AutoMatchCriteria,
  *   proposals: AutoMatchProposal[],
  *   total_eligible: number,
  *   required_per_match: number,
  *   has_stats: boolean,
  *   match_type: 'singles' | 'doubles',
+ *   eligibility_breakdown?: AutoMatchEligibilityBreakdown,
  * }} AutoProposalsResponse
  */
 
@@ -356,6 +365,7 @@ export async function fetchQueueingSessionAutoProposals(sessionId, criteria) {
     const json = await res.json();
     const data = json.data ?? {};
     const rawCriteria = data.criteria ?? {};
+    const rawBreakdown = data.eligibility_breakdown ?? {};
     return {
         criteria: {
             skill_level: rawCriteria.skill_level !== false,
@@ -373,6 +383,13 @@ export async function fetchQueueingSessionAutoProposals(sessionId, criteria) {
         required_per_match: Number(data.required_per_match ?? 2),
         has_stats: Boolean(data.has_stats),
         match_type: data.match_type === 'doubles' ? 'doubles' : 'singles',
+        eligibility_breakdown: {
+            total_roster: Number(rawBreakdown.total_roster ?? 0),
+            playing: Number(rawBreakdown.playing ?? 0),
+            queued_in_matches: Number(rawBreakdown.queued_in_matches ?? 0),
+            waiting_available: Number(rawBreakdown.waiting_available ?? data.total_eligible ?? 0),
+            not_in_queue: Number(rawBreakdown.not_in_queue ?? 0),
+        },
     };
 }
 

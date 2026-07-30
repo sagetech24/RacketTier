@@ -11,6 +11,7 @@ import { DraggableMatchLineup } from './DraggableMatchLineup.jsx';
  * @typedef {import('../../api/queueingSession.js').AutoMatchCriteria} AutoMatchCriteria
  * @typedef {import('../../api/queueingSession.js').AutoMatchProposal} AutoMatchProposal
  * @typedef {import('../../api/queueingSession.js').AutoProposalsResponse} AutoProposalsResponse
+ * @typedef {import('../../api/queueingSession.js').AutoMatchEligibilityBreakdown} AutoMatchEligibilityBreakdown
  * @typedef {{ team1: number[], team2: number[] }} LineupDraft
  */
 
@@ -28,6 +29,72 @@ function criteriaSummaryChips(criteria) {
     if (criteria.sequence) chips.push('Sequence');
     if (criteria.genderless_mixed) chips.push('Genderless (mixed)');
     return chips;
+}
+
+/**
+ * @param {AutoMatchEligibilityBreakdown | undefined} breakdown
+ */
+function eligibilitySummaryLine(breakdown) {
+    if (!breakdown || breakdown.total_roster <= 0) {
+        return null;
+    }
+
+    /** @type {string[]} */
+    const parts = [`${breakdown.waiting_available} available`];
+    if (breakdown.playing > 0) {
+        parts.push(`${breakdown.playing} on court`);
+    }
+    if (breakdown.queued_in_matches > 0) {
+        parts.push(`${breakdown.queued_in_matches} queued`);
+    }
+    if (breakdown.not_in_queue > 0) {
+        parts.push(`${breakdown.not_in_queue} not in queue`);
+    }
+
+    return `${parts.join(' · ')} · ${breakdown.total_roster} on roster`;
+}
+
+/**
+ * @param {{
+ *   breakdown?: AutoMatchEligibilityBreakdown,
+ *   totalEligible: number,
+ *   required: number,
+ *   matchType: 'singles' | 'doubles',
+ *   allSkipped: boolean,
+ * }} params
+ */
+function autoMatchEmptyMessage({ breakdown, totalEligible, required, matchType, allSkipped }) {
+    if (allSkipped) {
+        return 'All suggestions were skipped. Use Refresh to try again.';
+    }
+
+    if (totalEligible >= required) {
+        return 'No suggestions matched your criteria. Try Refresh or edit criteria.';
+    }
+
+    let message = `Need at least ${required} available waiting players for a ${matchType} match. Only ${totalEligible} right now.`;
+
+    if (!breakdown || breakdown.total_roster <= 0) {
+        return message;
+    }
+
+    /** @type {string[]} */
+    const busyParts = [];
+    if (breakdown.playing > 0) {
+        busyParts.push(`${breakdown.playing} on court`);
+    }
+    if (breakdown.queued_in_matches > 0) {
+        busyParts.push(`${breakdown.queued_in_matches} already queued in a match`);
+    }
+    if (breakdown.not_in_queue > 0) {
+        busyParts.push(`${breakdown.not_in_queue} not in the waiting queue`);
+    }
+
+    if (busyParts.length > 0) {
+        message += ` Of ${breakdown.total_roster} on the roster: ${busyParts.join(', ')}.`;
+    }
+
+    return message;
 }
 
 /** @param {AutoMatchProposal['players']} players */
@@ -224,6 +291,13 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                     required_per_match: 2,
                     has_stats: false,
                     match_type: 'singles',
+                    eligibility_breakdown: {
+                        total_roster: 0,
+                        playing: 0,
+                        queued_in_matches: 0,
+                        waiting_available: 0,
+                        not_in_queue: 0,
+                    },
                 });
                 setDraftById({});
                 setError(e instanceof Error ? e.message : 'Could not load match suggestions.');
@@ -357,6 +431,17 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
     const matchType = data?.match_type === 'doubles' ? 'doubles' : 'singles';
     const required = data?.required_per_match ?? (matchType === 'doubles' ? 4 : 2);
     const totalEligible = data?.total_eligible ?? 0;
+    const breakdown = data?.eligibility_breakdown;
+    const eligibilityLine = eligibilitySummaryLine(breakdown);
+    const allProposalsSkipped =
+        !loading && (data?.proposals?.length ?? 0) > 0 && visibleProposals.length === 0;
+    const emptyMessage = autoMatchEmptyMessage({
+        breakdown,
+        totalEligible,
+        required,
+        matchType,
+        allSkipped: allProposalsSkipped,
+    });
     const activeCriteria = data?.criteria ?? criteria ?? undefined;
     const chips = criteriaSummaryChips(activeCriteria);
 
@@ -393,8 +478,14 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                         </div>
                     ) : null}
                     <p className="mt-2 text-base! text-[#918f9c] md:text-lg!">
-                        {totalEligible} eligible · {required} player(s) per {matchType} match
+                        {eligibilityLine ??
+                            `${totalEligible} eligible · ${required} player(s) per ${matchType} match`}
                     </p>
+                    {!eligibilityLine ? (
+                        <p className="mt-1 text-xs text-[#74747c]">
+                            {required} player(s) needed per {matchType} match
+                        </p>
+                    ) : null}
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-12">
@@ -409,11 +500,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                     ) : visibleProposals.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-[#45454a] bg-[#131316] p-6 text-center">
                             <p className="text-sm font-semibold text-[#e4e1e6]">No suggestions available</p>
-                            <p className="mt-1 text-xs text-[#918f9c]">
-                                {totalEligible < required
-                                    ? `Need at least ${required} waiting players to form a ${matchType} match. ${totalEligible} eligible right now.`
-                                    : 'All suggestions were skipped. Use Refresh to try again.'}
-                            </p>
+                            <p className="mt-1 text-xs text-[#918f9c]">{emptyMessage}</p>
                         </div>
                     ) : (
                         <ul className="space-y-3">

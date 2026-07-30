@@ -51,6 +51,13 @@ class AutoGenerateQueueingSessionMatches
      *   required_per_match: int,
      *   has_stats: bool,
      *   match_type: 'singles'|'doubles',
+     *   eligibility_breakdown: array{
+     *     total_roster: int,
+     *     playing: int,
+     *     queued_in_matches: int,
+     *     waiting_available: int,
+     *     not_in_queue: int,
+     *   },
      * }
      */
     public function execute(GameSession $session, ?AutoMatchCriteria $criteria = null): array
@@ -72,29 +79,32 @@ class AutoGenerateQueueingSessionMatches
             $draft = $this->draftStore->load((int) $session->id);
             $reserved = $this->draftLineup->reservedPlayerIds($draft);
             $hydrated = $this->hydrator->hydrate($session);
-            /** @var Collection<int, GameSessionPlayer> $eligible */
-            $eligible = $hydrated->players
-                ->filter(fn (GameSessionPlayer $p): bool => $p->is_waiting
-                    && ! $p->is_playing
-                    && ! (bool) $p->getAttribute('is_removed'))
-                ->when($reserved !== [], fn ($c) => $c->reject(fn (GameSessionPlayer $p): bool => in_array((int) $p->id, $reserved, true)))
-                ->sortBy('queue_position')
-                ->values();
+            /** @var Collection<int, GameSessionPlayer> $roster */
+            $roster = $hydrated->players->values();
         } else {
             $reserved = $this->lineup->reservedPlayerIds((int) $session->id);
 
-            /** @var Collection<int, GameSessionPlayer> $eligible */
-            $eligible = GameSessionPlayer::query()
+            /** @var Collection<int, GameSessionPlayer> $roster */
+            $roster = GameSessionPlayer::query()
                 ->with('user:id,name')
                 ->where('game_session_id', $session->id)
-                ->where('is_waiting', true)
-                ->where('is_playing', false)
-                ->when($reserved !== [], fn ($q) => $q->whereNotIn('id', $reserved))
                 ->orderBy('queue_position')
                 ->get();
         }
 
+        /** @var Collection<int, GameSessionPlayer> $eligible */
+        $eligible = $roster
+            ->filter(fn (GameSessionPlayer $p): bool => $p->is_waiting
+                && ! $p->is_playing
+                && ! (bool) $p->getAttribute('is_removed'))
+            ->when($reserved !== [], fn (Collection $c): Collection => $c->reject(
+                fn (GameSessionPlayer $p): bool => in_array((int) $p->id, $reserved, true),
+            ))
+            ->sortBy('queue_position')
+            ->values();
+
         $totalEligible = $eligible->count();
+        $eligibilityBreakdown = $this->eligibilityBreakdown($roster, $reserved, $totalEligible);
 
         $hasStats = $eligible->contains(
             fn (GameSessionPlayer $p): bool => ((int) $p->wins_count + (int) $p->losses_count) > 0,
@@ -108,6 +118,7 @@ class AutoGenerateQueueingSessionMatches
                 'required_per_match' => $required,
                 'has_stats' => $hasStats,
                 'match_type' => $matchType,
+                'eligibility_breakdown' => $eligibilityBreakdown,
             ];
         }
 
@@ -159,6 +170,45 @@ class AutoGenerateQueueingSessionMatches
             'required_per_match' => $required,
             'has_stats' => $hasStats,
             'match_type' => $matchType,
+            'eligibility_breakdown' => $eligibilityBreakdown,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, GameSessionPlayer>  $roster
+     * @param  list<int>  $reserved
+     * @return array{
+     *   total_roster: int,
+     *   playing: int,
+     *   queued_in_matches: int,
+     *   waiting_available: int,
+     *   not_in_queue: int,
+     * }
+     */
+    private function eligibilityBreakdown(Collection $roster, array $reserved, int $waitingAvailable): array
+    {
+        $active = $roster->filter(
+            fn (GameSessionPlayer $p): bool => ! (bool) $p->getAttribute('is_removed'),
+        );
+
+        $reservedLookup = array_flip($reserved);
+
+        $playing = $active->filter(fn (GameSessionPlayer $p): bool => $p->is_playing)->count();
+
+        $queuedInMatches = $active->filter(
+            fn (GameSessionPlayer $p): bool => ! $p->is_playing && isset($reservedLookup[(int) $p->id]),
+        )->count();
+
+        $notInQueue = $active->filter(
+            fn (GameSessionPlayer $p): bool => ! $p->is_waiting && ! $p->is_playing,
+        )->count();
+
+        return [
+            'total_roster' => $active->count(),
+            'playing' => $playing,
+            'queued_in_matches' => $queuedInMatches,
+            'waiting_available' => $waitingAvailable,
+            'not_in_queue' => $notInQueue,
         ];
     }
 
