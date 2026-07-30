@@ -19,7 +19,7 @@ import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSes
 import { QueueingSessionMatchLineupModal } from '../components/queueing/QueueingSessionMatchLineupModal.jsx';
 import { QueueingSessionMatchesLoading } from '../components/queueing/QueueingSessionMatchesLoading.jsx';
 import { lineupToTeams } from '../lib/queueingMatchLineup.js';
-import { lineupDisplayNamesByTeam } from '../lib/queueingMatchDisplay.js';
+import { lineupDisplayNamesByTeam, sortFinishedMatchesRecentFirst } from '../lib/queueingMatchDisplay.js';
 import {
     useInvalidateQueueingSession,
     useQueueingSessionMatchesQuery,
@@ -344,6 +344,7 @@ export function QueueingSessionMatchesPage() {
                 base.queueing.push(row);
             }
         }
+        base.finished = sortFinishedMatchesRecentFirst(base.finished);
         return base;
     }, [matches]);
 
