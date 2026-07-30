@@ -134,7 +134,10 @@ export function QueueingSessionPlayersPage() {
         return ids;
     }, [matches]);
 
-    const rosterPlayers = useMemo(() => session?.players ?? [], [session?.players]);
+    const rosterPlayers = useMemo(
+        () => (session?.players ?? []).filter((p) => !p.is_removed),
+        [session?.players],
+    );
 
     const filteredRosterPlayers = useMemo(() => {
         const query = playerSearch.trim().toLowerCase();

@@ -68,6 +68,9 @@ class QueueingSessionDraftLineup
             if ($row === null) {
                 abort(422, 'Invalid player id in manual lineup.');
             }
+            if ($row['is_removed'] ?? false) {
+                abort(422, 'Removed players cannot be added to a match.');
+            }
             if (! ($row['is_waiting'] ?? false) || ($row['is_playing'] ?? false)) {
                 abort(422, 'Manual lineup players must be waiting and not already on court.');
             }
@@ -361,6 +364,9 @@ class QueueingSessionDraftLineup
         $needle = Str::lower(trim($guestName));
 
         foreach ($draft->players as $player) {
+            if ($player['is_removed'] ?? false) {
+                continue;
+            }
             if (($player['user_id'] ?? null) !== null) {
                 continue;
             }
@@ -378,11 +384,53 @@ class QueueingSessionDraftLineup
     public function memberExists(QueueingSessionDraft $draft, int $userId): bool
     {
         foreach ($draft->players as $player) {
+            if ($player['is_removed'] ?? false) {
+                continue;
+            }
             if ((int) ($player['user_id'] ?? 0) === $userId) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findRemovedMember(QueueingSessionDraft $draft, int $userId): ?array
+    {
+        foreach ($draft->players as $player) {
+            if (! ($player['is_removed'] ?? false)) {
+                continue;
+            }
+            if ((int) ($player['user_id'] ?? 0) === $userId) {
+                return $player;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findRemovedGuest(QueueingSessionDraft $draft, string $guestName): ?array
+    {
+        $needle = Str::lower(trim($guestName));
+
+        foreach ($draft->players as $player) {
+            if (! ($player['is_removed'] ?? false)) {
+                continue;
+            }
+            if (($player['user_id'] ?? null) !== null) {
+                continue;
+            }
+            if (Str::lower((string) ($player['guest_name'] ?? '')) === $needle) {
+                return $player;
+            }
+        }
+
+        return null;
     }
 }

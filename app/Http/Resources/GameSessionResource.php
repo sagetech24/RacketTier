@@ -147,6 +147,7 @@ class GameSessionResource extends JsonResource
                         'queue_position' => $p->queue_position,
                         'is_waiting' => $p->is_waiting,
                         'is_playing' => $p->is_playing,
+                        'is_removed' => (bool) ($p->getAttribute('is_removed') ?? false),
                         'team' => $p->team,
                         'wins_count' => (int) ($p->wins_count ?? 0),
                         'losses_count' => (int) ($p->losses_count ?? 0),

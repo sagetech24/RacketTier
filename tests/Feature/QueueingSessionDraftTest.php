@@ -313,4 +313,99 @@ class QueueingSessionDraftTest extends TestCase
 
         $this->actingAs($member)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
     }
+
+    public function test_removed_player_who_finished_matches_appears_on_ended_leaderboard(): void
+    {
+        $host = User::factory()->create();
+        $opponent = User::factory()->create();
+        $bench = User::factory()->create();
+
+        $create = $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Remove Then End',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ])->assertCreated();
+
+        $sessionId = (int) $create->json('data.id');
+
+        foreach ([$host, $opponent, $bench] as $user) {
+            $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+                'user_id' => $user->id,
+                'skill_level' => 3,
+            ])->assertOk();
+        }
+
+        $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
+        $players = collect($show->json('data.players'));
+        $hostPlayerId = (int) $players->firstWhere('user.id', $host->id)['id'];
+        $opponentPlayerId = (int) $players->firstWhere('user.id', $opponent->id)['id'];
+        $benchPlayerId = (int) $players->firstWhere('user.id', $bench->id)['id'];
+
+        $matchCreate = $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches', [
+            'lineup' => [
+                ['id' => $hostPlayerId, 'team' => 1],
+                ['id' => $opponentPlayerId, 'team' => 2],
+            ],
+        ])->assertCreated();
+        $matchId = (int) $matchCreate->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches/'.$matchId.'/start')
+            ->assertOk();
+        $this->actingAs($host)->postJson('/auth/game-sessions/'.$sessionId.'/finish-match', [
+            'team1_score' => 21,
+            'team2_score' => 10,
+            'queueing_session_match_id' => $matchId,
+        ])->assertOk();
+
+        $this->actingAs($host)
+            ->deleteJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$opponentPlayerId)
+            ->assertOk();
+
+        $afterRemove = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
+        $afterPlayers = collect($afterRemove->json('data.players'));
+        $removedRow = $afterPlayers->firstWhere('id', $opponentPlayerId);
+        $this->assertNotNull($removedRow);
+        $this->assertTrue((bool) $removedRow['is_removed']);
+        $this->assertSame(8, (int) $removedRow['session_points']);
+        $this->assertFalse((bool) $removedRow['is_waiting']);
+
+        // Bench player with no matches is hard-deleted.
+        $this->actingAs($host)
+            ->deleteJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$benchPlayerId)
+            ->assertOk();
+        $afterBench = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        );
+        $this->assertNull($afterBench->firstWhere('id', $benchPlayerId));
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/end')->assertOk();
+
+        $summary = $this->actingAs($host)
+            ->getJson('/auth/queueing-sessions/'.$sessionId.'/summary')
+            ->assertOk()
+            ->json('data');
+
+        $summaryNames = collect($summary['players'] ?? [])->pluck('name')->all();
+        $this->assertContains($host->name, $summaryNames);
+        $this->assertContains($opponent->name, $summaryNames);
+        $this->assertNotContains($bench->name, $summaryNames);
+        $this->assertSame(2, (int) ($summary['totals']['players'] ?? 0));
+
+        $opponentSummary = collect($summary['players'])->firstWhere('name', $opponent->name);
+        $this->assertNotNull($opponentSummary);
+        $this->assertSame(0, (int) $opponentSummary['wins']);
+        $this->assertSame(1, (int) $opponentSummary['losses']);
+        $this->assertSame(8, (int) $opponentSummary['earned_points']);
+
+        $this->assertSame(2, GameSessionPlayer::query()->where('game_session_id', $sessionId)->count());
+
+        $opponentWallet = MemberPointWallet::query()
+            ->where('user_id', $opponent->id)
+            ->where('sport_id', GameSession::query()->findOrFail($sessionId)->sport_id)
+            ->first();
+        $this->assertNotNull($opponentWallet);
+        $this->assertSame(8, (int) $opponentWallet->balance);
+    }
 }

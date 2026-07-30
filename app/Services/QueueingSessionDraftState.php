@@ -9,7 +9,9 @@ class QueueingSessionDraftState
     public function recompactQueuePositions(QueueingSessionDraft $draft): void
     {
         $waiting = collect($draft->players)
-            ->filter(fn (array $p): bool => ($p['is_waiting'] ?? false) && ! ($p['is_playing'] ?? false))
+            ->filter(fn (array $p): bool => ($p['is_waiting'] ?? false)
+                && ! ($p['is_playing'] ?? false)
+                && ! ($p['is_removed'] ?? false))
             ->sortBy('queue_position')
             ->values();
 
@@ -32,10 +34,15 @@ class QueueingSessionDraftState
         }
 
         foreach ($draft->players as $i => $player) {
-            if ($player['is_playing'] ?? false) {
-                $draft->players[$i]['is_playing'] = false;
+            if (! ($player['is_playing'] ?? false)) {
+                continue;
+            }
+            $draft->players[$i]['is_playing'] = false;
+            $draft->players[$i]['team'] = null;
+            if ($player['is_removed'] ?? false) {
+                $draft->players[$i]['is_waiting'] = false;
+            } else {
                 $draft->players[$i]['is_waiting'] = true;
-                $draft->players[$i]['team'] = null;
             }
         }
     }
@@ -75,20 +82,92 @@ class QueueingSessionDraftState
                 continue;
             }
             $draft->players[$i]['is_playing'] = false;
-            $draft->players[$i]['is_waiting'] = true;
             $draft->players[$i]['team'] = null;
+            if ($player['is_removed'] ?? false) {
+                $draft->players[$i]['is_waiting'] = false;
+            } else {
+                $draft->players[$i]['is_waiting'] = true;
+            }
         }
 
         $this->recompactQueuePositions($draft);
     }
 
+    /**
+     * Drop players with no match history; soft-remove players who already played
+     * so their session stats remain available for the end-of-session leaderboard.
+     */
     public function removePlayer(QueueingSessionDraft $draft, int $playerId): void
     {
-        $draft->players = array_values(array_filter(
-            $draft->players,
-            fn (array $p): bool => (int) ($p['id'] ?? 0) !== $playerId,
-        ));
+        $kept = [];
+
+        foreach ($draft->players as $player) {
+            if ((int) ($player['id'] ?? 0) !== $playerId) {
+                $kept[] = $player;
+
+                continue;
+            }
+
+            $played = ((int) ($player['wins_count'] ?? 0) + (int) ($player['losses_count'] ?? 0)) > 0
+                || (int) ($player['session_points'] ?? 0) > 0;
+
+            if ($played) {
+                $player['is_removed'] = true;
+                $player['is_waiting'] = false;
+                $player['is_playing'] = false;
+                $player['team'] = null;
+                $player['queue_position'] = 0;
+                $kept[] = $player;
+            }
+        }
+
+        $draft->players = array_values($kept);
+        $this->dropQueuedMatchesContainingPlayer($draft, $playerId);
         $this->recompactQueuePositions($draft);
+    }
+
+    public function restoreRemovedPlayer(QueueingSessionDraft $draft, int $playerId, array $changes = []): void
+    {
+        foreach ($draft->players as $i => $player) {
+            if ((int) ($player['id'] ?? 0) !== $playerId) {
+                continue;
+            }
+
+            $next = (int) (collect($draft->players)
+                ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false))
+                ->max('queue_position') ?? 0) + 1;
+
+            $draft->players[$i] = array_merge($player, $changes, [
+                'is_removed' => false,
+                'is_waiting' => true,
+                'is_playing' => false,
+                'team' => null,
+                'queue_position' => $next,
+            ]);
+            break;
+        }
+
+        $this->recompactQueuePositions($draft);
+    }
+
+    private function dropQueuedMatchesContainingPlayer(QueueingSessionDraft $draft, int $playerId): void
+    {
+        $draft->matches = array_values(array_filter(
+            $draft->matches,
+            function (array $match) use ($playerId): bool {
+                if (($match['status'] ?? '') !== 'queueing') {
+                    return true;
+                }
+                $lineup = is_array($match['lineup'] ?? null) ? $match['lineup'] : [];
+                foreach ($lineup as $row) {
+                    if ((int) ($row['game_session_player_id'] ?? 0) === $playerId) {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+        ));
     }
 
     public function updatePlayerInDraft(QueueingSessionDraft $draft, int $playerId, array $changes): void

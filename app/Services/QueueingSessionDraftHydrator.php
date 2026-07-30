@@ -30,7 +30,10 @@ class QueueingSessionDraftHydrator
             }
 
             $draft = $store->load((int) $session->id);
-            $session->setAttribute('players_count', count($draft->players));
+            $activeCount = collect($draft->players)
+                ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false))
+                ->count();
+            $session->setAttribute('players_count', $activeCount);
             $session->completed_matches_count = (int) ($draft->sessionMeta['completed_matches_count'] ?? 0);
         }
     }
@@ -87,6 +90,7 @@ class QueueingSessionDraftHydrator
             ]);
             $player->id = (int) $row['id'];
             $player->exists = true;
+            $player->setAttribute('is_removed', (bool) ($row['is_removed'] ?? false));
 
             $uid = $row['user_id'] ?? null;
             if ($uid !== null && $usersById->has((int) $uid)) {
@@ -100,7 +104,10 @@ class QueueingSessionDraftHydrator
         ])->values();
 
         $envelope->setRelation('players', $players);
-        $envelope->setAttribute('players_count', $players->count());
+        $envelope->setAttribute(
+            'players_count',
+            $players->filter(fn (GameSessionPlayer $p): bool => ! (bool) $p->getAttribute('is_removed'))->count(),
+        );
 
         return $envelope;
     }

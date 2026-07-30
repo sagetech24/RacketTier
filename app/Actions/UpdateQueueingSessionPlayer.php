@@ -46,6 +46,13 @@ class UpdateQueueingSessionPlayer
 
         if ($session->isDraft()) {
             $this->draftStore->mutate($session, function ($draft) use ($player, $guestName, $resolvedPronoun, $skillLevel) {
+                $row = $draft->findPlayer((int) $player->id);
+                if ($row === null) {
+                    abort(404);
+                }
+                if ($row['is_removed'] ?? false) {
+                    abort(422, 'Cannot update a player who has left the session.');
+                }
                 if ($this->draftLineup->guestNameExists($draft, $guestName, (int) $player->id)) {
                     abort(422, 'A guest with that name is already on the roster.');
                 }
@@ -101,6 +108,13 @@ class UpdateQueueingSessionPlayer
 
         if ($session->isDraft()) {
             $this->draftStore->mutate($session, function ($draft) use ($player, $skillLevel) {
+                $row = $draft->findPlayer((int) $player->id);
+                if ($row === null) {
+                    abort(404);
+                }
+                if ($row['is_removed'] ?? false) {
+                    abort(422, 'Cannot update a player who has left the session.');
+                }
                 $this->draftState->updatePlayerInDraft($draft, (int) $player->id, [
                     'skill_level' => $skillLevel,
                 ]);

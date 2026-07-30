@@ -6,6 +6,7 @@ use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\User;
 use App\Services\QueueingSessionDraftLineup;
+use App\Services\QueueingSessionDraftState;
 use App\Services\QueueingSessionDraftStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -15,6 +16,7 @@ class AddQueueingSessionPlayer
     public function __construct(
         private QueueingSessionDraftStore $draftStore,
         private QueueingSessionDraftLineup $draftLineup,
+        private QueueingSessionDraftState $draftState,
     ) {}
 
     /**
@@ -136,11 +138,24 @@ class AddQueueingSessionPlayer
 
         $created = null;
         $this->draftStore->mutate($session, function ($draft) use ($userId, $skillLevel, $resolvedPronoun, &$created) {
+            $removed = $this->draftLineup->findRemovedMember($draft, $userId);
+            if ($removed !== null) {
+                $this->draftState->restoreRemovedPlayer($draft, (int) $removed['id'], [
+                    'pronoun' => $resolvedPronoun,
+                    'skill_level' => $skillLevel,
+                ]);
+                $created = $draft->findPlayer((int) $removed['id']);
+
+                return $draft;
+            }
+
             if ($this->draftLineup->memberExists($draft, $userId)) {
                 abort(422, 'That player is already on the roster.');
             }
 
-            $next = collect($draft->players)->max('queue_position') ?? 0;
+            $next = collect($draft->players)
+                ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false))
+                ->max('queue_position') ?? 0;
             $playerId = $draft->allocatePlayerId();
             $created = [
                 'id' => $playerId,
@@ -171,11 +186,25 @@ class AddQueueingSessionPlayer
     {
         $created = null;
         $this->draftStore->mutate($session, function ($draft) use ($guestName, $pronoun, $skillLevel, &$created) {
+            $removed = $this->draftLineup->findRemovedGuest($draft, $guestName);
+            if ($removed !== null) {
+                $this->draftState->restoreRemovedPlayer($draft, (int) $removed['id'], [
+                    'guest_name' => $guestName,
+                    'pronoun' => $pronoun,
+                    'skill_level' => $skillLevel,
+                ]);
+                $created = $draft->findPlayer((int) $removed['id']);
+
+                return $draft;
+            }
+
             if ($this->draftLineup->guestNameExists($draft, $guestName)) {
                 abort(422, 'A guest with that name is already on the roster.');
             }
 
-            $next = collect($draft->players)->max('queue_position') ?? 0;
+            $next = collect($draft->players)
+                ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false))
+                ->max('queue_position') ?? 0;
             $playerId = $draft->allocatePlayerId();
             $created = [
                 'id' => $playerId,

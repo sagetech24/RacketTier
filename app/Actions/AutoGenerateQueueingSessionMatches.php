@@ -74,7 +74,9 @@ class AutoGenerateQueueingSessionMatches
             $hydrated = $this->hydrator->hydrate($session);
             /** @var Collection<int, GameSessionPlayer> $eligible */
             $eligible = $hydrated->players
-                ->filter(fn (GameSessionPlayer $p): bool => $p->is_waiting && ! $p->is_playing)
+                ->filter(fn (GameSessionPlayer $p): bool => $p->is_waiting
+                    && ! $p->is_playing
+                    && ! (bool) $p->getAttribute('is_removed'))
                 ->when($reserved !== [], fn ($c) => $c->reject(fn (GameSessionPlayer $p): bool => in_array((int) $p->id, $reserved, true)))
                 ->sortBy('queue_position')
                 ->values();

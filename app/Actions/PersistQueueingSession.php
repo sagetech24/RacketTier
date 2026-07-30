@@ -69,8 +69,9 @@ class PersistQueueingSession
     private function insertPlayers(GameSession $session, QueueingSessionDraft $draft): array
     {
         $map = [];
+        $rows = $this->playersForPersist($draft);
 
-        foreach ($draft->players as $row) {
+        foreach ($rows as $row) {
             $player = GameSessionPlayer::query()->create([
                 'game_session_id' => $session->id,
                 'user_id' => $row['user_id'] ?? null,
@@ -91,6 +92,97 @@ class PersistQueueingSession
         }
 
         return $map;
+    }
+
+    /**
+     * Active + soft-removed draft players, plus anyone who only exists on finished
+     * match snapshots (hard-removed mid-session before soft-remove existed).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function playersForPersist(QueueingSessionDraft $draft): array
+    {
+        $byId = [];
+        foreach ($draft->players as $row) {
+            $pid = (int) ($row['id'] ?? 0);
+            if ($pid > 0) {
+                $byId[$pid] = $row;
+            }
+        }
+
+        foreach ($draft->matches as $match) {
+            if (($match['status'] ?? '') !== 'finished') {
+                continue;
+            }
+
+            $breakdownPlayers = is_array($match['result_breakdown']['players'] ?? null)
+                ? $match['result_breakdown']['players']
+                : [];
+            $lineupByPid = collect(is_array($match['lineup'] ?? null) ? $match['lineup'] : [])
+                ->keyBy(fn ($row): int => (int) (is_array($row) ? ($row['game_session_player_id'] ?? 0) : 0));
+
+            foreach ($breakdownPlayers as $bp) {
+                if (! is_array($bp)) {
+                    continue;
+                }
+                $pid = (int) ($bp['game_session_player_id'] ?? 0);
+                if ($pid <= 0 || isset($byId[$pid])) {
+                    continue;
+                }
+
+                $lineup = $lineupByPid->get($pid);
+                $lineup = is_array($lineup) ? $lineup : [];
+                $byId[$pid] = [
+                    'id' => $pid,
+                    'user_id' => $bp['user_id'] ?? $lineup['user_id'] ?? null,
+                    'guest_name' => $bp['guest_name'] ?? $lineup['guest_name'] ?? null,
+                    'pronoun' => null,
+                    'skill_level' => null,
+                    'queue_position' => 0,
+                    'wins_count' => 0,
+                    'losses_count' => 0,
+                    'session_points' => 0,
+                    'last_match_result' => null,
+                    'last_match_id' => null,
+                ];
+            }
+        }
+
+        foreach ($draft->matches as $match) {
+            if (($match['status'] ?? '') !== 'finished') {
+                continue;
+            }
+            $breakdownPlayers = is_array($match['result_breakdown']['players'] ?? null)
+                ? $match['result_breakdown']['players']
+                : [];
+
+            foreach ($breakdownPlayers as $bp) {
+                if (! is_array($bp)) {
+                    continue;
+                }
+                $pid = (int) ($bp['game_session_player_id'] ?? 0);
+                // Soft-removed / active roster rows already carry cumulative stats.
+                if ($pid <= 0 || $draft->findPlayer($pid) !== null || ! isset($byId[$pid])) {
+                    continue;
+                }
+
+                $won = (bool) ($bp['won'] ?? false);
+                if ($won) {
+                    $byId[$pid]['wins_count'] = (int) ($byId[$pid]['wins_count'] ?? 0) + 1;
+                    $byId[$pid]['last_match_result'] = 'win';
+                } else {
+                    $byId[$pid]['losses_count'] = (int) ($byId[$pid]['losses_count'] ?? 0) + 1;
+                    $byId[$pid]['last_match_result'] = 'loss';
+                }
+                $byId[$pid]['session_points'] = (int) ($byId[$pid]['session_points'] ?? 0)
+                    + (int) ($bp['session_points_earned'] ?? 0);
+                if (isset($match['id'])) {
+                    $byId[$pid]['last_match_id'] = (int) $match['id'];
+                }
+            }
+        }
+
+        return array_values($byId);
     }
 
     /**

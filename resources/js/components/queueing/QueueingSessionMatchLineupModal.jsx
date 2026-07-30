@@ -114,7 +114,7 @@ export function QueueingSessionMatchLineupModal({
 
     const assignableSessionPlayers = useMemo(() => {
         const rows = Array.isArray(session.players) ? session.players : [];
-        return rows.filter((p) => p.is_waiting && !p.is_playing && !reservedPlayerIds.has(p.id));
+        return rows.filter((p) => p.is_waiting && !p.is_playing && !p.is_removed && !reservedPlayerIds.has(p.id));
     }, [session.players, reservedPlayerIds]);
 
     const matchLineupSearchResults = useMemo(() => {
