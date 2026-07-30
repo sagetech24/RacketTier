@@ -59,10 +59,29 @@ export function lineupDisplayNamesByTeam(lineup) {
     return { team1, team2 };
 }
 
+/** @param {Array<Record<string, unknown>>} rows */
+export function sortFinishedMatchesRecentFirst(rows) {
+    return [...rows].sort((a, b) => {
+        const finishedA = a.finished_at ? Date.parse(String(a.finished_at)) : Number.NaN;
+        const finishedB = b.finished_at ? Date.parse(String(b.finished_at)) : Number.NaN;
+        const validA = Number.isFinite(finishedA);
+        const validB = Number.isFinite(finishedB);
+
+        if (validA && validB && finishedB !== finishedA) {
+            return finishedB - finishedA;
+        }
+        if (validA !== validB) {
+            return validB ? 1 : -1;
+        }
+
+        return (Number(b.match_no) || 0) - (Number(a.match_no) || 0);
+    });
+}
+
 /** @param {'finished' | 'ongoing' | 'queueing' | string | undefined} status */
 export function matchStatusLabel(status) {
     if (status === 'queueing') return 'Queued';
-    if (status === 'ongoing') return 'Playing';
+    if (status === 'ongoing') return 'Live';
     if (status === 'finished') return 'Finished';
     return status ?? 'Match';
 }

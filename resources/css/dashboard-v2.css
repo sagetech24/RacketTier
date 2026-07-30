@@ -2480,13 +2480,13 @@
 }
 
 .rt-match-status-pill--ongoing {
-    border-color: rgb(76 224 129 / 0.35);
-    background-color: rgb(76 224 129 / 0.12);
-    color: #4ce081;
+    border-color: rgb(248 113 113 / 0.35);
+    background-color: rgb(248 113 113 / 0.12);
+    color: #f87171;
 }
 
 .rt-match-status-pill--ongoing .rt-match-status-dot {
-    background-color: #4ce081;
+    background-color: #f87171;
     animation: rt-match-status-blink 1.2s ease-in-out infinite;
 }
 
