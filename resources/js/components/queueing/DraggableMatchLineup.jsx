@@ -45,34 +45,34 @@ function prefersReducedMotion() {
 /**
  * @param {{
  *   player: LineupPlayerView,
- *   dragHandleProps?: Record<string, unknown>,
+ *   dragProps?: Record<string, unknown>,
  *   isDragging?: boolean,
  *   disabled?: boolean,
  *   onRemove?: ((id: number) => void) | null,
  * }} props
  */
-function LineupDragCard({ player, dragHandleProps = {}, isDragging = false, disabled = false, onRemove = null }) {
+function LineupDragCard({ player, dragProps = {}, isDragging = false, disabled = false, onRemove = null }) {
     const skillLabel = skillLevelLabel(player.skill_level);
+    const canDrag = !disabled && Object.keys(dragProps).length > 0;
 
     return (
         <div
             className={[
                 'flex items-start justify-between gap-2 rounded-lg border border-[#c2c1ff]/30 bg-[#131316] p-3 shadow-sm',
+                canDrag ? 'cursor-grab select-none active:cursor-grabbing' : '',
                 isDragging ? 'opacity-60 ring-2 ring-[#c2c1ff]/50' : '',
             ]
                 .filter(Boolean)
                 .join(' ')}
+            {...(canDrag ? dragProps : {})}
         >
             <div className="flex min-w-0 flex-1 items-start gap-1.5">
-                <button
-                    type="button"
-                    className="mt-0.5 shrink-0 rounded p-0.5 text-[#918f9c] hover:text-[#c2c1ff] focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label={`Drag ${player.name}`}
-                    disabled={disabled}
-                    {...dragHandleProps}
+                <span
+                    className="mt-0.5 shrink-0 text-[#918f9c] pointer-events-none"
+                    aria-hidden
                 >
                     <MaterialIcon name="drag_indicator" className="text-[20px]! md:text-2xl!" />
-                </button>
+                </span>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <p className="mb-1 truncate text-sm font-semibold capitalize text-[#e4e1e6] md:text-lg">
@@ -113,7 +113,11 @@ function LineupDragCard({ player, dragHandleProps = {}, isDragging = false, disa
                 <button
                     type="button"
                     disabled={disabled}
-                    onClick={() => onRemove(player.id)}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onRemove(player.id);
+                    }}
                     className="inline-flex shrink-0 items-center justify-center text-red-300/70 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={`Remove ${player.name}`}
                 >
@@ -152,7 +156,7 @@ function SortableLineupCard({ player, disabled = false, onRemove = null }) {
                 disabled={disabled}
                 isDragging={isDragging}
                 onRemove={onRemove}
-                dragHandleProps={{ ...attributes, ...listeners }}
+                dragProps={disabled ? {} : { ...attributes, ...listeners, 'aria-label': `Drag ${player.name}` }}
             />
         </div>
     );
@@ -243,7 +247,7 @@ export function DraggableMatchLineup({
     const [activeId, setActiveId] = useState(/** @type {string | null} */ (null));
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
     );
 
@@ -329,7 +333,7 @@ export function DraggableMatchLineup({
                 <p className="mb-1 text-2xl font-semibold text-[#e4e1e6]">{title}</p>
             ) : null}
             {showHint ? (
-                <p className="mb-3 text-sm text-[#918f9c] md:text-lg">Drag to swap teams or partners.</p>
+                <p className="mb-3 text-sm text-[#918f9c] md:text-lg">Hold a player card to drag and swap teams or partners.</p>
             ) : null}
 
             <DndContext
