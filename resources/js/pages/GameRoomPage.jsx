@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import '../../css/dashboard-v2.css';
 import { fetchFacilityGameRoom } from '../api/facilityGameRoom.js';
 import { fetchGameSession, postFinishGameSessionMatch, postStartGameSessionMatch } from '../api/gameSession.js';
-import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
-import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
+import { AppShell } from '../components/app/AppShell.jsx';
+import { PageHeader } from '../components/app/PageHeader.jsx';
+import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { formatRating, formatRatingChange } from '../components/ranking/rankingUtils.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -21,22 +21,11 @@ function initialsFromName(name) {
 }
 
 function filterButtonClass(active) {
-    return active
-        ? 'rounded-full bg-[#4ce081] px-4 py-2 text-xs font-bold text-[#003919]'
-        : 'rounded-full bg-[#353438] px-4 py-2 text-xs font-semibold text-[#e4e1e6]';
+    return ['rt-chip min-h-11 px-4 py-2 text-xs', active ? 'rt-chip-active' : 'rt-chip-idle'].join(' ');
 }
 
 const PLAYER_LIST_INITIAL_COUNT = 4;
 const PLAYER_LIST_LOAD_STEP = 4;
-
-function TrophyIcon({ className }) {
-    return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <path d="M6 9H4.5a2 2 0 00-2 2v1c0 4 3 7 7 7s7-3 7-7v-1a2 2 0 00-2-2H6z" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M8 21h8M12 17v4M9 3h6l1 3H8l1-3z" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-    );
-}
 
 /**
  * Display label, sort order (lower first), and pill styles for facility session list rows.
@@ -49,35 +38,31 @@ function facilitySessionListStatus(session) {
         return {
             label: 'Ended',
             sortRank: 4,
-            accentClass: 'border-l-4 border-l-red-400',
-            textClass: 'text-red-400',
-            pillClass: 'border border-red-400/35 bg-red-400/10',
+            textClass: 'text-[#ffb4ab]',
+            pillClass: 'border border-[#ffb4ab]/35 bg-[#ffb4ab]/10',
         };
     }
     const raw = session.status ?? 'queueing';
     if (raw === 'ongoing') {
         return {
-            label: 'Ongoing',
+            label: 'Live',
             sortRank: 0,
-            accentClass: 'border-l-4 border-l-orange-400',
-            textClass: 'text-orange-300',
-            pillClass: 'border border-orange-400/35 bg-orange-400/10',
+            textClass: 'text-[#ffb4ab]',
+            pillClass: 'border border-[#ffb4ab]/35 bg-[#ffb4ab]/10',
         };
     }
     if (raw === 'finished') {
         return {
             label: 'Finished',
             sortRank: 2,
-            accentClass: 'border-l-4 border-l-slate-400',
-            textClass: 'text-slate-400',
-            pillClass: 'border border-slate-400/30 bg-slate-400/10',
+            textClass: 'text-[#c8c5d2]',
+            pillClass: 'border border-white/15 bg-white/5',
         };
     }
     if (raw === 'queueing' || raw === 'pending') {
         return {
             label: 'Queueing',
             sortRank: 1,
-            accentClass: 'border-l-4 border-l-[#4ce081]',
             textClass: 'text-[#4ce081]',
             pillClass: 'border border-[#4ce081]/35 bg-[#4ce081]/12',
         };
@@ -85,9 +70,8 @@ function facilitySessionListStatus(session) {
     return {
         label: raw ? String(raw) : 'Queueing',
         sortRank: 3,
-        accentClass: 'border-l-4 border-l-slate-400',
-        textClass: 'text-slate-400',
-        pillClass: 'border border-slate-400/30 bg-slate-400/10',
+        textClass: 'text-[#c8c5d2]',
+        pillClass: 'border border-white/15 bg-white/5',
     };
 }
 
@@ -148,7 +132,6 @@ export function GameRoomPage() {
 
     const [playerSearch, setPlayerSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [fastMatchmaking, setFastMatchmaking] = useState(false);
     const [startBusy, setStartBusy] = useState(false);
     const [startError, setStartError] = useState('');
 
@@ -459,82 +442,82 @@ export function GameRoomPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#131316] text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
-            <DashboardV2Header user={user} profileLoading={false} />
+        <AppShell user={user}>
+            <div className="rt-game-room">
+                <div className="mb-4">
+                    <Link to="/facilities" className="rt-facility-back">
+                        <MaterialIcon name="arrow_back" className="text-lg" />
+                        Facilities
+                    </Link>
+                </div>
 
-            <main className="rt-page-main">
-                <section className="mb-8">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#4ce081]">
-                        {facilityEyebrow}
-                    </p>
-                    <div className="flex items-start gap-3 sm:gap-4 md:gap-5">
-                        {sessionDetail ? (
+                <PageHeader
+                    eyebrow={facilityEyebrow}
+                    title={sessionHeadline === 'GAME ROOM' ? 'Game room' : sessionHeadline}
+                    subtitle={
+                        sessionDetail
+                            ? undefined
+                            : 'Active sessions and everyone on the roster at this facility. Open a session for full queue details.'
+                    }
+                    action={
+                        sessionDetail ? (
                             <SportIcon
                                 icon={sessionDetail.sport?.icon ?? 'tennis.png'}
-                                imgClassName="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14 md:h-16 md:w-16"
-                                materialClassName="text-5xl text-[#c2c1ff] md:text-6xl"
-                                className="mt-1 shrink-0"
+                                imgClassName="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
+                                materialClassName="text-5xl text-[#c2c1ff]"
+                                className="shrink-0"
                             />
+                        ) : facilityIdNum != null && !sessionIdParam && !error ? (
+                            <Link
+                                to={`/facility/${facilityIdNum}/create-match`}
+                                className="rt-facility-btn rt-facility-btn-lavender min-h-11 px-4"
+                            >
+                                <MaterialIcon name="add" className="text-lg" />
+                                Create match
+                            </Link>
+                        ) : null
+                    }
+                />
+
+                {sessionDetail ? (
+                    <dl className="rt-game-room-meta mb-8">
+                        {sessionDetail.facility ? (
+                            <div>
+                                <dt>Facility</dt>
+                                <dd>
+                                    <span className="block">{sessionDetail.facility.name}</span>
+                                    <span className="mt-0.5 block text-xs font-normal text-[#918f9c]">
+                                        {sessionDetail.facility.address ?? '—'}
+                                    </span>
+                                </dd>
+                            </div>
                         ) : null}
-                        <h1 className={`text-5xl font-extrabold tracking-tight md:text-6xl ${sessionDetail ? 'min-w-0 flex-1' : ''}`}>
-                            {sessionHeadline}
-                        </h1>
-                    </div>
-                    {sessionDetail ? (
-                        <>
-                            <dl className="mt-4 space-y-1 text-sm text-[#c8c5d2] md:grid md:grid-cols-2 md:gap-x-6 md:gap-y-2">
-                                {sessionDetail.facility ? (
-                                    <div className="flex justify-between gap-4">
-                                        <dt className="shrink-0 text-[#918f9c]">Facility</dt>
-                                        <dd className="max-w-[65%] text-right font-medium text-[#e4e1e6]">
-                                            <span className="block">{sessionDetail.facility.name}</span>
-                                            <span className="mt-0.5 block text-xs font-normal text-[#918f9c]">
-                                                {sessionDetail.facility.address ?? '—'}
-                                            </span>
-                                        </dd>
-                                    </div>
-                                ) : null}
-                                <div className="flex justify-between gap-4">
-                                    <dt className="text-[#918f9c]">Game type</dt>
-                                    <dd className="text-right font-medium text-[#e4e1e6]">{sessionDetail.game_type}</dd>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                    <dt className="text-[#918f9c]">Court</dt>
-                                    <dd className="text-right font-medium text-[#e4e1e6]">
-                                        {sessionDetail.court_preference ?? '—'}
-                                    </dd>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                    <dt className="text-[#918f9c]">Players</dt>
-                                    <dd className="text-right font-medium text-[#e4e1e6]">
-                                        {sessionDetail.participant_count ?? sessionDetail.players?.length ?? '—'}
-                                    </dd>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                    <dt className="text-[#918f9c]">Status</dt>
-                                    <dd className={`text-right font-medium ${sessionStatusUi.textClass}`}>
-                                        {sessionStatusUi.label}
-                                    </dd>
-                                </div>
-                            </dl>
-                        </>
-                    ) : (
-                        <p className="mt-4 text-sm leading-relaxed text-[#c8c5d2] md:max-w-2xl md:text-base">
-                            Active sessions and everyone on the roster at this facility. Open a session for full queue
-                            details, or refresh to update the list.
-                        </p>
-                    )}
-                </section>
+                        <div>
+                            <dt>Game type</dt>
+                            <dd>{sessionDetail.game_type}</dd>
+                        </div>
+                        <div>
+                            <dt>Court</dt>
+                            <dd>{sessionDetail.court_preference ?? '—'}</dd>
+                        </div>
+                        <div>
+                            <dt>Players</dt>
+                            <dd>{sessionDetail.participant_count ?? sessionDetail.players?.length ?? '—'}</dd>
+                        </div>
+                        <div>
+                            <dt>Status</dt>
+                            <dd className={sessionStatusUi.textClass}>{sessionStatusUi.label}</dd>
+                        </div>
+                    </dl>
+                ) : null}
 
                 <div className={sessionDetail ? 'rt-game-room-session-layout' : undefined}>
                 {sessionDetail ? (
                     <div className="mb-6 md:mb-0 md:sticky md:top-36">
                         {sessionDetail.last_match ? (
-                            <div className="rounded-xl border border-[#474651]/40 bg-[#1b1b1e] p-4 md:p-5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c2c1ff]">
-                                    Last match result
-                                </h3>
-                                <p className="mt-2 text-sm font-semibold text-[#e4e1e6]">
+                            <div className="rt-create-match-panel">
+                                <h3 className="rt-section-eyebrow !mb-2 text-[#c2c1ff]">Last match result</h3>
+                                <p className="text-sm font-semibold text-[#e4e1e6]">
                                     Team 1 : {sessionDetail.last_match.team1_score} — Team 2: {sessionDetail.last_match.team2_score}
                                 </p>
                                 {sessionDetail.last_match.winning_team != null ? (
@@ -566,7 +549,7 @@ export function GameRoomPage() {
                                 ) : null}
                             </div>
                         ) : (
-                            <p className="rounded-xl border border-[#474651]/40 bg-[#1b1b1e] px-4 py-4 text-sm text-[#918f9c]">
+                            <p className="rounded-xl border border-dashed border-white/10 bg-[#1b1b1e]/80 px-4 py-4 text-sm text-[#918f9c]">
                                 No completed match in this session yet.
                             </p>
                         )}
@@ -576,10 +559,7 @@ export function GameRoomPage() {
                 <div className={sessionDetail ? 'min-w-0' : undefined}>
 
                 {error ? (
-                    <div
-                        className="mb-6 rounded-xl border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffb4ab]"
-                        role="alert"
-                    >
+                    <div className="rt-alert-error mb-6" role="alert">
                         <p className="mb-2">{error}</p>
                         <Link
                             to={gameRoomBase}
@@ -590,34 +570,14 @@ export function GameRoomPage() {
                     </div>
                 ) : null}
 
-                {!error && facilityIdNum != null && !sessionIdParam ? (
-                    <Link
-                        to={`/facility/${facilityIdNum}/create-match`}
-                        className="mb-8 inline-flex items-center gap-2 rounded-full bg-linear-to-br from-[#c2c1ff] to-[#8a89d9] px-5 py-3 text-xs font-bold tracking-wider text-[#282671] uppercase"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="size-5 text-[#282671]"
-                            aria-hidden
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Create Match
-                    </Link>
-                ) : null}
-
                 {!sessionIdParam && !error ? (
                     <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
                     <section className="space-y-3">
-                        <h2 className="text-lg font-bold text-[#e4e1e6]">Active Matches</h2>
+                        <h2 className="text-lg font-bold text-[#e4e1e6]">Active matches</h2>
                         {loading ? (
                             <div className="space-y-2">
                                 {Array.from({ length: 3 }).map((_, i) => (
-                                    <div key={i} className="h-[88px] animate-pulse rounded-xl bg-[#1b1b1e]" aria-hidden />
+                                    <div key={i} className="rt-skeleton h-[88px] rounded-xl" aria-hidden />
                                 ))}
                             </div>
                         ) : lobby && sortedLobbySessions.length > 0 ? (
@@ -638,7 +598,7 @@ export function GameRoomPage() {
                                         <li key={s.id}>
                                             <Link
                                                 to={`${gameRoomBase}?session=${s.id}`}
-                                                className={`flex min-h-18 gap-3 rounded-xl border border-[#474651]/40 bg-[#1b1b1e] py-3 pl-4 pr-4 transition-colors hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22] ${statusMeta.accentClass}`}
+                                                className="rt-game-room-session-card"
                                                 aria-label={`${s.sport?.name ?? 'Session'} ${statusMeta.label}, open session`}
                                             >
                                                 <div className="shrink-0 pt-0.5">
@@ -650,10 +610,6 @@ export function GameRoomPage() {
                                                 </div>
                                                 <div className="min-w-0 flex-1 pt-0.5">
                                                     <p className="truncate text-sm font-bold text-[#e4e1e6]">
-                                                        {/* {s.sport?.name ?? 'Session'} */}
-                                                        {/* <span className="ml-1.5 font-mono text-xs font-normal text-[#918f9c]">
-                                                            #{s.id}
-                                                        </span> */}
                                                         {[s.sport?.name ?? 'Session', matchLabel].filter(Boolean).join(' · ')}
                                                     </p>
                                                     <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
@@ -680,18 +636,18 @@ export function GameRoomPage() {
                                 })}
                             </ul>
                         ) : (
-                            <p className="rounded-xl bg-[#1b1b1e] px-4 py-4 text-sm text-[#918f9c]">
+                            <p className="rounded-xl border border-dashed border-white/10 bg-[#1b1b1e]/80 px-4 py-4 text-sm text-[#918f9c]">
                                 No active matches at this facility yet.
                             </p>
                         )}
                     </section>
 
                     <section className="space-y-3">
-                        <h2 className="text-lg font-bold text-[#e4e1e6]">Finished Today</h2>
+                        <h2 className="text-lg font-bold text-[#e4e1e6]">Finished today</h2>
                         {loading ? (
                             <div className="space-y-2">
                                 {Array.from({ length: 2 }).map((_, i) => (
-                                    <div key={i} className="h-[88px] animate-pulse rounded-xl bg-[#1b1b1e]" aria-hidden />
+                                    <div key={i} className="rt-skeleton h-[88px] rounded-xl" aria-hidden />
                                 ))}
                             </div>
                         ) : lobby && finishedLobbySessions.length > 0 ? (
@@ -715,7 +671,7 @@ export function GameRoomPage() {
                                         <li key={s.id}>
                                             <Link
                                                 to={`${gameRoomBase}?session=${s.id}`}
-                                                className="flex min-h-18 gap-3 rounded-xl border border-[#474651]/40 bg-[#1b1b1e] py-3 pl-4 pr-4 transition-colors hover:border-[#c2c1ff]/35 hover:bg-[#1f1f22] border-l-4 border-l-red-400"
+                                                className="rt-game-room-session-card"
                                                 aria-label={`${s.sport?.name ?? 'Session'} finished, open details`}
                                             >
                                                 <div className="shrink-0 pt-0.5">
@@ -734,12 +690,12 @@ export function GameRoomPage() {
                                                             .filter(Boolean)
                                                             .join(' · ')}
                                                     </p>
-                                                    <p className="line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
-                                                        {[scoreLine]
-                                                            .filter(Boolean)
-                                                            .join(' · ')}
-                                                    </p>
-                                                    {s.last_match.winning_team != null ? (
+                                                    {scoreLine ? (
+                                                        <p className="line-clamp-2 text-xs leading-relaxed text-[#918f9c]">
+                                                            {scoreLine}
+                                                        </p>
+                                                    ) : null}
+                                                    {s.last_match?.winning_team != null ? (
                                                         <p className="font-bold text-[#4ce081]">
                                                             Winner: Team {s.last_match.winning_team}
                                                         </p>
@@ -756,7 +712,7 @@ export function GameRoomPage() {
                                                     ) : null}
                                                 </div>
                                                 <div className="flex flex-col items-end justify-between gap-1">
-                                                    <span className="inline-flex rounded-full border border-red-400/35 bg-red-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-400">
+                                                    <span className="inline-flex rounded-full border border-[#ffb4ab]/35 bg-[#ffb4ab]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#ffb4ab]">
                                                         Finished
                                                     </span>
                                                     <span className="text-[12px] font-medium text-[#918f9c]">View →</span>
@@ -767,7 +723,7 @@ export function GameRoomPage() {
                                 })}
                             </ul>
                         ) : (
-                            <p className="rounded-xl bg-[#1b1b1e] px-4 py-4 text-sm text-[#918f9c]">
+                            <p className="rounded-xl border border-dashed border-white/10 bg-[#1b1b1e]/80 px-4 py-4 text-sm text-[#918f9c]">
                                 No finished matches created today yet.
                             </p>
                         )}
@@ -781,22 +737,11 @@ export function GameRoomPage() {
                     </h2>
                     {!sessionDetail ? (
                         <>
-                            <label className="mb-4 flex items-center gap-3 rounded-xl bg-[#0e0e11] px-4 py-3 ring-1 ring-white/5 focus-within:ring-[#c2c1ff]/40">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                    className="size-4 shrink-0 stroke-[#918f9c]"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                                    />
-                                </svg>
+                            <div className="relative mb-4">
+                                <MaterialIcon
+                                    name="search"
+                                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#918f9c]"
+                                />
                                 <input
                                     type="search"
                                     value={playerSearch}
@@ -804,13 +749,12 @@ export function GameRoomPage() {
                                     placeholder="Search by name, email, or queue…"
                                     autoComplete="off"
                                     spellCheck={false}
-                                    className="min-w-0 flex-1 bg-transparent text-base text-[#e4e1e6] placeholder:text-[#918f9c] outline-none md:text-sm"
+                                    className="rt-facility-field !pl-12"
                                     aria-label="Search players"
                                     disabled={!sessionDetail?.players?.length && lobbyPlayerRows.length === 0}
                                 />
-                            </label>
+                            </div>
 
-                            {/* <h3 className="mb-3 text-xs font-semibold text-[#e4e1e6]">Status Filters</h3> */}
                             <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filter players by status">
                                 <button
                                     type="button"
@@ -819,7 +763,7 @@ export function GameRoomPage() {
                                     onClick={() => setStatusFilter('all')}
                                     disabled={!sessionDetail?.players?.length && lobbyPlayerRows.length === 0}
                                 >
-                                    All Players
+                                    All players
                                 </button>
                                 <button
                                     type="button"
@@ -846,11 +790,11 @@ export function GameRoomPage() {
                     {loading ? (
                         <div className="space-y-3">
                             {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-[88px] animate-pulse rounded-2xl bg-[#1b1b1e]" aria-hidden />
+                                <div key={i} className="rt-skeleton h-[88px] rounded-2xl" aria-hidden />
                             ))}
                         </div>
                     ) : !hasPlayersToRender ? (
-                        <p className="rounded-2xl bg-[#1b1b1e] px-4 py-6 text-center text-sm text-[#918f9c]">
+                        <p className="rounded-2xl border border-dashed border-white/10 bg-[#1b1b1e]/80 px-4 py-6 text-center text-sm text-[#918f9c]">
                             {sessionIdParam
                                 ? 'No players on this session yet.'
                                 : 'No players from sessions created today at this facility yet.'}
@@ -860,18 +804,17 @@ export function GameRoomPage() {
                             {playersToRender.map((player) => (
                                 <article
                                     key={player.key}
-                                    className={`flex items-center justify-between rounded-2xl p-4 transition-colors ${
+                                    className={[
+                                        'flex items-center justify-between rounded-2xl border p-4 transition-colors duration-200',
                                         player._placeholder
-                                            ? 'bg-[#16161a] ring-1 ring-white/5'
+                                            ? 'border-dashed border-white/10 bg-[#16161a]'
                                             : player.isSelf
-                                            ? 'bg-[#c2c1ff]/10 ring-1 ring-[#c2c1ff]/30 hover:bg-[#c2c1ff]/15'
-                                            : 'bg-[#1b1b1e] hover:bg-[#1f1f22]'
-                                    }`}
+                                              ? 'border-[#c2c1ff]/30 bg-[#c2c1ff]/10 hover:bg-[#c2c1ff]/15'
+                                              : 'border-white/5 bg-[#1b1b1e]/90 hover:border-white/10 hover:bg-[#1f1f22]',
+                                    ].join(' ')}
                                 >
                                     <div className="flex min-w-0 items-center gap-3">
-                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#353438] text-sm font-bold text-[#e4e1e6]">
-                                            {player.initials}
-                                        </div>
+                                        <div className="rt-player-avatar shrink-0">{player.initials}</div>
                                         <div className="min-w-0 flex-1">
                                             <h4 className="truncate text-sm font-extrabold tracking-wide text-[#e4e1e6]">
                                                 {player.name}
@@ -881,9 +824,9 @@ export function GameRoomPage() {
                                                     </span>
                                                 ) : null}
                                             </h4>
-                                            <p className="flex items-center">
-                                                <TrophyIcon className="mr-1 inline-block size-3 shrink-0 text-[#c8c5d2]" />
-                                                <span className="text-sm text-[#c8c5d2]">{player.tier}</span>
+                                            <p className="flex items-center gap-1 text-sm text-[#c8c5d2]">
+                                                <MaterialIcon name="military_tech" className="text-sm text-[#918f9c]" />
+                                                <span>{player.tier}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -901,9 +844,9 @@ export function GameRoomPage() {
                             <button
                                 type="button"
                                 onClick={() => setVisiblePlayerCount((n) => n + PLAYER_LIST_LOAD_STEP)}
-                                className="w-full rounded-xl border border-[#474651] bg-[#1b1b1e] px-4 py-3 text-sm font-bold text-[#e4e1e6] transition hover:bg-[#242429]"
+                                className="rt-facility-btn rt-facility-btn-secondary w-full min-h-11"
                             >
-                                Load More
+                                Load more
                             </button>
                         </div>
                     ) : null}
@@ -917,13 +860,12 @@ export function GameRoomPage() {
                                             setFinishError('');
                                             setShowFinishModal(true);
                                         }}
-                                        className="w-full shrink-0 rounded-xl border-2 border-[#ffb86b]/60 bg-[#ffb86b]/15 px-10 py-4 text-lg font-black tracking-tight text-[#ffb86b] shadow-lg transition-transform enabled:active:scale-95 md:w-auto"
+                                        className="w-full min-h-12 cursor-pointer rounded-xl border border-[#ffb4ab]/45 bg-[#ffb4ab]/12 px-8 py-3.5 text-base font-extrabold tracking-tight text-[#ffb4ab] transition-transform duration-150 enabled:active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffb4ab]/60 md:w-auto"
                                     >
-                                        Finish Game
+                                        Finish game
                                     </button>
-                                    <p className="text-center text-xs text-[#918f9c]">
-                                        Enter the final score to update rankings, credit session points to member wallets,
-                                        and end this session for everyone.
+                                    <p className="text-center text-xs text-[#918f9c] md:text-left">
+                                        Enter the final score to update rankings, credit session points, and end this session.
                                     </p>
                                 </>
                             ) : (
@@ -933,21 +875,21 @@ export function GameRoomPage() {
                                         onClick={() => void handleStartGame()}
                                         disabled={!canStartMatch || startBusy}
                                         aria-busy={startBusy}
-                                        className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 md:w-auto"
+                                        className="rt-kinetic-gradient w-full min-h-12 cursor-pointer rounded-xl px-8 py-3.5 text-lg font-extrabold tracking-tight text-[#211e6a] transition-transform duration-150 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2c1ff]/70 md:w-auto"
                                     >
-                                        {startBusy ? 'Starting…' : 'Start Game'}
+                                        {startBusy ? 'Starting…' : 'Start game'}
                                     </button>
                                     {!anyPlaying && waitingForMatchCount < requiredPlayers ? (
-                                        <p className="text-center text-xs text-[#918f9c]">
+                                        <p className="text-center text-xs text-[#918f9c] md:text-left">
                                             Need {requiredPlayers} waiting players in the queue to start (
                                             {waitingForMatchCount} ready).
                                         </p>
                                     ) : null}
                                     {anyPlaying && !showFinishMatch ? (
-                                        <p className="text-center text-xs text-[#918f9c]">A match is in progress.</p>
+                                        <p className="text-center text-xs text-[#918f9c] md:text-left">A match is in progress.</p>
                                     ) : null}
                                     {startError ? (
-                                        <p className="text-center text-sm text-[#ffb4ab]" role="alert">
+                                        <p className="text-center text-sm text-[#ffb4ab] md:text-left" role="alert">
                                             {startError}
                                         </p>
                                     ) : null}
@@ -958,50 +900,51 @@ export function GameRoomPage() {
                 </section>
                 </div>
                 </div>
-            </main>
+            </div>
 
             {showFinishModal ? (
                 <div
-                    className="fixed inset-0 z-100 flex items-end justify-center bg-black/70 p-4 sm:items-center"
+                    className="rt-facility-modal-overlay"
                     role="presentation"
-                    onClick={() => (finishBusy ? null : setShowFinishModal(false))}
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget && !finishBusy) setShowFinishModal(false);
+                    }}
                 >
                     <div
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="finish-match-title"
-                        className="w-full max-w-md rounded-2xl border border-[#474651]/50 bg-[#1b1b1e] p-6 shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
+                        className="rt-facility-modal-sheet"
                     >
                         <h2 id="finish-match-title" className="text-lg font-bold text-[#e4e1e6]">
                             Report final score
                         </h2>
                         <p className="mt-2 text-sm text-[#918f9c]">
-                            Team 1 vs Team 2 (same sides as when the session was created). One side must have a higher
-                            score. Saving ends the session after points are applied.
+                            Team 1 vs Team 2 (same sides as when the session was created). One side must win. Saving ends
+                            the session after points are applied.
                         </p>
                         <div className="mt-5 grid grid-cols-2 gap-3">
                             <label className="block">
-                                <span className="mb-1.5 block text-xs font-semibold text-[#c8c5d2]">Team 1 score</span>
+                                <span className="rt-facility-field-label mb-1.5">Team 1 score</span>
                                 <input
                                     type="number"
                                     inputMode="numeric"
                                     min={0}
                                     value={finishTeam1Score}
                                     onChange={(e) => setFinishTeam1Score(e.target.value)}
-                                    className="w-full rounded-xl border border-[#474651] bg-[#131316] px-3 py-2.5 text-[#e4e1e6] outline-none focus:border-[#c2c1ff]/60"
+                                    className="rt-facility-field"
                                     autoComplete="off"
                                 />
                             </label>
                             <label className="block">
-                                <span className="mb-1.5 block text-xs font-semibold text-[#c8c5d2]">Team 2 score</span>
+                                <span className="rt-facility-field-label mb-1.5">Team 2 score</span>
                                 <input
                                     type="number"
                                     inputMode="numeric"
                                     min={0}
                                     value={finishTeam2Score}
                                     onChange={(e) => setFinishTeam2Score(e.target.value)}
-                                    className="w-full rounded-xl border border-[#474651] bg-[#131316] px-3 py-2.5 text-[#e4e1e6] outline-none focus:border-[#c2c1ff]/60"
+                                    className="rt-facility-field"
                                     autoComplete="off"
                                 />
                             </label>
@@ -1011,12 +954,12 @@ export function GameRoomPage() {
                                 {finishError}
                             </p>
                         ) : null}
-                        <div className="mt-6 grid grid-cols-3 gap-2">
+                        <div className="mt-6 flex flex-wrap justify-end gap-3">
                             <button
                                 type="button"
                                 disabled={finishBusy}
                                 onClick={() => setShowFinishModal(false)}
-                                className="col-span-1 rounded-xl border border-[#474651] px-4 py-3 text-sm font-semibold text-[#e4e1e6] hover:bg-white/5 disabled:opacity-50"
+                                className="rt-facility-btn rt-facility-btn-ghost min-h-11 px-4"
                             >
                                 Cancel
                             </button>
@@ -1025,7 +968,7 @@ export function GameRoomPage() {
                                 disabled={finishBusy}
                                 aria-busy={finishBusy}
                                 onClick={() => void handleSubmitFinishMatch()}
-                                className="rt-kinetic-gradient col-span-2 rounded-xl px-4 py-3 text-sm font-black text-[#211e6a] disabled:opacity-50"
+                                className="rt-facility-btn rt-facility-btn-lavender min-h-11 px-5"
                             >
                                 {finishBusy ? 'Saving…' : 'Save & update'}
                             </button>
@@ -1033,8 +976,6 @@ export function GameRoomPage() {
                     </div>
                 </div>
             ) : null}
-
-            <DashboardMobileNav />
-        </div>
+        </AppShell>
     );
 }

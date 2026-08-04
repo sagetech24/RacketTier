@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import '../../css/dashboard-v2.css';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchFacilities } from '../api/facilities.js';
 import { fetchFacilityPlayers, fetchSports, postCreateGameSession } from '../api/gameSession.js';
+import { AppShell } from '../components/app/AppShell.jsx';
+import { PageHeader } from '../components/app/PageHeader.jsx';
 import { SportCard } from '../components/dashboard/SportCard.jsx';
-import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
-import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -26,13 +25,6 @@ function initialsFromName(name) {
     if (parts.length === 0) return '?';
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-/**
- * @param {number} id
- */
-function avatarHue(id) {
-    return (id * 47) % 360;
 }
 
 /**
@@ -391,94 +383,70 @@ export function CreateMatchPage() {
     const teamAssignmentsError = fieldErrors.team_assignments?.[0] ?? '';
     const facilityIdError = fieldErrors.facility_id?.[0] ?? '';
 
-    return (
-        <div className="min-h-screen bg-[#131316] pb-32 text-[#e4e1e6]">
-            <DashboardV2Header user={user} profileLoading={false} />
+    const subtitle = selectedFacility
+        ? `New session at ${selectedFacility.name}. Choose sport, invite players, then set teams.`
+        : pageLoading
+          ? 'Loading venue details…'
+          : 'Pick sport and match details, invite players, then assign teams.';
 
-            <main className="rt-fixed-header-pad mx-auto max-w-4xl px-6">
-                <header className="mb-12">
-                    <div className="mb-2 flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#4ce081]">New Session</span>
-                        <div className="h-px grow bg-[#474651] opacity-20" />
-                    </div>
-                    <h1 className="mb-4 text-5xl font-extrabold leading-none tracking-tighter">
-                        CREATE <span className="italic text-[#c2c1ff]">MATCH</span>
-                    </h1>
-                    <p className="max-w-md text-sm leading-relaxed text-[#c8c5d2]">
-                        {selectedFacility ? (
-                            <>
-                                New session at <span className="font-semibold text-[#e4e1e6]">{selectedFacility.name}</span>
-                                . Choose sport and match details, invite players, then set teams.
-                            </>
-                        ) : pageLoading ? (
-                            'Loading…'
-                        ) : (
-                            'Pick sport and match details, invite players, then assign teams before creating the session.'
-                        )}
-                    </p>
-                </header>
+    return (
+        <AppShell user={user}>
+            <div className="rt-create-match">
+                <div className="mb-4">
+                    <Link to="/facilities" className="rt-facility-back">
+                        <MaterialIcon name="arrow_back" className="text-lg" />
+                        Facilities
+                    </Link>
+                </div>
+
+                <PageHeader
+                    eyebrow="New session"
+                    title="Create match"
+                    subtitle={subtitle}
+                />
 
                 {pageLoadError ? (
-                    <div
-                        className="mb-8 rounded-xl border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffb4ab]"
-                        role="alert"
-                    >
+                    <div className="rt-alert-error mb-8" role="alert">
                         {pageLoadError}
                     </div>
                 ) : null}
 
                 {submitError ? (
-                    <div
-                        className="mb-8 rounded-xl border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffb4ab]"
-                        role="alert"
-                    >
+                    <div className="rt-alert-error mb-8" role="alert">
                         {submitError}
                     </div>
                 ) : null}
 
                 {playerIdsError ? (
-                    <div
-                        className="mb-8 rounded-xl border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffb4ab]"
-                        role="alert"
-                    >
+                    <div className="rt-alert-error mb-8" role="alert">
                         {playerIdsError}
                     </div>
                 ) : null}
 
                 {teamAssignmentsError ? (
-                    <div
-                        className="mb-8 rounded-xl border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffb4ab]"
-                        role="alert"
-                    >
+                    <div className="rt-alert-error mb-8" role="alert">
                         {teamAssignmentsError}
                     </div>
                 ) : null}
 
                 {facilityIdError ? (
-                    <div
-                        className="mb-8 rounded-xl border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffb4ab]"
-                        role="alert"
-                    >
+                    <div className="rt-alert-error mb-8" role="alert">
                         {facilityIdError}
                     </div>
                 ) : null}
 
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
                     <section className={`md:col-span-12 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}>
-                        <h2 className="mb-6 flex items-center gap-3 text-xl font-bold">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
+                        <h2 className="rt-create-match-step">
+                            <span className="rt-create-match-step-num" aria-hidden>
                                 1
                             </span>
-                            SELECT SPORTS
+                            Select sport
                         </h2>
                         {pageLoading ? (
                             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                                 {Array.from({ length: 4 }).map((_, i) => (
-                                    <div
-                                        key={i}
-                                        className="h-[120px] animate-pulse rounded-xl bg-[#1b1b1e]"
-                                        aria-hidden
-                                    />
+                                    <div key={i} className="rt-skeleton h-[120px] rounded-xl" aria-hidden />
                                 ))}
                             </div>
                         ) : sports.length === 0 ? (
@@ -500,17 +468,15 @@ export function CreateMatchPage() {
                     </section>
 
                     <section className={`md:col-span-12 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}>
-                        <h2 className="mb-6 flex items-center gap-3 text-xl font-bold">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
+                        <h2 className="rt-create-match-step">
+                            <span className="rt-create-match-step-num" aria-hidden>
                                 2
                             </span>
-                            GAME DETAILS
+                            Game details
                         </h2>
-                        <div className="space-y-6 rounded-xl bg-[#1f1f22] p-6">
+                        <div className="rt-create-match-panel space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
-                                    Match type
-                                </label>
+                                <label className="rt-facility-field-label">Match type</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {(
                                         [
@@ -522,11 +488,10 @@ export function CreateMatchPage() {
                                             key={opt.value}
                                             type="button"
                                             onClick={() => setMatchType(/** @type {'singles'|'doubles'} */ (opt.value))}
-                                            className={`rounded-lg py-3 text-center text-sm font-bold ${
-                                                matchType === opt.value
-                                                    ? 'bg-[#c2c1ff] text-[#282671]'
-                                                    : 'bg-[#0e0e11] text-[#c8c5d2] hover:bg-[#353438]'
-                                            }`}
+                                            className={[
+                                                'rt-create-match-choice min-h-11',
+                                                matchType === opt.value ? 'rt-create-match-choice-on' : '',
+                                            ].join(' ')}
                                         >
                                             {opt.label}
                                         </button>
@@ -534,13 +499,14 @@ export function CreateMatchPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
-                                    Game Type
+                                <label className="rt-facility-field-label" htmlFor="rt-create-game-type">
+                                    Game type
                                 </label>
                                 <select
+                                    id="rt-create-game-type"
                                     value={gameType}
                                     onChange={(e) => setGameType(e.target.value)}
-                                    className="w-full rounded-lg border-none bg-[#0e0e11] py-4 pl-4 pr-4 text-sm text-[#e4e1e6] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                    className="rt-facility-field"
                                     disabled={pageLoading}
                                 >
                                     {GAME_TYPE_OPTIONS.map((o) => (
@@ -551,10 +517,8 @@ export function CreateMatchPage() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="mb-2 text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
-                                    Court Preference
-                                </label>
-                                <div className="grid grid-cols-4 gap-2">
+                                <p className="rt-facility-field-label">Court preference</p>
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                     {['1', '2', '3', '4'].map((n) => (
                                         <button
                                             key={n}
@@ -563,27 +527,27 @@ export function CreateMatchPage() {
                                                 setCourt(n);
                                                 setCourtSpecify('');
                                             }}
-                                            className={`rounded-lg py-3 text-center text-sm font-bold ${
-                                                court === n
-                                                    ? 'bg-[#c2c1ff] text-[#282671]'
-                                                    : 'bg-[#0e0e11] text-[#c8c5d2] hover:bg-[#353438]'
-                                            }`}
+                                            className={[
+                                                'rt-create-match-choice min-h-11',
+                                                court === n ? 'rt-create-match-choice-on' : '',
+                                            ].join(' ')}
                                         >
                                             Court {n}
                                         </button>
                                     ))}
-                                    <div className="col-span-4 space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
-                                            or specify a court
+                                    <div className="col-span-2 space-y-2 sm:col-span-4">
+                                        <label className="rt-facility-field-label" htmlFor="rt-create-court-specify">
+                                            Or specify a court
                                         </label>
                                         <input
+                                            id="rt-create-court-specify"
                                             type="text"
                                             value={courtSpecify}
                                             onChange={(e) => {
                                                 setCourtSpecify(e.target.value);
                                                 setCourt(null);
                                             }}
-                                            className="w-full rounded-lg border-none bg-[#0e0e11] py-4 pl-4 pr-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
+                                            className="rt-facility-field"
                                             placeholder="Court 1, Court 2, etc."
                                             disabled={pageLoading}
                                         />
@@ -594,21 +558,21 @@ export function CreateMatchPage() {
                     </section>
 
                     <section className={`md:col-span-12 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}>
-                        <h2 className="mb-6 flex items-center gap-3 text-xl font-bold">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
+                        <h2 className="rt-create-match-step">
+                            <span className="rt-create-match-step-num" aria-hidden>
                                 3
                             </span>
-                            SELECT PLAYERS
+                            Select players
                         </h2>
-                        <div className="space-y-6 rounded-xl bg-[#1b1b1e] p-6">
+                        <div className="rt-create-match-panel space-y-5">
                             <div className="relative">
                                 <MaterialIcon
                                     name="search"
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#c8c5d2]"
+                                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#918f9c]"
                                 />
                                 <input
-                                    className="w-full rounded-lg border-none bg-[#0e0e11] py-4 pl-12 pr-4 text-sm text-[#e4e1e6] placeholder:text-[#918f9c] focus:ring-1 focus:ring-[#c2c1ff]/20"
-                                    placeholder="Search facility players..."
+                                    className="rt-facility-field !pl-12"
+                                    placeholder="Search facility players…"
                                     type="search"
                                     value={playerSearch}
                                     onChange={(e) => setPlayerSearch(e.target.value)}
@@ -616,81 +580,70 @@ export function CreateMatchPage() {
                                     disabled={pageLoading}
                                 />
                             </div>
-                            <p className="text-xs text-[#918f9c]">
+                            <p className="text-xs leading-relaxed text-[#918f9c]">
                                 {matchType === 'doubles'
-                                    ? 'Doubles: invite exactly three other members (four players including you). You assign teams next.'
-                                    : 'Singles: invite exactly one other member. You assign sides next.'}
+                                    ? 'Doubles: invite exactly three other members (four including you), then assign teams.'
+                                    : 'Singles: invite exactly one other member, then assign sides.'}
                             </p>
-                            <div className={`max-h-[320px] space-y-3 overflow-y-auto pr-2 rt-hide-scrollbar`}>
+                            <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1 rt-hide-scrollbar">
                                 {pageLoading ? (
-                                    <div className="space-y-3">
+                                    <div className="space-y-2">
                                         {Array.from({ length: 5 }).map((_, i) => (
-                                            <div key={i} className="h-16 animate-pulse rounded-lg bg-[#0e0e11]" aria-hidden />
+                                            <div key={i} className="rt-skeleton h-16 rounded-xl" aria-hidden />
                                         ))}
                                     </div>
                                 ) : filteredPlayers.length === 0 ? (
-                                    <div className="space-y-3 text-sm text-[#918f9c]">
+                                    <div className="space-y-3 rounded-xl border border-dashed border-white/10 px-4 py-6 text-sm text-[#918f9c]">
                                         <p>No players match your search.</p>
                                         <p>
                                             Need someone to invite?{' '}
                                             <button
                                                 type="button"
-                                                className="font-semibold text-[#c2c1ff] underline-offset-2 hover:underline"
+                                                className="cursor-pointer font-semibold text-[#c2c1ff] underline-offset-2 hover:underline"
                                                 onClick={() => {
                                                     void reloadPlayers();
                                                 }}
                                             >
                                                 Reload list
                                             </button>{' '}
-                                            or register another account in your browser.
+                                            or register another account.
                                         </p>
                                     </div>
                                 ) : (
                                     filteredPlayers.map((p) => {
                                         const on = invitedIds.has(p.id);
-                                        const hue = avatarHue(p.id);
                                         return (
                                             <div
                                                 key={p.id}
-                                                className={`flex items-center justify-between rounded-lg p-3 transition-colors ${
-                                                    on ? 'bg-[#4ce081]/20' : 'group hover:bg-[#1f1f22]'
-                                                }`}
+                                                className={[
+                                                    'flex items-center justify-between gap-3 rounded-xl border px-3 py-3 transition-colors duration-200',
+                                                    on
+                                                        ? 'border-[#4ce081]/35 bg-[#4ce081]/12'
+                                                        : 'border-transparent bg-[#0f0f12] hover:border-white/8 hover:bg-[#1f1f22]',
+                                                ].join(' ')}
                                             >
-                                                <div className="flex min-w-0 flex-1 items-center gap-4">
-                                                    <div
-                                                        className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-black text-[#282671]"
-                                                        style={{
-                                                            background: `linear-gradient(135deg, hsl(${hue}, 70%, 72%), hsl(${(hue + 40) % 360}, 65%, 58%))`,
-                                                        }}
-                                                    >
+                                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                                    <div className="rt-player-avatar shrink-0" aria-hidden>
                                                         {initialsFromName(p.name)}
-                                                        {on ? (
-                                                            <div className="absolute inset-0 bg-[#c2c1ff]/20" />
-                                                        ) : null}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="truncate text-sm font-bold">{p.name}</p>
-                                                        <p className="truncate text-[10px] font-bold tracking-wider text-[#4ce081]">
-                                                            {p.email}
-                                                        </p>
+                                                        <p className="truncate text-sm font-bold text-[#e4e1e6]">{p.name}</p>
+                                                        <p className="truncate text-xs text-[#918f9c]">{p.email}</p>
                                                     </div>
                                                 </div>
                                                 <button
                                                     type="button"
                                                     onClick={() => toggleInvite(p.id)}
-                                                    className={`ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all ${
+                                                    className={[
+                                                        'inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2c1ff]/65',
                                                         on
-                                                            ? 'bg-[#4ce081] text-[#282671]'
-                                                            : 'bg-[#353438] text-[#c2c1ff] group-hover:bg-[#c2c1ff] group-hover:text-[#282671]'
-                                                    }`}
+                                                            ? 'bg-[#4ce081] text-[#003919]'
+                                                            : 'bg-[#353438] text-[#c2c1ff] hover:bg-[#c2c1ff] hover:text-[#211e6a]',
+                                                    ].join(' ')}
                                                     aria-pressed={on}
-                                                    aria-label={on ? 'Remove invite' : 'Add invite'}
+                                                    aria-label={on ? `Remove ${p.name}` : `Invite ${p.name}`}
                                                 >
-                                                    <MaterialIcon
-                                                        name={on ? 'check' : 'add'}
-                                                        className="text-lg"
-                                                        filled={on}
-                                                    />
+                                                    <MaterialIcon name={on ? 'check' : 'add'} className="text-xl" filled={on} />
                                                 </button>
                                             </div>
                                         );
@@ -705,76 +658,63 @@ export function CreateMatchPage() {
                             !inviteCountOk ? 'opacity-50' : ''
                         }`}
                     >
-                        <h2 className="mb-6 flex items-center gap-3 text-xl font-bold">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
+                        <h2 className="rt-create-match-step">
+                            <span className="rt-create-match-step-num" aria-hidden>
                                 4
                             </span>
-                            TEAM LINEUP
+                            Team lineup
                         </h2>
-                        <p className="mb-4 text-xs text-[#918f9c]">
+                        <p className="mb-4 text-xs leading-relaxed text-[#918f9c]">
                             {matchType === 'singles'
                                 ? 'Put yourself and your opponent on team 1 and team 2 (one player per side).'
                                 : 'Split four players into two pairs — team 1 vs team 2.'}
                         </p>
                         {!inviteCountOk ? (
-                            <p className="rounded-xl bg-[#1b1b1e] px-4 py-6 text-sm text-[#918f9c]">
+                            <p className="rounded-xl border border-dashed border-white/10 bg-[#1b1b1e]/80 px-4 py-6 text-sm text-[#918f9c]">
                                 {matchType === 'doubles'
                                     ? 'Invite exactly three other players in step 3, then assign teams here.'
                                     : 'Invite exactly one other player in step 3, then assign teams here.'}
                             </p>
                         ) : (
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid gap-3 sm:grid-cols-2">
                                 {rosterForTeams.map((row) => {
-                                    const hue = avatarHue(row.id);
                                     const t = teamByUserId[row.id];
                                     return (
-                                        <div
-                                            key={row.id}
-                                            className="flex flex-col gap-4 rounded-xl border border-[#353438] bg-[#1b1b1e] p-4 sm:flex-row sm:items-center sm:justify-between"
-                                        >
+                                        <div key={row.id} className="rt-create-match-panel flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                             <div className="flex min-w-0 flex-1 items-center gap-3">
-                                                <div
-                                                    className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-black text-[#282671]"
-                                                    style={{
-                                                        background: `linear-gradient(135deg, hsl(${hue}, 70%, 72%), hsl(${(hue + 40) % 360}, 65%, 58%))`,
-                                                    }}
-                                                >
+                                                <div className="rt-player-avatar shrink-0" aria-hidden>
                                                     {initialsFromName(row.name)}
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="truncate text-sm font-bold text-[#e4e1e6]">
                                                         {row.name}
                                                         {row.isHost ? (
-                                                            <span className="ml-2 text-[10px] font-black uppercase tracking-wider text-[#4ce081]">
+                                                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#4ce081]">
                                                                 Host
                                                             </span>
                                                         ) : null}
                                                     </p>
-                                                    <p className="truncate text-[10px] font-bold tracking-wider text-[#918f9c]">
-                                                        {row.email}
-                                                    </p>
+                                                    <p className="truncate text-xs text-[#918f9c]">{row.email}</p>
                                                 </div>
                                             </div>
                                             <div className="flex shrink-0 gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={() => setPlayerTeam(row.id, 1)}
-                                                    className={`rounded-lg px-4 py-2 text-xs font-bold ${
-                                                        t === 1
-                                                            ? 'bg-[#c2c1ff] text-[#282671]'
-                                                            : 'bg-[#0e0e11] text-[#c8c5d2] hover:bg-[#353438]'
-                                                    }`}
+                                                    className={[
+                                                        'rt-create-match-choice min-h-11 flex-1 px-4 sm:flex-none',
+                                                        t === 1 ? 'rt-create-match-choice-on' : '',
+                                                    ].join(' ')}
                                                 >
                                                     Team 1
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => setPlayerTeam(row.id, 2)}
-                                                    className={`rounded-lg px-4 py-2 text-xs font-bold ${
-                                                        t === 2
-                                                            ? 'bg-[#4ce081] text-[#003919]'
-                                                            : 'bg-[#0e0e11] text-[#c8c5d2] hover:bg-[#353438]'
-                                                    }`}
+                                                    className={[
+                                                        'rt-create-match-choice min-h-11 flex-1 px-4 sm:flex-none',
+                                                        t === 2 ? 'rt-create-match-choice-green' : '',
+                                                    ].join(' ')}
                                                 >
                                                     Team 2
                                                 </button>
@@ -785,7 +725,7 @@ export function CreateMatchPage() {
                             </div>
                         )}
                         {inviteCountOk && !teamsValid ? (
-                            <p className="mt-4 text-xs text-[#ffb4ab]">
+                            <p className="mt-4 text-xs text-[#ffb4ab]" role="alert">
                                 {matchType === 'singles'
                                     ? 'Singles needs one player on team 1 and one on team 2.'
                                     : 'Doubles needs exactly two players on each team.'}
@@ -794,19 +734,17 @@ export function CreateMatchPage() {
                     </section>
                 </div>
 
-                <h2
-                    className={`mt-8 flex items-center gap-3 text-xl font-bold ${!facilityId ? 'opacity-40' : ''}`}
-                >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#353438] text-[16px] font-black">
+                <h2 className={`rt-create-match-step mt-2 ${!facilityId ? 'opacity-40' : ''}`}>
+                    <span className="rt-create-match-step-num" aria-hidden>
                         5
                     </span>
-                    MATCH SUMMARY
+                    Match summary
                 </h2>
                 <div
-                    className={`flex flex-col items-stretch gap-6 border-t border-[#474651]/10 pt-4 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}
+                    className={`flex flex-col items-stretch gap-5 ${!facilityId ? 'pointer-events-none opacity-40' : ''}`}
                 >
-                    <div className="w-full min-w-0 space-y-4 rounded-xl border border-[#474651]/25 bg-[#1b1b1e] p-5">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4ce081]">Match summary</p>
+                    <div className="rt-create-match-panel space-y-4">
+                        <p className="rt-section-eyebrow !mb-0 text-[#4ce081]">Ready to create</p>
                         <dl className="space-y-3 text-sm">
                             <div className="flex items-start justify-between gap-4">
                                 <dt className="shrink-0 text-[#918f9c]">Facility</dt>
@@ -860,8 +798,8 @@ export function CreateMatchPage() {
                                 </>
                             ) : null}
                         </dl>
-                        <div className="border-t border-[#474651]/30 pt-4">
-                            <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[#c8c5d2]">
+                        <div className="border-t border-white/5 pt-4">
+                            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#c8c5d2]">
                                 Invited members
                             </p>
                             {invitedPlayers.length > 0 ? (
@@ -869,10 +807,10 @@ export function CreateMatchPage() {
                                     {invitedPlayers.map((p) => (
                                         <li
                                             key={p.id}
-                                            className="flex items-start justify-between text-sm font-semibold text-[#e4e1e6]"
+                                            className="flex items-start justify-between gap-3 text-sm font-semibold text-[#e4e1e6]"
                                         >
-                                            <span className="font-semibold text-[#e4e1e6]">{p.name}</span>
-                                            <span className="max-w-[45%] truncate text-[10px] font-bold tracking-wider text-[#4ce081]">
+                                            <span>{p.name}</span>
+                                            <span className="max-w-[45%] truncate text-xs font-medium text-[#918f9c]">
                                                 {p.email}
                                             </span>
                                         </li>
@@ -903,14 +841,12 @@ export function CreateMatchPage() {
                                           : undefined
                                 : undefined
                         }
-                        className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rt-kinetic-gradient w-full cursor-pointer rounded-xl px-8 py-4 text-lg font-extrabold tracking-tight text-[#211e6a] transition-transform duration-150 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2c1ff]/70"
                     >
-                        {submitting ? 'Creating…' : 'Create Match'}
+                        {submitting ? 'Creating…' : 'Create match'}
                     </button>
                 </div>
-            </main>
-
-            <DashboardMobileNav />
-        </div>
+            </div>
+        </AppShell>
     );
 }
