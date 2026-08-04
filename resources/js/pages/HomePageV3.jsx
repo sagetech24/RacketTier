@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchPublicStats } from '../api/publicStats.js';
+import { LegalDocumentModal } from '../components/auth/LegalDocumentModal.jsx';
+import { PRIVACY_POLICY_TEXT } from '../components/auth/privacyPolicyContent.js';
+import { TERMS_OF_SERVICE_TEXT } from '../components/auth/termsOfServiceContent.js';
 import { AutoMatchQueueDemo } from '../components/landing/AutoMatchQueueDemo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import '../../css/landing-v3.css';
 // Score tap demo kept for future reference: ../components/landing/MatchScoreSimulator.jsx
+
+/** @typedef {'terms' | 'privacy'} LegalModalKind */
 function formatStatCount(n) {
     if (n == null) return '—';
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M+`;
@@ -199,6 +204,7 @@ export function HomePageV3() {
     const [totalMembers, setTotalMembers] = useState(/** @type {number | null} */ (null));
     const [totalQueueingSessions, setTotalQueueingSessions] = useState(/** @type {number | null} */ (null));
     const [totalPointsAwarded, setTotalPointsAwarded] = useState(/** @type {number | null} */ (null));
+    const [legalModal, setLegalModal] = useState(/** @type {LegalModalKind | null} */ (null));
     const statsRef = useRef(/** @type {HTMLElement | null} */ (null));
 
     const sport = SPORTS.find((s) => s.id === sportId) ?? SPORTS[0];
@@ -685,21 +691,46 @@ export function HomePageV3() {
                         <p className="mt-2 text-xs text-[#918f9c]">The kinetic world of racket sports.</p>
                     </div>
                     <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#c8c5d2]" aria-label="Footer">
-                        <Link to="/v1" className="transition-colors hover:text-[#e4e1e6]">
+                        {/* <Link to="/v1" className="transition-colors hover:text-[#e4e1e6]">
                             v1
                         </Link>
                         <Link to="/v2" className="transition-colors hover:text-[#e4e1e6]">
                             v2
-                        </Link>
+                        </Link> */}
                         <Link to="/login" className="transition-colors hover:text-[#e4e1e6]">
                             Sign in
                         </Link>
-                        <span className="text-[#918f9c]">Terms</span>
-                        <span className="text-[#918f9c]">Privacy</span>
+                        <button
+                            type="button"
+                            onClick={() => setLegalModal('terms')}
+                            className="cursor-pointer font-medium text-[#918f9c] transition-colors hover:text-[#e4e1e6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/50"
+                        >
+                            Terms
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setLegalModal('privacy')}
+                            className="cursor-pointer font-medium text-[#918f9c] transition-colors hover:text-[#e4e1e6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/50"
+                        >
+                            Privacy
+                        </button>
                     </nav>
                     <p className="text-[10px] uppercase tracking-[0.08em] text-[#918f9c]">© {new Date().getFullYear()} RacketTier</p>
                 </div>
             </footer>
+
+            <LegalDocumentModal
+                open={legalModal === 'terms'}
+                title="Terms of Service"
+                content={TERMS_OF_SERVICE_TEXT}
+                onClose={() => setLegalModal(null)}
+            />
+            <LegalDocumentModal
+                open={legalModal === 'privacy'}
+                title="Privacy Policy"
+                content={PRIVACY_POLICY_TEXT}
+                onClose={() => setLegalModal(null)}
+            />
         </div>
     );
 }
