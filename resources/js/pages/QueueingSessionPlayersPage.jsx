@@ -5,9 +5,8 @@ import {
     deleteQueueingSessionPlayer,
     patchUpdateQueueingSessionPlayer,
 } from '../api/queueingSession.js';
+import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
-import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.jsx';
-import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueueingSessionPlayerModal.jsx';
@@ -351,18 +350,16 @@ export function QueueingSessionPlayersPage() {
         !showInitialSkeleton && rosterPlayers.length > 0 && sortedRosterPlayers.length === 0;
 
     return (
-        <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6]">
-            <DashboardV2Header user={user} profileLoading={false} />
-            <main className="rt-page-main">
-                {showInitialSkeleton ? <QueueingSessionPlayersLoading /> : null}
+        <AppShell user={user}>
+            {showInitialSkeleton ? <QueueingSessionPlayersLoading /> : null}
 
-                {!showInitialSkeleton ? (
-                    <>
-                {error ? (
-                    <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
-                        {error}
-                    </p>
-                ) : null}
+            {!showInitialSkeleton ? (
+                <>
+            {error ? (
+                <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                    {error}
+                </p>
+            ) : null}
 
                 {session ? (
                     <div className="space-y-4">
@@ -585,7 +582,6 @@ export function QueueingSessionPlayersPage() {
                 ) : null}
                     </>
                 ) : null}
-            </main>
             <AddQueueingSessionPlayerModal
                 open={editPlayerModal != null}
                 mode={editPlayerModal?.mode ?? 'guest'}
@@ -626,7 +622,6 @@ export function QueueingSessionPlayersPage() {
                 onReload={reload}
                 onActionError={setActionError}
             />
-            <DashboardMobileNav />
-        </div>
+        </AppShell>
     );
 }
