@@ -123,7 +123,7 @@ export function HomePage() {
             {/* Nav */}
             <header className="relative z-10">
                 <nav className="mx-auto mt-8 flex w-full max-w-6xl items-center justify-between px-6 py-6">
-                    <Link to="/" className="flex items-center gap-2.5">
+                    <Link to="/v1" className="flex items-center gap-2.5">
                         <img src="/images/rt-logo.png" alt="" className="h-6 w-6" />
                         <span className="text-xl font-extrabold tracking-tighter text-[#c2c1ff]">
                             Racket<span className="ml-[0.1rem] italic">Tier</span>

@@ -27,7 +27,11 @@ export function RootLayout() {
     const isRegisterPage = location.pathname === '/register';
     const isForgotPasswordPage = location.pathname === '/forgot-password';
     const isResetPasswordPage = /^\/password\/reset\/.+$/.test(location.pathname);
-    const isHomePage = location.pathname === '/';
+    const isHomePage =
+        location.pathname === '/' ||
+        location.pathname === '/v1' ||
+        location.pathname === '/v2' ||
+        location.pathname === '/v3';
     const isV2Shell = isV2DashboardShellPath(location.pathname);
 
     return (

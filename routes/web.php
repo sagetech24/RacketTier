@@ -54,6 +54,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::view('/', 'app')->name('home');
+Route::view('/v1', 'app')->name('home.v1');
+Route::view('/v2', 'app')->name('home.v2');
+Route::view('/v3', 'app')->name('home.v3');
 
 Route::get('/public/stats', [PublicStatsController::class, 'show'])->name('public.stats');
 

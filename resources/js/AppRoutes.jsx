@@ -10,6 +10,8 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx').then((m) =>
 const FacilitiesPage = lazy(() => import('./pages/FacilitiesPage.jsx').then((m) => ({ default: m.FacilitiesPage })));
 const GameRoomPage = lazy(() => import('./pages/GameRoomPage.jsx').then((m) => ({ default: m.GameRoomPage })));
 const HomePage = lazy(() => import('./pages/HomePage.jsx').then((m) => ({ default: m.HomePage })));
+const HomePageV2 = lazy(() => import('./pages/HomePageV2.jsx').then((m) => ({ default: m.HomePageV2 })));
+const HomePageV3 = lazy(() => import('./pages/HomePageV3.jsx').then((m) => ({ default: m.HomePageV3 })));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx').then((m) => ({ default: m.LoginPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((m) => ({ default: m.ProfilePage })));
 const RankingPage = lazy(() => import('./pages/RankingPage.jsx').then((m) => ({ default: m.RankingPage })));
@@ -32,7 +34,10 @@ export function AppRoutes() {
     return (
         <Routes>
             <Route path="/" element={<RootLayout />}>
-                <Route index element={<LazyPage><HomePage /></LazyPage>} />
+                <Route index element={<LazyPage><HomePageV3 /></LazyPage>} />
+                <Route path="v1" element={<LazyPage><HomePage /></LazyPage>} />
+                <Route path="v2" element={<LazyPage><HomePageV2 /></LazyPage>} />
+                <Route path="v3" element={<LazyPage><HomePageV3 /></LazyPage>} />
                 <Route path="login" element={<LazyPage><LoginPage /></LazyPage>} />
                 <Route path="register" element={<LazyPage><RegisterPage /></LazyPage>} />
                 <Route path="forgot-password" element={<LazyPage><ForgotPasswordPage /></LazyPage>} />

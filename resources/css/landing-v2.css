@@ -1,0 +1,168 @@
+/* RacketTier landing v2 — marketing motion & stage utilities */
+
+.rt-landing-v2 {
+    --rt-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+.rt-landing-v2 .rt-display {
+    font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+}
+
+.rt-landing-v2 .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 1.25rem;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.rt-landing-v2-nav {
+    transition:
+        background-color 220ms ease-out,
+        border-color 220ms ease-out,
+        box-shadow 220ms ease-out,
+        backdrop-filter 220ms ease-out;
+}
+
+.rt-landing-v2-nav.is-scrolled {
+    background-color: rgba(18, 18, 22, 0.82);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 40px -16px rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(16px);
+}
+
+.rt-landing-v2-glow {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(120px);
+    pointer-events: none;
+}
+
+.rt-landing-v2-stage {
+    background:
+        radial-gradient(ellipse 80% 60% at 70% 20%, rgba(194, 193, 255, 0.14), transparent 55%),
+        radial-gradient(ellipse 70% 50% at 20% 90%, rgba(76, 224, 129, 0.1), transparent 50%),
+        linear-gradient(165deg, #1b1b1e 0%, #121216 55%, #0f0f12 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rt-landing-v2-gradient-text {
+    background-image: linear-gradient(to right, #c2c1ff, #a5a3ff, #4ce081);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.rt-landing-v2-marquee {
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+.rt-landing-v2-marquee-track {
+    display: flex;
+    width: max-content;
+    gap: 1.5rem;
+    animation: rt-landing-marquee 36s linear infinite;
+}
+
+.rt-landing-v2-marquee-track:hover {
+    animation-play-state: paused;
+}
+
+@keyframes rt-landing-marquee {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+.rt-landing-v2-reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+        opacity 480ms var(--rt-ease-out),
+        transform 480ms var(--rt-ease-out);
+}
+
+.rt-landing-v2-reveal.is-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.rt-landing-v2-podium-1 {
+    animation: rt-landing-rise 700ms var(--rt-ease-out) 120ms both;
+}
+
+.rt-landing-v2-podium-2 {
+    animation: rt-landing-rise 700ms var(--rt-ease-out) 40ms both;
+}
+
+.rt-landing-v2-podium-3 {
+    animation: rt-landing-rise 700ms var(--rt-ease-out) 200ms both;
+}
+
+@keyframes rt-landing-rise {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rt-landing-v2-pulse {
+    animation: rt-landing-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rt-landing-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.45;
+    }
+}
+
+.rt-landing-v2-tier-bar {
+    transform-origin: left center;
+    animation: rt-landing-fill 900ms var(--rt-ease-out) 200ms both;
+}
+
+@keyframes rt-landing-fill {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rt-landing-v2-marquee-track,
+    .rt-landing-v2-podium-1,
+    .rt-landing-v2-podium-2,
+    .rt-landing-v2-podium-3,
+    .rt-landing-v2-pulse,
+    .rt-landing-v2-tier-bar {
+        animation: none !important;
+    }
+
+    .rt-landing-v2-reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
