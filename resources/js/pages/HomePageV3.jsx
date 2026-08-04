@@ -37,13 +37,13 @@ const FEATURES = [
     },
     {
         icon: 'trending_up',
-        title: 'Live ELO per sport',
+        title: 'Live ratings per sport',
         body: 'Every finished match moves your rating. Transparent history, real podium.',
     },
     {
         icon: 'military_tech',
         title: 'Points & five tiers',
-        body: 'Wallet balances climb Starter → Sensie while ELO tracks pure skill.',
+        body: 'Wallet balances climb Starter → Sensie while ratings tracks pure skill.',
     },
 ];
 
@@ -51,7 +51,7 @@ const STEPS = [
     { title: 'Create a Session', body: 'Pick a sport, singles or doubles, and set win/loss point rewards.' },
     { title: 'Build the Queue', body: 'Invite members or drop in guests. FIFO keeps court time fair.' },
     { title: 'Play & Record', body: 'Auto-generate from the top of the queue, then submit results.' },
-    { title: 'Climb the Ranks', body: 'ELO updates, points credit, and your tier label evolves.' },
+    { title: 'Climb the Ranks', body: 'Ratings updates, points credit, and your tier label evolves.' },
 ];
 
 const TIERS = [
@@ -69,7 +69,7 @@ const PODIUM = [
 ];
 
 const TICKER = [
-    'Jordan R. +18 ELO · Badminton',
+    'Jordan R. +18 ratings · Badminton',
     'Queue #7 started · Pickleball doubles',
     'Maya K. reached Intermediate',
     'Facility match finished · +30 pts',
@@ -384,7 +384,7 @@ export function HomePageV3() {
                                 </span>
                             </h1>
                             <p className="mt-4 max-w-lg text-base leading-relaxed text-[#c8c5d2]">
-                                The kinetic ranking arena for racket sports — fair queues, live ELO, and tier climbs that
+                                The kinetic ranking arena for racket sports — fair queues, live ratings, and tier climbs that
                                 feel as sharp as a winner&apos;s smash.
                             </p>
 
@@ -545,7 +545,7 @@ export function HomePageV3() {
                                 Tap a tier. Inspect the podium.
                             </h2>
                             <p className="mt-3 text-sm leading-relaxed text-[#c8c5d2] tab:text-base">
-                                Session points fill your per-sport wallet. Click a tier to preview the climb — ELO stays
+                                Session points fill your per-sport wallet. Click a tier to preview the climb — ratings stays
                                 separate for pure skill.
                             </p>
                             <ul className="mt-8 space-y-3">
@@ -584,7 +584,7 @@ export function HomePageV3() {
                             <div className="rt-landing-v3-scoreboard rounded-[1.75rem] p-6 tab:p-8">
                                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#918f9c]">Live podium</p>
                                 <p className="rt-display mt-1 text-xl font-bold tracking-tight">
-                                    {selectedPodium.name} · {selectedPodium.rating} ELO
+                                    {selectedPodium.name} · {selectedPodium.rating} rating
                                 </p>
                                 <div className="mt-8 flex items-end justify-center gap-3">
                                     {PODIUM.map((p) => (
@@ -691,12 +691,6 @@ export function HomePageV3() {
                         <p className="mt-2 text-xs text-[#918f9c]">The kinetic world of racket sports.</p>
                     </div>
                     <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#c8c5d2]" aria-label="Footer">
-                        {/* <Link to="/v1" className="transition-colors hover:text-[#e4e1e6]">
-                            v1
-                        </Link>
-                        <Link to="/v2" className="transition-colors hover:text-[#e4e1e6]">
-                            v2
-                        </Link> */}
                         <Link to="/login" className="transition-colors hover:text-[#e4e1e6]">
                             Sign in
                         </Link>
