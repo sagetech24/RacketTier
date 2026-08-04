@@ -9,6 +9,7 @@ import {
 } from '../api/queueingSession.js';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
+import { MODAL_OVERLAY_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { QueueingSessionFinishedMatches } from '../components/queueing/QueueingSessionFinishedMatches.jsx';
@@ -577,12 +578,13 @@ export function QueueingSessionMatchesPage() {
             ) : null}
 
             {finishOpen ? (
-                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 sm:items-center md:p-6">
-                    <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg">
-                        <h3 className="mb-4 text-lg font-bold">
-                            End Match{selectedMatchNo != null ? ` #${selectedMatchNo}` : ''}
-                            {session?.skip_scores ? ': Pick Winner' : ': Final Score'}
-                        </h3>
+                <ModalPortal open={finishOpen}>
+                    <div className={MODAL_OVERLAY_CLASS}>
+                        <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg">
+                            <h3 className="mb-4 text-lg font-bold">
+                                End Match{selectedMatchNo != null ? ` #${selectedMatchNo}` : ''}
+                                {session?.skip_scores ? ': Pick Winner' : ': Final Score'}
+                            </h3>
                         {session?.skip_scores ? (
                             <div className="mb-4 space-y-3">
                                 <p className="text-xs text-[#918f9c]">Select which team won this match.</p>
@@ -690,6 +692,7 @@ export function QueueingSessionMatchesPage() {
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             ) : null}
 
             <ConfirmActionModal

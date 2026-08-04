@@ -3,6 +3,7 @@ import {
     reservedQueueingPlayerIds,
     rosterPlayerLabel,
 } from '../../lib/queueingMatchLineup.js';
+import { MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../app/ModalPortal.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { DraggableMatchLineup } from './DraggableMatchLineup.jsx';
 
@@ -220,14 +221,15 @@ export function QueueingSessionMatchLineupModal({
     if (!open) return null;
 
     return (
-        <div className="rt-end-match-modal-overlay fixed inset-0 z-99 flex items-end justify-center pt-10 sm:items-center">
-            <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-[#747474] bg-[#1b1b1e] shadow-xl sm:rounded-2xl">
-                <div className="border-b border-[#2a2a2d] p-5 pb-4">
-                    <h3 className="text-lg md:text-3xl font-bold">
-                        {mode === 'edit'
-                            ? `Edit Match${editingMatchNo != null ? ` #${editingMatchNo}` : ''}`
-                            : 'Create Match'}
-                    </h3>
+        <ModalPortal open={open}>
+            <div className={MODAL_OVERLAY_SHEET_CLASS}>
+                <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-[#747474] bg-[#1b1b1e] shadow-xl sm:rounded-2xl">
+                    <div className="border-b border-[#2a2a2d] p-5 pb-4">
+                        <h3 className="text-lg md:text-3xl font-bold">
+                            {mode === 'edit'
+                                ? `Edit Match${editingMatchNo != null ? ` #${editingMatchNo}` : ''}`
+                                : 'Create Match'}
+                        </h3>
                     <p className="my-2 text-base! text-[#918f9c] md:text-lg!">
                         {mode === 'edit'
                             ? 'Update players on Team 1 or Team 2 for this queued match.'
@@ -389,5 +391,6 @@ export function QueueingSessionMatchLineupModal({
                 </div>
             </div>
         </div>
+        </ModalPortal>
     );
 }

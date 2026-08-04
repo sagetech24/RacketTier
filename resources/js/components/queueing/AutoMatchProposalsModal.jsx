@@ -4,6 +4,7 @@ import {
     postCreateQueueingSessionMatch,
     postStartQueueingSessionMatch,
 } from '../../api/queueingSession.js';
+import { MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../app/ModalPortal.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { DraggableMatchLineup } from './DraggableMatchLineup.jsx';
 
@@ -446,11 +447,12 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
     const chips = criteriaSummaryChips(activeCriteria);
 
     return (
-        <div className="rt-end-match-modal-overlay fixed inset-0 z-99 flex items-end justify-center pt-10 sm:items-center">
-            <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-[#747474] bg-[#1b1b1e] shadow-xl sm:rounded-2xl">
-                <div className="border-b border-[#2a2a2d] p-5 pb-4">
-                    <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-lg font-bold">Auto-Generate Matches</h3>
+        <ModalPortal open={open}>
+            <div className={MODAL_OVERLAY_SHEET_CLASS}>
+                <div className="rt-end-match-modal-sheet flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-[#747474] bg-[#1b1b1e] shadow-xl sm:rounded-2xl">
+                    <div className="border-b border-[#2a2a2d] p-5 pb-4">
+                        <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-lg font-bold">Auto-Generate Matches</h3>
                         {onEditCriteria ? (
                             <button
                                 type="button"
@@ -558,5 +560,6 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                 </div>
             </div>
         </div>
+        </ModalPortal>
     );
 }

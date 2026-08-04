@@ -22,6 +22,7 @@ import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
 import { PageHeader } from '../components/app/PageHeader.jsx';
 import { ToggleField } from '../components/app/ToggleSwitch.jsx';
+import { MODAL_OVERLAY_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -549,9 +550,10 @@ export function QueueingSessionListPage() {
             )}
 
             {editRow ? (
-                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 sm:items-center md:p-6">
-                    <div className="rt-end-match-modal-sheet w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg md:rounded-2xl">
-                        <h2 className="mb-1 text-lg font-bold">Edit queue</h2>
+                <ModalPortal open={Boolean(editRow)}>
+                    <div className={MODAL_OVERLAY_CLASS}>
+                        <div className="rt-end-match-modal-sheet w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg md:rounded-2xl">
+                            <h2 className="mb-1 text-lg font-bold">Edit queue</h2>
                         <p className="mb-4 text-xs text-[#918f9c]">
                             Update settings for {editRow.queue_name?.trim() || `session #${editRow.id}`}.
                         </p>
@@ -634,14 +636,16 @@ export function QueueingSessionListPage() {
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             ) : null}
 
             {deleteRow ? (
-                <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center p-4 sm:items-center md:p-6">
-                    <div className="rt-end-match-modal-sheet w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg md:rounded-2xl">
-                        <h2 className="mb-1 text-lg font-bold text-red-200">
-                            {deleteRow.is_active ? 'Delete queue?' : 'Remove finished queue?'}
-                        </h2>
+                <ModalPortal open={Boolean(deleteRow)}>
+                    <div className={MODAL_OVERLAY_CLASS}>
+                        <div className="rt-end-match-modal-sheet w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg md:rounded-2xl">
+                            <h2 className="mb-1 text-lg font-bold text-red-200">
+                                {deleteRow.is_active ? 'Delete queue?' : 'Remove finished queue?'}
+                            </h2>
                         <p className="mb-4 text-xs text-[#918f9c]">
                             This permanently removes{' '}
                             {deleteRow.queue_name?.trim() || `session #${deleteRow.id}`} and all
@@ -678,6 +682,7 @@ export function QueueingSessionListPage() {
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             ) : null}
 
             <ConfirmActionModal

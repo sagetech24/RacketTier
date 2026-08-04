@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { MODAL_OVERLAY_CLASS, ModalPortal } from '../app/ModalPortal.jsx';
 
 const PRONOUN_OPTIONS = [
     { value: '', label: 'Select gender' },
@@ -133,17 +134,18 @@ export function AddQueueingSessionPlayerModal({
     }
 
     return (
-        <div className="rt-end-match-modal-overlay fixed inset-0 z-[99] flex items-end justify-center sm:items-center">
-            <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl">
-                {successMessage ? (
-                    <div
-                        role="alert"
-                        className="mb-4 rounded-lg border border-[#4ce081]/40 bg-[#4ce081]/10 px-3 py-2 text-sm font-medium text-[#4ce081]"
-                    >
-                        {successMessage}
-                    </div>
-                ) : null}
-                <h3 className="text-lg font-bold text-[#e4e1e6]">{title}</h3>
+        <ModalPortal open={open}>
+            <div className={MODAL_OVERLAY_CLASS}>
+                <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl">
+                    {successMessage ? (
+                        <div
+                            role="alert"
+                            className="mb-4 rounded-lg border border-[#4ce081]/40 bg-[#4ce081]/10 px-3 py-2 text-sm font-medium text-[#4ce081]"
+                        >
+                            {successMessage}
+                        </div>
+                    ) : null}
+                    <h3 className="text-lg font-bold text-[#e4e1e6]">{title}</h3>
                 {!isGuest && member ? (
                     <p className="mt-2 text-sm text-[#918f9c]">
                         {isEdit ? 'Editing' : 'Adding'}{' '}
@@ -244,5 +246,6 @@ export function AddQueueingSessionPlayerModal({
                 </form>
             </div>
         </div>
+        </ModalPortal>
     );
 }
