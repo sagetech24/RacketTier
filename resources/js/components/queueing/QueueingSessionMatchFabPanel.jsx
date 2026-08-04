@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../context/AuthContext.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { AddQueueingSessionPlayerModal } from './AddQueueingSessionPlayerModal.jsx';
+import { AutoMatchCriteriaModal } from './AutoMatchCriteriaModal.jsx';
 import { AutoMatchProposalsModal } from './AutoMatchProposalsModal.jsx';
 import { ConfirmActionModal } from './ConfirmActionModal.jsx';
 import { parseAutoMatchCriteria } from './QueueingSessionAutoMatchCriteriaField.jsx';
@@ -44,7 +45,9 @@ export function QueueingSessionMatchFabPanel({
     const [matches, setMatches] = useState(matchesProp ?? []);
     const [localSession, setLocalSession] = useState(session);
     const [createMatchOpen, setCreateMatchOpen] = useState(false);
+    const [autoMatchCriteriaOpen, setAutoMatchCriteriaOpen] = useState(false);
     const [autoMatchProposalsOpen, setAutoMatchProposalsOpen] = useState(false);
+    const [criteriaReturnToProposals, setCriteriaReturnToProposals] = useState(false);
     const [addMemberPickerOpen, setAddMemberPickerOpen] = useState(false);
     const [addPlayerModal, setAddPlayerModal] = useState(
         /** @type {{
@@ -144,8 +147,30 @@ export function QueueingSessionMatchFabPanel({
         if (sessionId == null || localSession == null) return;
         closeMenu();
         onActionError?.('');
+        setCriteriaReturnToProposals(false);
         setAutoMatchCriteria(parseAutoMatchCriteria(localSession.auto_match_criteria));
+        setAutoMatchCriteriaOpen(true);
+    }
+
+    function handleAutoMatchCriteriaConfirm(nextCriteria) {
+        setAutoMatchCriteria(nextCriteria);
+        setAutoMatchCriteriaOpen(false);
+        setCriteriaReturnToProposals(false);
         setAutoMatchProposalsOpen(true);
+    }
+
+    function handleAutoMatchCriteriaClose() {
+        setAutoMatchCriteriaOpen(false);
+        if (criteriaReturnToProposals) {
+            setCriteriaReturnToProposals(false);
+            setAutoMatchProposalsOpen(true);
+        }
+    }
+
+    function handleEditAutoMatchCriteria() {
+        setCriteriaReturnToProposals(true);
+        setAutoMatchProposalsOpen(false);
+        setAutoMatchCriteriaOpen(true);
     }
 
     async function handleOpenCreateMatch() {
@@ -418,11 +443,19 @@ export function QueueingSessionMatchFabPanel({
                 </button>
             </div>
 
+            <AutoMatchCriteriaModal
+                open={autoMatchCriteriaOpen}
+                initialCriteria={autoMatchCriteria ?? undefined}
+                onClose={handleAutoMatchCriteriaClose}
+                onConfirm={handleAutoMatchCriteriaConfirm}
+            />
+
             <AutoMatchProposalsModal
                 open={autoMatchProposalsOpen}
                 sessionId={sessionId}
                 criteria={autoMatchCriteria}
                 onClose={() => setAutoMatchProposalsOpen(false)}
+                onEditCriteria={handleEditAutoMatchCriteria}
                 onApproved={() => handleAutoMatchApproved()}
             />
 
