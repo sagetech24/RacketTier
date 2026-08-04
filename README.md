@@ -141,6 +141,8 @@ Markdown references and Agent Skills for deeper, task-specific guidance.
 | Skill | Source | Focus |
 |-------|--------|--------|
 | `emil-design-eng` | [emilkowalski/skill](https://github.com/emilkowalski/skills) | Animation decisions, UI polish (Emil Kowalski). |
+| `improve-animations` | emilkowalski/skill | Codebase motion audit → prioritized implementation plans. |
+| `find-animation-opportunities` | emilkowalski/skill | Find where motion helps — and reject where it shouldn't. |
 | `review-animations` | emilkowalski/skill | Strict motion-code review. |
 | `animation-vocabulary` | emilkowalski/skill | Motion prompt vocabulary. |
 | `design-taste-frontend` | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) | Anti-slop landing/marketing UI (not app dashboards). |
@@ -161,7 +163,9 @@ npx uipro-cli@latest init --ai cursor
 
 ```bash
 npx impeccable skills update
-npx skills add emilkowalski/skill --agent cursor -y
+npx skills add emilkowalski/skill --agent cursor -y --copy \
+  --skill emil-design-eng --skill review-animations --skill animation-vocabulary \
+  --skill improve-animations --skill find-animation-opportunities
 npx skills add Leonxlnx/taste-skill --skill design-taste-frontend --agent cursor -y
 npx skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent cursor -y
 ```
