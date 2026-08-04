@@ -60,7 +60,7 @@ export function DashboardMobileNav() {
     const profileActive = pathname === '/profile';
 
     return (
-        <nav className="rt-mobile-nav fixed bottom-0 left-0 z-50 w-full md:hidden" aria-label="Primary">
+        <nav className="rt-mobile-nav md:hidden" aria-label="Primary">
             <div className="flex items-stretch justify-around shadow-[0_-8px_32px_-8px_rgba(0,0,0,0.45)]">
                 <DashboardMobileNavItem to="/dashboard" label="Home" icon={IconHome} active={homeActive} />
                 <DashboardMobileNavItem

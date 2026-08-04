@@ -1,5 +1,4 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useDefaultGameRoomHref } from '../../hooks/useDefaultGameRoomHref.js';
 import { RacketTierWordmark } from './RacketTierWordmark.jsx';
 
 const IMG_AVATAR_FALLBACK =
@@ -60,7 +59,6 @@ function DesktopNavLink({ active, to, children }) {
  * }} props
  */
 export function DashboardV2Header({ user, profileLoading = false }) {
-    const gameRoomHref = useDefaultGameRoomHref();
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const label = user?.name?.trim() || user?.email?.trim() || 'User';
@@ -77,7 +75,7 @@ export function DashboardV2Header({ user, profileLoading = false }) {
     const profileActive = pathname === '/profile';
 
     return (
-        <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-[#121216]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl md:static md:border-b-0 md:bg-transparent md:backdrop-blur-none">
+        <nav className="rt-app-header fixed top-0 z-50 w-full border-b border-white/5 bg-[#121216]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl md:static md:border-b-0 md:bg-transparent md:backdrop-blur-none">
             <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
                 <div className="flex items-center gap-4">
                     <Link to="/dashboard" className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2c1ff]/60">
@@ -100,12 +98,6 @@ export function DashboardV2Header({ user, profileLoading = false }) {
                     <DesktopNavLink active={activityActive} to="/activity">
                         Activity
                     </DesktopNavLink>
-                    <Link
-                        to={gameRoomHref}
-                        className="rt-nav-link rt-nav-link-idle rounded-full border border-[#c2c1ff]/30 bg-[#c2c1ff]/10 px-3 py-1.5 text-xs font-bold hover:bg-[#c2c1ff]/15 hover:text-[#c2c1ff]"
-                    >
-                        Play
-                    </Link>
                 </div>
                 <div className="flex items-center gap-3">
                     {!user ? (
