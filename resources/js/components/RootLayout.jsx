@@ -23,10 +23,12 @@ function isV2DashboardShellPath(pathname) {
 
 export function RootLayout() {
     const location = useLocation();
-    const isLoginPage = location.pathname === '/login';
-    const isRegisterPage = location.pathname === '/register';
-    const isForgotPasswordPage = location.pathname === '/forgot-password';
-    const isResetPasswordPage = /^\/password\/reset\/.+$/.test(location.pathname);
+    const isAuthPage =
+        location.pathname === '/login' ||
+        location.pathname === '/register' ||
+        location.pathname === '/forgot-password' ||
+        location.pathname === '/verify-email' ||
+        /^\/password\/reset\/.+$/.test(location.pathname);
     const isHomePage =
         location.pathname === '/' ||
         location.pathname === '/v1' ||
@@ -38,7 +40,7 @@ export function RootLayout() {
         <div className="flex min-h-screen flex-col">
             <main
                 className={
-                    isLoginPage || isRegisterPage || isForgotPasswordPage || isResetPasswordPage || isHomePage
+                    isAuthPage || isHomePage
                         ? ''
                         : isV2Shell
                           ? 'flex w-full flex-1 flex-col'

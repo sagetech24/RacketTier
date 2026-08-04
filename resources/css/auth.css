@@ -1,57 +1,85 @@
-/* Auth screens — login, register, password reset */
+/* Auth screens — login, register, password reset, verify */
 
 .rt-auth-shell {
+    --rt-auth-ease: cubic-bezier(0.22, 1, 0.36, 1);
     position: relative;
     display: flex;
     min-height: max(850px, 100dvh);
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: clip;
+    overflow-y: auto;
     background-color: #121216;
+    background-image:
+        linear-gradient(rgba(194, 193, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(194, 193, 255, 0.035) 1px, transparent 1px),
+        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(194, 193, 255, 0.12), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 90% 70%, rgba(76, 224, 129, 0.07), transparent 50%);
+    background-size:
+        48px 48px,
+        48px 48px,
+        100% 100%,
+        100% 100%;
     color: #e4e1e6;
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
-.rt-auth-grid {
+.rt-auth-shell .rt-display {
+    font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+}
+
+.rt-auth-court-line {
     pointer-events: none;
     position: absolute;
-    inset: 0;
-    background-image: radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.035) 1px, transparent 0);
-    background-size: 28px 28px;
-    mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 75%);
+    inset: 10% 6%;
+    border: 1px solid rgba(194, 193, 255, 0.07);
+    border-radius: 1.5rem;
+}
+
+.rt-auth-court-line::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(76, 224, 129, 0.22), transparent);
+    transform: translateX(-50%);
 }
 
 .rt-auth-orb {
     pointer-events: none;
     position: fixed;
     border-radius: 9999px;
-    filter: blur(100px);
+    filter: blur(80px);
     will-change: transform;
 }
 
 .rt-auth-orb--lavender {
-    left: -5rem;
-    top: 8%;
-    height: 18rem;
-    width: 18rem;
-    background: rgb(194 193 255 / 0.08);
-    animation: rt-auth-orb-drift-a 22s ease-in-out infinite;
+    left: -8%;
+    top: 6%;
+    height: 16rem;
+    width: 16rem;
+    background: rgb(194 193 255 / 0.18);
+    animation: rt-auth-orb-drift-a 18s ease-in-out infinite;
 }
 
 .rt-auth-orb--green {
-    right: -5rem;
-    bottom: 6%;
-    height: 22rem;
-    width: 22rem;
-    background: rgb(76 224 129 / 0.07);
-    animation: rt-auth-orb-drift-b 26s ease-in-out infinite;
+    right: -6%;
+    bottom: 8%;
+    height: 18rem;
+    width: 18rem;
+    background: rgb(76 224 129 / 0.12);
+    animation: rt-auth-orb-drift-b 22s ease-in-out infinite;
+    animation-delay: 2s;
 }
 
 .rt-auth-orb--violet {
     left: 50%;
-    top: 42%;
-    height: 16rem;
-    width: 16rem;
+    top: 48%;
+    height: 14rem;
+    width: 14rem;
     transform: translateX(-50%);
-    background: rgb(120 119 198 / 0.06);
+    background: rgb(120 119 198 / 0.08);
     animation: rt-auth-orb-drift-c 20s ease-in-out infinite;
 }
 
@@ -61,7 +89,7 @@
         transform: translate(0, 0) scale(1);
     }
     50% {
-        transform: translate(1.5rem, -1rem) scale(1.06);
+        transform: translate(12px, -16px) scale(1.06);
     }
 }
 
@@ -71,7 +99,7 @@
         transform: translate(0, 0) scale(1);
     }
     50% {
-        transform: translate(-1.25rem, 1rem) scale(1.04);
+        transform: translate(-10px, 14px) scale(1.04);
     }
 }
 
@@ -81,14 +109,14 @@
         transform: translate(-50%, 0) scale(1);
     }
     50% {
-        transform: translate(calc(-50% + 0.75rem), 0.75rem) scale(1.05);
+        transform: translate(calc(-50% + 8px), 10px) scale(1.05);
     }
 }
 
 @keyframes rt-auth-enter {
     from {
         opacity: 0;
-        transform: translateY(0.85rem);
+        transform: translateY(0.75rem);
     }
     to {
         opacity: 1;
@@ -97,7 +125,7 @@
 }
 
 .rt-auth-enter {
-    animation: rt-auth-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: rt-auth-enter 0.4s var(--rt-auth-ease) forwards;
     opacity: 0;
 }
 
@@ -118,16 +146,18 @@
 }
 
 .rt-auth-card {
-    border: 1px solid rgb(255 255 255 / 0.26);
-    background: linear-gradient(180deg, rgb(27 27 30 / 0.95) 0%, rgb(27 27 30 / 0.88) 100%);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background:
+        linear-gradient(145deg, rgba(27, 27, 30, 0.96), rgba(15, 15, 18, 0.92)),
+        #1b1b1e;
     box-shadow:
-        0 1.5rem 3rem -1.5rem rgb(0 0 0 / 0.55),
-        inset 0 1px 0 rgb(255 255 255 / 0.04);
-    backdrop-filter: blur(12px);
+        0 1.5rem 3rem -1.25rem rgb(0 0 0 / 0.65),
+        inset 0 1px 0 rgb(255 255 255 / 0.05);
+    backdrop-filter: blur(16px);
 }
 
 .rt-auth-input {
-    border: 1px solid rgb(255 255 255 / 0.14);
+    border: 1px solid rgb(255 255 255 / 0.1);
     background-color: #0e0e11;
     transition:
         border-color 0.2s ease-out,
@@ -136,14 +166,14 @@
 }
 
 .rt-auth-input:hover:not(:disabled) {
-    border-color: rgb(255 255 255 / 0.08);
+    border-color: rgb(255 255 255 / 0.16);
     background-color: #141417;
 }
 
 .rt-auth-input:focus {
-    border-color: rgb(194 193 255 / 0.4);
+    border-color: rgb(194 193 255 / 0.45);
     background-color: #141417;
-    box-shadow: 0 0 0 3px rgb(194 193 255 / 0.12);
+    box-shadow: 0 0 0 3px rgb(194 193 255 / 0.14);
 }
 
 .rt-auth-input--error {
@@ -152,9 +182,9 @@
 }
 
 .rt-auth-input-wrap:focus-within .rt-auth-input {
-    border-color: rgb(194 193 255 / 0.4);
+    border-color: rgb(194 193 255 / 0.45);
     background-color: #141417;
-    box-shadow: 0 0 0 3px rgb(194 193 255 / 0.12);
+    box-shadow: 0 0 0 3px rgb(194 193 255 / 0.14);
 }
 
 .rt-auth-input-wrap--error:focus-within .rt-auth-input {
@@ -162,9 +192,20 @@
     box-shadow: 0 0 0 3px rgb(255 180 171 / 0.1);
 }
 
+.rt-auth-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23918f9c'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-position: right 0.85rem center;
+    background-repeat: no-repeat;
+    background-size: 1.1rem;
+    padding-right: 2.5rem;
+    cursor: pointer;
+}
+
 .rt-auth-btn {
+    cursor: pointer;
     background: linear-gradient(135deg, #c2c1ff 0%, #a5a3ff 52%, #b8b7ff 100%);
-    box-shadow: 0 1.25rem 2.5rem -0.75rem rgb(194 193 255 / 0.35);
+    box-shadow: 0 1.25rem 2.5rem -0.75rem rgb(194 193 255 / 0.38);
     transition:
         transform 0.18s ease-out,
         opacity 0.18s ease-out,
@@ -172,7 +213,15 @@
 }
 
 .rt-auth-btn:hover:not(:disabled) {
-    box-shadow: 0 1.35rem 2.75rem -0.65rem rgb(194 193 255 / 0.42);
+    box-shadow: 0 1.35rem 2.75rem -0.65rem rgb(194 193 255 / 0.48);
+    opacity: 0.95;
+}
+
+.rt-auth-btn:focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 3px rgb(194 193 255 / 0.35),
+        0 1.25rem 2.5rem -0.75rem rgb(194 193 255 / 0.38);
 }
 
 .rt-auth-btn:active:not(:disabled) {
@@ -182,6 +231,36 @@
 .rt-auth-btn:disabled {
     cursor: not-allowed;
     opacity: 0.65;
+}
+
+.rt-auth-btn--ghost {
+    cursor: pointer;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: transparent;
+    color: #c8c5d2;
+    box-shadow: none;
+    transition:
+        transform 0.18s ease-out,
+        background-color 0.18s ease-out,
+        border-color 0.18s ease-out,
+        color 0.18s ease-out;
+}
+
+.rt-auth-btn--ghost:hover:not(:disabled) {
+    background: rgb(255 255 255 / 0.04);
+    border-color: rgb(255 255 255 / 0.16);
+    color: #e4e1e6;
+    box-shadow: none;
+    opacity: 1;
+}
+
+.rt-auth-btn--ghost:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(194 193 255 / 0.25);
+}
+
+.rt-auth-btn--ghost:active:not(:disabled) {
+    transform: scale(0.98);
 }
 
 .rt-auth-btn__spinner {
@@ -213,10 +292,25 @@
     background: rgb(147 0 10 / 0.28);
 }
 
+.rt-auth-alert--success {
+    border: 1px solid rgb(76 224 129 / 0.25);
+    background: rgb(76 224 129 / 0.12);
+    color: #4ce081;
+}
+
 .rt-auth-logo-ring {
     box-shadow:
-        0 0 0 1px rgb(194 193 255 / 0.12),
-        0 0 2rem rgb(194 193 255 / 0.08);
+        0 0 0 1px rgb(194 193 255 / 0.14),
+        0 0 1.75rem rgb(194 193 255 / 0.12);
+}
+
+.rt-auth-nav-link {
+    transition: color 0.2s ease-out, border-color 0.2s ease-out, background-color 0.2s ease-out;
+}
+
+.rt-auth-nav-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(194 193 255 / 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -233,7 +327,9 @@
     }
 
     .rt-auth-btn,
-    .rt-auth-input {
+    .rt-auth-btn--ghost,
+    .rt-auth-input,
+    .rt-auth-nav-link {
         transition: none !important;
     }
 }

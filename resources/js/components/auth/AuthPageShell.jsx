@@ -3,47 +3,42 @@ import '../../../css/auth.css';
 
 /**
  * Full-viewport shell for unauthenticated auth flows.
+ * Visual language mirrors landing v3 court grid + kinetic orbs.
+ *
+ * @param {{ children: import('react').ReactNode, navAction?: { to: string, label: string } | null }} props
  */
-export function AuthPageShell({ children, showNav = false }) {
+export function AuthPageShell({ children, navAction = null }) {
     return (
-        <div className="rt-auth-shell font-sans selection:bg-[#c2c1ff] selection:text-[#211e6a]">
-            <div className="rt-auth-grid" aria-hidden="true" />
+        <div className="rt-auth-shell selection:bg-[#c2c1ff] selection:text-[#211e6a]">
+            <div className="rt-auth-court-line hidden tab:block" aria-hidden="true" />
             <div className="rt-auth-orb rt-auth-orb--lavender" aria-hidden="true" />
             <div className="rt-auth-orb rt-auth-orb--green" aria-hidden="true" />
             <div className="rt-auth-orb rt-auth-orb--violet" aria-hidden="true" />
 
-            {showNav ? (
-                <header className="relative z-10 px-6 pt-6 tab:pt-8">
-                    <nav className="mx-auto flex w-full max-w-md items-center justify-between">
-                        <Link
-                            to="/"
-                            className="group inline-flex items-center gap-2 rounded-full py-1.5 pr-3 pl-1.5 text-sm text-[#c8c5d2] transition-colors hover:text-[#e4e1e6]"
-                        >
-                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/8 bg-[#1b1b1e]/80 transition-colors group-hover:border-[#c2c1ff]/25 group-hover:bg-[#1f1f22]">
-                                <svg
-                                    aria-hidden="true"
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </span>
-                            Home
-                        </Link>
-                        <Link
-                            to="/register"
-                            className="text-xs font-semibold uppercase tracking-[0.14em] text-[#918f9c] transition-colors hover:text-[#c2c1ff]"
-                        >
-                            Join
-                        </Link>
-                    </nav>
-                </header>
-            ) : null}
+            <a
+                href="#auth-main"
+                className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-60 focus:rounded-xl focus:bg-[#c2c1ff] focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-[#211e6a]"
+            >
+                Skip to content
+            </a>
 
-            <main className="relative z-10 flex grow items-center justify-center px-6 py-8 tab:py-12">
+            <header className="relative z-10 px-4 pt-4 tab:px-6 tab:pt-6">
+                <nav
+                    className="mx-auto flex w-full max-w-md items-center justify-between gap-3"
+                    aria-label="Auth"
+                >
+                    {navAction ? (
+                        <Link
+                            to={navAction.to}
+                            className="rt-auth-nav-link inline-flex min-h-11 cursor-pointer items-center rounded-xl px-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#918f9c] hover:text-[#c2c1ff]"
+                        >
+                            {navAction.label}
+                        </Link>
+                    ) : null}
+                </nav>
+            </header>
+
+            <main id="auth-main" className="relative z-10 flex grow items-center justify-center px-5 py-8 tab:px-6 tab:py-12">
                 {children}
             </main>
         </div>

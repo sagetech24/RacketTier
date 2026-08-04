@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthBrandHeader } from '../components/AuthBrandHeader.jsx';
+import { AuthField } from '../components/auth/AuthField.jsx';
+import { AuthPageShell } from '../components/auth/AuthPageShell.jsx';
+import { AuthSubmitButton } from '../components/auth/AuthSubmitButton.jsx';
 import { postJson } from '../lib/http.js';
 
 export function ForgotPasswordPage() {
@@ -32,6 +35,7 @@ export function ForgotPasswordPage() {
             }
 
             setSent(true);
+            setSubmitting(false);
         } catch {
             setError('Network error. Check your connection.');
             setSubmitting(false);
@@ -39,83 +43,78 @@ export function ForgotPasswordPage() {
     }
 
     return (
-        <div className="pt-10 relative flex min-h-[max(850px,100dvh)] flex-col overflow-hidden bg-[#121216] text-[#e4e1e6]">
-            <main className="flex grow items-center justify-center px-6 py-8 tab:py-12">
-                <div className="w-full max-w-md space-y-12">
-                    <AuthBrandHeader />
+        <AuthPageShell navAction={{ to: '/login', label: 'Sign in' }}>
+            <div className="w-full max-w-md space-y-8 tab:space-y-10">
+                <div className="rt-auth-enter rt-auth-enter--1">
+                    <AuthBrandHeader
+                        eyebrow="Reset access"
+                        tagline="Enter your email and we’ll send a link to reset your password."
+                    />
+                </div>
 
-                    <div className="space-y-8 rounded-xl bg-[#1b1b1e] p-8">
-                        {sent ? (
-                            <div className="space-y-4">
-                                <p className="text-center text-sm text-[#c8c5d2]">
-                                    If your email exists, we sent a password reset link.
-                                </p>
-                                <div className="flex justify-center">
-                                    <Link
-                                        to="/login"
-                                        className="font-bold text-[#4ce081] underline-offset-4 hover:underline"
-                                    >
-                                        Back to Sign In
-                                    </Link>
-                                </div>
+                <div className="rt-auth-card rt-auth-enter rt-auth-enter--2 space-y-6 rounded-2xl p-6 tab:p-8">
+                    {sent ? (
+                        <div className="space-y-5">
+                            <div className="rt-auth-alert rt-auth-alert--success rounded-xl px-3.5 py-2.5 text-sm" role="status">
+                                If your email exists, we sent a password reset link.
                             </div>
-                        ) : (
-                            <form className="space-y-6" onSubmit={handleSubmit} aria-busy={submitting}>
-                                <div className="space-y-2">
-                                    <label
-                                        htmlFor="v2-forgot-email"
-                                        className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                    >
-                                        Email Address
-                                    </label>
-                                    <input
-                                        id="v2-forgot-email"
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                        autoComplete="email"
-                                        disabled={submitting}
-                                        placeholder="name@example.com"
-                                        className="w-full rounded-lg border-none bg-[#2a2a2d] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                    />
-                                    {fieldErrors.email?.[0] ? (
-                                        <p className="text-sm text-red-100">{fieldErrors.email[0]}</p>
-                                    ) : null}
-                                </div>
+                            <Link
+                                to="/login"
+                                className="rt-auth-btn flex w-full min-h-12 cursor-pointer items-center justify-center rounded-xl py-4 font-bold text-[#211e6a]"
+                            >
+                                Back to sign in
+                            </Link>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="space-y-1 border-b border-white/6 pb-5">
+                                <h2 className="rt-display text-lg font-bold tracking-tight text-[#e4e1e6]">
+                                    Forgot password
+                                </h2>
+                                <p className="text-sm text-[#918f9c]">We’ll email you a secure reset link.</p>
+                            </div>
+
+                            <form className="space-y-5" onSubmit={handleSubmit} aria-busy={submitting} noValidate>
+                                <AuthField
+                                    id="v2-forgot-email"
+                                    label="Email address"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    error={fieldErrors.email?.[0]}
+                                    disabled={submitting}
+                                    autoComplete="email"
+                                    autoFocus
+                                    placeholder="name@example.com"
+                                    inputMode="email"
+                                />
 
                                 {error ? (
-                                    <div
-                                        className="rounded-lg bg-[#93000a]/35 px-3 py-2 text-sm text-red-100"
-                                        role="alert"
-                                    >
+                                    <div className="rt-auth-alert rounded-xl px-3.5 py-2.5 text-sm text-[#ffb4ab]" role="alert">
                                         {error}
                                     </div>
                                 ) : null}
 
-                                <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    className="w-full rounded-xl bg-primary py-4 font-bold text-[#211e6a] shadow-[0_20px_40px_-10px_rgba(194,193,255,0.2)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
-                                >
-                                    {submitting ? 'Sending…' : 'Send Reset Link'}
-                                </button>
-
-                                <p className="text-center text-sm text-[#c8c5d2]">
-                                    Remembered your password?{' '}
-                                    <Link
-                                        to="/login"
-                                        className="ml-1 font-bold text-[#4ce081] underline-offset-4 hover:underline"
-                                    >
-                                        Sign In
-                                    </Link>
-                                </p>
+                                <AuthSubmitButton submitting={submitting} submittingLabel="Sending…">
+                                    Send reset link
+                                </AuthSubmitButton>
                             </form>
-                        )}
-                    </div>
+                        </>
+                    )}
                 </div>
-            </main>
-        </div>
+
+                {!sent ? (
+                    <p className="rt-auth-enter rt-auth-enter--3 text-center text-sm text-[#c8c5d2]">
+                        Remembered your password?{' '}
+                        <Link
+                            to="/login"
+                            className="cursor-pointer font-bold text-[#4ce081] underline-offset-4 transition-colors hover:underline"
+                        >
+                            Sign in
+                        </Link>
+                    </p>
+                ) : null}
+            </div>
+        </AuthPageShell>
     );
 }
-

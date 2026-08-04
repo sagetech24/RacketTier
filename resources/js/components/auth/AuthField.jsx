@@ -15,6 +15,10 @@ export function AuthField({
     inputMode,
     trailing,
     className = '',
+    required = true,
+    name,
+    min,
+    max,
 }) {
     const hasError = Boolean(error);
 
@@ -35,19 +39,22 @@ export function AuthField({
             >
                 <input
                     id={id}
+                    name={name}
                     type={type}
                     value={value}
                     onChange={onChange}
-                    required
+                    required={required}
                     autoComplete={autoComplete}
                     autoFocus={autoFocus}
                     inputMode={inputMode}
                     disabled={disabled}
                     placeholder={placeholder}
+                    min={min}
+                    max={max}
                     aria-invalid={hasError || undefined}
                     aria-describedby={hasError ? `${id}-error` : undefined}
                     className={[
-                        'rt-auth-input w-full rounded-xl px-4 py-3.5 text-[#e4e1e6] outline-none placeholder:text-[#918f9c]/55 disabled:opacity-60',
+                        'rt-auth-input w-full rounded-xl px-4 py-3.5 text-[#e4e1e6] outline-none placeholder:text-[#918f9c]/55 disabled:cursor-not-allowed disabled:opacity-60',
                         trailing ? 'pr-12' : '',
                         hasError ? 'rt-auth-input--error' : '',
                     ]

@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthBrandHeader } from '../components/AuthBrandHeader.jsx';
+import { AuthField } from '../components/auth/AuthField.jsx';
+import { AuthPageShell } from '../components/auth/AuthPageShell.jsx';
+import { AuthPasswordField } from '../components/auth/AuthPasswordField.jsx';
+import { AuthSelect } from '../components/auth/AuthSelect.jsx';
+import { AuthSubmitButton } from '../components/auth/AuthSubmitButton.jsx';
 import { LegalDocumentModal } from '../components/auth/LegalDocumentModal.jsx';
 import { PRIVACY_POLICY_TEXT } from '../components/auth/privacyPolicyContent.js';
 import { TERMS_OF_SERVICE_TEXT } from '../components/auth/termsOfServiceContent.js';
@@ -9,16 +14,12 @@ import { postForm } from '../lib/http.js';
 
 /** @typedef {'terms' | 'privacy'} LegalModalKind */
 
-const GOOGLE_ICON =
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuAg6awCdOFM2mUf4iHGroiuA4v5FGVYEt8GEc92F4OoyT6bPN8TgPc9BXPwzIwu6l6DzC-ib67_TfDdsMJGski5FBONFL2OCZtkAXkPfW5fjp0Aa7CYj1xz8fPs3c94HvcxIBfE931i7mdW-d75OYOWJO6ZRrdOwdqPYcK6Pvw4rcFmItgXGZeVHiOOpAG3gm5ycAVVg-8KThXtrrHSXtZuG76rIEYQYEUAfkK7vvhPTG9lGDjsnVhTkjSYXSaozv_E4CchpD1d7xc';
-const APPLE_ICON = 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg';
-
 const PRONOUN_OPTIONS = [
-    { value: '', label: 'Pronoun' },
-    { value: 'He/Him', label: 'He' },
-    { value: 'She/Her', label: 'She' },
-    { value: 'They/Them', label: 'They' },
-    { value: 'Other', label: 'Others' },
+    { value: '', label: 'Prefer not to say' },
+    { value: 'He/Him', label: 'He/Him' },
+    { value: 'She/Her', label: 'She/Her' },
+    { value: 'They/Them', label: 'They/Them' },
+    { value: 'Other', label: 'Other' },
 ];
 
 export function RegisterPage() {
@@ -78,193 +79,144 @@ export function RegisterPage() {
     }
 
     return (
-        <div className="pt-10 relative flex min-h-[max(884px,100dvh)] flex-col overflow-hidden bg-[#121216] text-[#e4e1e6]">
-            <main className="flex grow items-center justify-center px-6 py-8 tab:py-12">
-                <div className="w-full max-w-md space-y-12">
-                    <AuthBrandHeader />
+        <AuthPageShell>
+            <div className="w-full max-w-md space-y-8 tab:space-y-10">
+                <div className="rt-auth-enter rt-auth-enter--1">
+                    <AuthBrandHeader
+                        eyebrow=""
+                        tagline="Create an account to earn points, climb tiers, and own every smash."
+                    />
+                </div>
 
-                    <div className="space-y-8 rounded-xl bg-[#1b1b1e] p-8">
-                        <form className="space-y-6" onSubmit={handleSubmit} aria-busy={submitting}>
-                            <div className="space-y-2">
-                                <label
-                                    htmlFor="v2-register-name"
-                                    className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                >
-                                    Name
-                                </label>
-                                <input
-                                    id="v2-register-name"
-                                    name="name"
-                                    type="text"
-                                    autoComplete="name"
-                                    required
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    disabled={submitting}
-                                    placeholder="Your name"
-                                    className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                />
-                                {fieldErrors.name?.[0] ? <p className="text-sm text-[#ffdad6]">{fieldErrors.name[0]}</p> : null}
-                            </div>
-
-                            <div className="space-y-2">
-                                <label
-                                    htmlFor="v2-register-email"
-                                    className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                >
-                                    Email Address
-                                </label>
-                                <input
-                                    id="v2-register-email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    disabled={submitting}
-                                    placeholder="name@example.com"
-                                    className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                />
-                                {fieldErrors.email?.[0] ? <p className="text-sm text-[#ffdad6]">{fieldErrors.email[0]}</p> : null}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label
-                                        htmlFor="v2-register-age"
-                                        className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                    >
-                                        Age
-                                    </label>
-                                    <input
-                                        id="v2-register-age"
-                                        type="number"
-                                        value={age}
-                                        onChange={(e) => setAge(e.target.value)}
-                                        autoComplete="off"
-                                        disabled={submitting}
-                                        placeholder="Age"
-                                        min={14}
-                                        max={85}
-                                        className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label
-                                        htmlFor="v2-register-pronoun"
-                                        className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                    >
-                                        Pronoun
-                                    </label>
-                                    <select
-                                        id="v2-register-pronoun"
-                                        value={pronoun}
-                                        onChange={(e) => setPronoun(e.target.value)}
-                                        disabled={submitting}
-                                        className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                    >
-                                        {PRONOUN_OPTIONS.map((option) => (
-                                            <option
-                                                key={option.value || 'empty'}
-                                                value={option.value}
-                                                className="bg-[#0e0e11] text-xs tracking-[0.15em] text-[#e4e1e6]"
-                                            >
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label
-                                    htmlFor="v2-register-password"
-                                    className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                >
-                                    Password
-                                </label>
-                                <input
-                                    id="v2-register-password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    disabled={submitting}
-                                    placeholder="••••••••"
-                                    className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                />
-                                {fieldErrors.password?.[0] ? <p className="text-sm text-[#ffdad6]">{fieldErrors.password[0]}</p> : null}
-                            </div>
-
-                            <div className="space-y-2">
-                                <label
-                                    htmlFor="v2-register-password-confirmation"
-                                    className="ml-1 block text-xs uppercase tracking-[0.15em] text-[#c8c5d2]"
-                                >
-                                    Confirm Password
-                                </label>
-                                <input
-                                    id="v2-register-password-confirmation"
-                                    name="password_confirmation"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    required
-                                    value={passwordConfirmation}
-                                    onChange={(e) => setPasswordConfirmation(e.target.value)}
-                                    disabled={submitting}
-                                    placeholder="••••••••"
-                                    className="w-full rounded-lg border-none bg-[#0e0e11] px-4 py-3.5 text-[#e4e1e6] outline-none transition-all placeholder:text-[#918f9c]/50 focus:bg-[#2a2a2d] focus:ring-1 focus:ring-[#c2c1ff]/20 disabled:opacity-60"
-                                />
-                            </div>
-
-                            {error ? (
-                                <div className="rounded-lg bg-[#93000a]/35 px-3 py-2 text-sm text-[#ffdad6]" role="alert">
-                                    {error}
-                                </div>
-                            ) : null}
-
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="mt-8 w-full cursor-pointer rounded-xl bg-primary py-4 font-bold text-[#211e6a] shadow-[0_20px_40px_-10px_rgba(194,193,255,0.2)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
-                            >
-                                {submitting ? 'Creating account…' : 'Create Account'}
-                            </button>
-
-                            <p className="text-center text-[11px] leading-relaxed text-[#918f9c]">
-                                By continuing, you agree to our{' '}
-                                <button
-                                    type="button"
-                                    onClick={() => setLegalModal('terms')}
-                                    className="font-medium text-[#c2c1ff] underline-offset-2 transition-colors hover:text-[#e4e1e6] hover:underline"
-                                >
-                                    Terms
-                                </button>{' '}
-                                and{' '}
-                                <button
-                                    type="button"
-                                    onClick={() => setLegalModal('privacy')}
-                                    className="font-medium text-[#c2c1ff] underline-offset-2 transition-colors hover:text-[#e4e1e6] hover:underline"
-                                >
-                                    Privacy Policy
-                                </button>
-                                .
-                            </p>
-                        </form>
+                <div className="rt-auth-card rt-auth-enter rt-auth-enter--2 space-y-6 rounded-2xl p-6 tab:p-8">
+                    <div className="space-y-1 border-b border-white/6 pb-5">
+                        <h2 className="rt-display text-balance text-lg font-bold tracking-tight text-[#e4e1e6]">
+                            Create account
+                        </h2>
+                        <p className="text-sm text-[#918f9c]">
+                            Takes a minute. Age and pronouns are optional.
+                        </p>
                     </div>
 
-                    <p className="text-center text-sm text-[#c8c5d2]">
-                        Already have an account?{' '}
-                        <Link to="/login" className="ml-1 font-bold text-[#4ce081] underline-offset-4 hover:underline">
-                            Sign In
-                        </Link>
-                    </p>
+                    <form className="space-y-5" onSubmit={handleSubmit} aria-busy={submitting} noValidate>
+                        <AuthField
+                            id="v2-register-name"
+                            name="name"
+                            label="Name"
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            error={fieldErrors.name?.[0]}
+                            disabled={submitting}
+                            autoComplete="name"
+                            autoFocus
+                            placeholder="Your name"
+                        />
+
+                        <AuthField
+                            id="v2-register-email"
+                            name="email"
+                            label="Email address"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            error={fieldErrors.email?.[0]}
+                            disabled={submitting}
+                            autoComplete="email"
+                            placeholder="name@example.com"
+                            inputMode="email"
+                        />
+
+                        <div className="grid grid-cols-2 gap-3 tab:gap-4">
+                            <AuthField
+                                id="v2-register-age"
+                                label="Age"
+                                type="number"
+                                value={age}
+                                onChange={(e) => setAge(e.target.value)}
+                                error={fieldErrors.age?.[0]}
+                                disabled={submitting}
+                                autoComplete="off"
+                                placeholder="Optional"
+                                required={false}
+                                inputMode="numeric"
+                                min={1}
+                                max={150}
+                            />
+
+                            <AuthSelect
+                                id="v2-register-pronoun"
+                                label="Pronoun"
+                                value={pronoun}
+                                onChange={(e) => setPronoun(e.target.value)}
+                                options={PRONOUN_OPTIONS}
+                                error={fieldErrors.pronoun?.[0]}
+                                disabled={submitting}
+                            />
+                        </div>
+
+                        <AuthPasswordField
+                            id="v2-register-password"
+                            label="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            error={fieldErrors.password?.[0]}
+                            disabled={submitting}
+                            autoComplete="new-password"
+                        />
+
+                        <AuthPasswordField
+                            id="v2-register-password-confirmation"
+                            label="Confirm password"
+                            value={passwordConfirmation}
+                            onChange={(e) => setPasswordConfirmation(e.target.value)}
+                            error={fieldErrors.password_confirmation?.[0]}
+                            disabled={submitting}
+                            autoComplete="new-password"
+                        />
+
+                        {error ? (
+                            <div className="rt-auth-alert rounded-xl px-3.5 py-2.5 text-sm text-[#ffb4ab]" role="alert">
+                                {error}
+                            </div>
+                        ) : null}
+
+                        <AuthSubmitButton submitting={submitting} submittingLabel="Creating account…">
+                            Create account
+                        </AuthSubmitButton>
+
+                        <p className="text-center text-[11px] leading-relaxed text-[#918f9c]">
+                            By continuing, you agree to our{' '}
+                            <button
+                                type="button"
+                                onClick={() => setLegalModal('terms')}
+                                className="cursor-pointer font-medium text-[#c2c1ff] underline-offset-2 transition-colors hover:text-[#e4e1e6] hover:underline focus-visible:outline-none focus-visible:underline"
+                            >
+                                Terms
+                            </button>{' '}
+                            and{' '}
+                            <button
+                                type="button"
+                                onClick={() => setLegalModal('privacy')}
+                                className="cursor-pointer font-medium text-[#c2c1ff] underline-offset-2 transition-colors hover:text-[#e4e1e6] hover:underline focus-visible:outline-none focus-visible:underline"
+                            >
+                                Privacy Policy
+                            </button>
+                            .
+                        </p>
+                    </form>
                 </div>
-            </main>
+
+                <p className="rt-auth-enter rt-auth-enter--3 text-center text-sm text-[#c8c5d2]">
+                    Already have an account?{' '}
+                    <Link
+                        to="/login"
+                        className="cursor-pointer font-bold text-[#4ce081] underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:underline"
+                    >
+                        Sign in
+                    </Link>
+                </p>
+            </div>
 
             <LegalDocumentModal
                 open={legalModal === 'terms'}
@@ -278,9 +230,6 @@ export function RegisterPage() {
                 content={PRIVACY_POLICY_TEXT}
                 onClose={() => setLegalModal(null)}
             />
-
-            <div className="pointer-events-none fixed -left-20 top-[10%] h-64 w-64 rounded-full bg-[#c2c1ff]/5 blur-[100px]" />
-            <div className="pointer-events-none fixed -right-20 bottom-[10%] h-80 w-80 rounded-full bg-[#4ce081]/5 blur-[120px]" />
-        </div>
+        </AuthPageShell>
     );
 }
