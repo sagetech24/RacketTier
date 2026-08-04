@@ -49,7 +49,7 @@ function IconUser({ className }) {
 
 export function DashboardMobileNav() {
     const { pathname } = useLocation();
-    const homeActive = pathname === '/dashboard';
+    const homeActive = pathname === '/dashboard' || pathname === '/dashboard/v1' || pathname === '/dashboard/v2';
     const rankingActive = pathname === '/ranking';
     const queueActive =
         pathname === '/queueing-session' ||

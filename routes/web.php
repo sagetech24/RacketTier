@@ -99,6 +99,8 @@ Route::middleware('auth')->group(function () {
         ->name('verification.send');
 
     Route::view('/dashboard', 'app')->name('dashboard');
+    Route::view('/dashboard/v1', 'app');
+    Route::view('/dashboard/v2', 'app');
     Route::view('/facilities', 'app');
     Route::view('/ranking', 'app');
     Route::view('/activity', 'app');

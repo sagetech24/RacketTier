@@ -1,6 +1,14 @@
 import { Outlet, useLocation } from 'react-router-dom';
 
-const V2_SHELL_PATHS = new Set(['/dashboard', '/facilities', '/ranking', '/profile', '/activity']);
+const V2_SHELL_PATHS = new Set([
+    '/dashboard',
+    '/dashboard/v1',
+    '/dashboard/v2',
+    '/facilities',
+    '/ranking',
+    '/profile',
+    '/activity',
+]);
 
 function isV2DashboardShellPath(pathname) {
     if (V2_SHELL_PATHS.has(pathname)) {

@@ -65,7 +65,7 @@ export function DashboardV2Header({ user, profileLoading = false }) {
     const { pathname } = useLocation();
     const label = user?.name?.trim() || user?.email?.trim() || 'User';
 
-    const homeActive = pathname === '/dashboard';
+    const homeActive = pathname === '/dashboard' || pathname === '/dashboard/v1' || pathname === '/dashboard/v2';
     const rankingActive = pathname === '/ranking';
     const queueActive =
         pathname === '/queueing-session' ||

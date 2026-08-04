@@ -7,6 +7,7 @@ import { PageLoader } from './components/PageLoader.jsx';
 const CreateMatchPage = lazy(() => import('./pages/CreateMatchPage.jsx').then((m) => ({ default: m.CreateMatchPage })));
 const ActivityPage = lazy(() => import('./pages/ActivityPage.jsx').then((m) => ({ default: m.ActivityPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx').then((m) => ({ default: m.DashboardPage })));
+const DashboardPageV2 = lazy(() => import('./pages/DashboardPageV2.jsx').then((m) => ({ default: m.DashboardPageV2 })));
 const FacilitiesPage = lazy(() => import('./pages/FacilitiesPage.jsx').then((m) => ({ default: m.FacilitiesPage })));
 const GameRoomPage = lazy(() => import('./pages/GameRoomPage.jsx').then((m) => ({ default: m.GameRoomPage })));
 const HomePage = lazy(() => import('./pages/HomePage.jsx').then((m) => ({ default: m.HomePage })));
@@ -57,7 +58,27 @@ export function AppRoutes() {
                     element={
                         <ProtectedRoute>
                             <LazyPage>
+                                <DashboardPageV2 />
+                            </LazyPage>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="dashboard/v1"
+                    element={
+                        <ProtectedRoute>
+                            <LazyPage>
                                 <DashboardPage />
+                            </LazyPage>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="dashboard/v2"
+                    element={
+                        <ProtectedRoute>
+                            <LazyPage>
+                                <DashboardPageV2 />
                             </LazyPage>
                         </ProtectedRoute>
                     }
