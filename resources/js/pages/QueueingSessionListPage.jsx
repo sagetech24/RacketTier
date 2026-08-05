@@ -22,7 +22,7 @@ import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
 import { PageHeader } from '../components/app/PageHeader.jsx';
 import { ToggleField } from '../components/app/ToggleSwitch.jsx';
-import { MODAL_OVERLAY_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
+import { MODAL_OVERLAY_CLASS, MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -551,91 +551,112 @@ export function QueueingSessionListPage() {
 
             {editRow ? (
                 <ModalPortal open={Boolean(editRow)}>
-                    <div className={MODAL_OVERLAY_CLASS}>
-                        <div className="rt-end-match-modal-sheet w-full max-w-md rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl md:max-w-lg md:rounded-2xl">
-                            <h2 className="mb-1 text-lg font-bold">Edit queue</h2>
-                        <p className="mb-4 text-xs text-[#918f9c]">
-                            Update settings for {editRow.queue_name?.trim() || `session #${editRow.id}`}.
-                        </p>
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="edit-queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                    Name of the queue
-                                </label>
-                                <input
-                                    id="edit-queue-name"
-                                    type="text"
-                                    value={editQueueName}
-                                    onChange={(e) => setEditQueueName(e.target.value)}
-                                    maxLength={120}
-                                    className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
-                                />
+                    <div className={MODAL_OVERLAY_SHEET_CLASS} role="presentation">
+                        <div
+                            className="rt-end-match-modal-sheet relative flex max-h-[min(90dvh,40rem)] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl sm:rounded-2xl md:max-w-lg"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="edit-queue-title"
+                        >
+                            <div className="shrink-0 border-b border-white/5 px-5 pb-3 pt-5">
+                                <h2 id="edit-queue-title" className="text-lg font-bold tracking-tight text-[#e4e1e6]">
+                                    Edit queue
+                                </h2>
+                                <p className="mt-1 text-xs text-[#918f9c]">
+                                    Update settings for {editRow.queue_name?.trim() || `session #${editRow.id}`}.
+                                </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={9999}
-                                        value={editWinPoints}
-                                        onChange={(e) => setEditWinPoints(e.target.value)}
-                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label
+                                            htmlFor="edit-queue-name"
+                                            className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]"
+                                        >
+                                            Name of the queue
+                                        </label>
+                                        <input
+                                            id="edit-queue-name"
+                                            type="text"
+                                            value={editQueueName}
+                                            onChange={(e) => setEditQueueName(e.target.value)}
+                                            maxLength={120}
+                                            autoComplete="off"
+                                            className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6]"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
+                                                Win points
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={9999}
+                                                value={editWinPoints}
+                                                onChange={(e) => setEditWinPoints(e.target.value)}
+                                                className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
+                                                Loss points
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={9999}
+                                                value={editLossPoints}
+                                                onChange={(e) => setEditLossPoints(e.target.value)}
+                                                className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6]"
+                                            />
+                                        </div>
+                                    </div>
+                                    <QueueingSessionSkipScoresField
+                                        checked={editSkipScores}
+                                        onChange={setEditSkipScores}
+                                        disabled={editSubmitting}
                                     />
-                                </div>
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Loss points</label>
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={9999}
-                                        value={editLossPoints}
-                                        onChange={(e) => setEditLossPoints(e.target.value)}
-                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm"
+                                    <QueueingSessionGuestOptionalFields
+                                        optionalGuestSkill={editOptionalGuestSkill}
+                                        optionalGuestGender={editOptionalGuestGender}
+                                        onOptionalGuestSkillChange={setEditOptionalGuestSkill}
+                                        onOptionalGuestGenderChange={setEditOptionalGuestGender}
+                                        disabled={editSubmitting}
                                     />
+                                    <QueueingSessionAutoMatchCriteriaField
+                                        value={editAutoMatchCriteria}
+                                        onChange={setEditAutoMatchCriteria}
+                                        disabled={editSubmitting}
+                                    />
+                                    {editError ? (
+                                        <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                                            {editError}
+                                        </p>
+                                    ) : null}
                                 </div>
                             </div>
-                            <QueueingSessionSkipScoresField
-                                checked={editSkipScores}
-                                onChange={setEditSkipScores}
-                                disabled={editSubmitting}
-                            />
-                            <QueueingSessionGuestOptionalFields
-                                optionalGuestSkill={editOptionalGuestSkill}
-                                optionalGuestGender={editOptionalGuestGender}
-                                onOptionalGuestSkillChange={setEditOptionalGuestSkill}
-                                onOptionalGuestGenderChange={setEditOptionalGuestGender}
-                                disabled={editSubmitting}
-                            />
-                            <QueueingSessionAutoMatchCriteriaField
-                                value={editAutoMatchCriteria}
-                                onChange={setEditAutoMatchCriteria}
-                                disabled={editSubmitting}
-                            />
-                            {editError ? (
-                                <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{editError}</p>
-                            ) : null}
-                        </div>
-                        <div className="mt-5 flex gap-2">
-                            <button
-                                type="button"
-                                disabled={editSubmitting}
-                                onClick={() => closeEditModal()}
-                                className="flex-1 rounded-lg border border-white/50 py-2.5 text-sm font-bold text-white/70"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                disabled={editSubmitting}
-                                onClick={() => onSaveEdit()}
-                                className="flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:opacity-50"
-                            >
-                                {editSubmitting ? 'Saving…' : 'Save changes'}
-                            </button>
+                            <div className="flex shrink-0 gap-2 border-t border-[#2a2a2d] p-5 pt-4">
+                                <button
+                                    type="button"
+                                    disabled={editSubmitting}
+                                    onClick={() => closeEditModal()}
+                                    className="min-h-11 flex-1 rounded-lg border border-white/50 py-2.5 text-sm font-bold text-white/70 disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={editSubmitting}
+                                    onClick={() => onSaveEdit()}
+                                    className="min-h-11 flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:opacity-50"
+                                >
+                                    {editSubmitting ? 'Saving…' : 'Save changes'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
                 </ModalPortal>
             ) : null}
 
