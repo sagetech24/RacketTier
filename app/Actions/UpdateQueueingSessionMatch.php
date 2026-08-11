@@ -7,8 +7,10 @@ use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
 use App\Services\QueueingSessionDraftHydrator;
 use App\Services\QueueingSessionDraftLineup;
+use App\Services\QueueingSessionDraftState;
 use App\Services\QueueingSessionDraftStore;
 use App\Services\QueueingSessionMatchLineup;
+use App\Services\QueueingSessionState;
 use Illuminate\Support\Facades\DB;
 
 class UpdateQueueingSessionMatch
@@ -18,6 +20,8 @@ class UpdateQueueingSessionMatch
         private QueueingSessionDraftStore $draftStore,
         private QueueingSessionDraftLineup $draftLineup,
         private QueueingSessionDraftHydrator $hydrator,
+        private QueueingSessionDraftState $draftState,
+        private QueueingSessionState $queueingSessionState,
     ) {}
 
     /**
@@ -42,9 +46,16 @@ class UpdateQueueingSessionMatch
         if ($session->isDraft()) {
             $hydrated = $this->draftStore->mutate($session, function ($draft) use ($session, $match, $manualLineup, $required) {
                 $matchRow = $draft->findMatch((int) $match->id);
-                if ($matchRow === null || ($matchRow['status'] ?? '') !== 'queueing') {
-                    abort(422, 'Only queued matches can be edited.');
+                $status = $matchRow['status'] ?? '';
+                if ($matchRow === null || ! in_array($status, ['queueing', 'ongoing'], true)) {
+                    abort(422, 'Only queued or ongoing matches can be edited.');
                 }
+
+                $currentIds = $status === 'ongoing'
+                    ? $this->draftLineup->playerIdsFromLineup(
+                        is_array($matchRow['lineup'] ?? null) ? $matchRow['lineup'] : [],
+                    )
+                    : [];
 
                 $picked = $this->draftLineup->resolveManualLineup(
                     $session,
@@ -52,6 +63,7 @@ class UpdateQueueingSessionMatch
                     $manualLineup,
                     $required,
                     (int) $match->id,
+                    $currentIds,
                 );
 
                 foreach ($draft->matches as $i => $row) {
@@ -59,6 +71,10 @@ class UpdateQueueingSessionMatch
                         $draft->matches[$i]['lineup'] = $this->draftLineup->buildSnapshot($picked);
                         break;
                     }
+                }
+
+                if ($status === 'ongoing') {
+                    $this->draftState->applyOngoingMatchLineup($draft, $currentIds, $picked);
                 }
 
                 return $draft;
@@ -85,9 +101,13 @@ class UpdateQueueingSessionMatch
                 abort(404, 'Match not found.');
             }
 
-            if ($lockedMatch->status !== 'queueing') {
-                abort(422, 'Only queued matches can be edited.');
+            if (! in_array($lockedMatch->status, ['queueing', 'ongoing'], true)) {
+                abort(422, 'Only queued or ongoing matches can be edited.');
             }
+
+            $currentIds = $lockedMatch->status === 'ongoing'
+                ? $this->lineup->playerIdsFromLineup(is_array($lockedMatch->lineup) ? $lockedMatch->lineup : [])
+                : [];
 
             $players = GameSessionPlayer::query()
                 ->where('game_session_id', $locked->id)
@@ -101,11 +121,16 @@ class UpdateQueueingSessionMatch
                 $manualLineup,
                 $required,
                 (int) $lockedMatch->id,
+                $currentIds,
             );
 
             $lockedMatch->update([
                 'lineup' => $this->lineup->buildSnapshot($picked),
             ]);
+
+            if ($lockedMatch->status === 'ongoing') {
+                $this->queueingSessionState->applyOngoingMatchLineup((int) $locked->id, $currentIds, $picked);
+            }
 
             return $lockedMatch->fresh();
         });

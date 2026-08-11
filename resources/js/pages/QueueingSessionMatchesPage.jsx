@@ -186,6 +186,7 @@ export function QueueingSessionMatchesPage() {
     const [editLineupOpen, setEditLineupOpen] = useState(false);
     const [editingMatchId, setEditingMatchId] = useState(null);
     const [editingMatchNo, setEditingMatchNo] = useState(null);
+    const [editingMatchStatus, setEditingMatchStatus] = useState(null);
     const [editInitialTeams, setEditInitialTeams] = useState({ team1: [], team2: [] });
     /** @type {null | { id: number, matchNo: number | null, status: string }} */
     const [removeMatchConfirm, setRemoveMatchConfirm] = useState(null);
@@ -251,16 +252,18 @@ export function QueueingSessionMatchesPage() {
         setEditLineupOpen(false);
         setEditingMatchId(null);
         setEditingMatchNo(null);
+        setEditingMatchStatus(null);
         setEditInitialTeams({ team1: [], team2: [] });
     }
 
     /**
-     * @param {{ id?: number, match_no?: number, lineup?: unknown }} row
+     * @param {{ id?: number, match_no?: number, status?: string, lineup?: unknown }} row
      */
     function openEditMatchModal(row) {
         setActionError('');
         setEditingMatchId(row.id ?? null);
         setEditingMatchNo(row.match_no ?? null);
+        setEditingMatchStatus(typeof row.status === 'string' ? row.status : null);
         setEditInitialTeams(lineupToTeams(row.lineup));
         setEditLineupOpen(true);
     }
@@ -570,6 +573,7 @@ export function QueueingSessionMatchesPage() {
                     matches={matches}
                     editingMatchId={editingMatchId}
                     editingMatchNo={editingMatchNo}
+                    editingMatchStatus={editingMatchStatus}
                     initialTeams={editInitialTeams}
                     busy={busy}
                     onClose={closeEditLineupModal}

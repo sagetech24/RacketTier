@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\QueueingSessionMatch;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -37,6 +38,41 @@ class QueueingSessionState
                 'is_waiting' => true,
                 'team' => null,
             ]);
+    }
+
+    /**
+     * Keep an ongoing match on court: mark the new lineup playing and return
+     * swapped-out players to the end of the waiting queue.
+     *
+     * @param  list<int>  $previousPlayerIds
+     * @param  Collection<int, GameSessionPlayer>  $picked
+     */
+    public function applyOngoingMatchLineup(int $gameSessionId, array $previousPlayerIds, Collection $picked): void
+    {
+        $newIds = $picked->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $outgoing = array_values(array_diff($previousPlayerIds, $newIds));
+
+        $slot = 1000;
+        foreach ($picked as $row) {
+            GameSessionPlayer::query()->whereKey($row->id)->update([
+                'is_playing' => true,
+                'is_waiting' => false,
+                'queue_position' => $slot++,
+                'team' => $row->team,
+            ]);
+        }
+
+        $waitSlot = 2000;
+        foreach ($outgoing as $id) {
+            GameSessionPlayer::query()->whereKey($id)->update([
+                'is_playing' => false,
+                'is_waiting' => true,
+                'team' => null,
+                'queue_position' => $waitSlot++,
+            ]);
+        }
+
+        $this->recompactQueuePositions($gameSessionId);
     }
 
     public function recompactQueuePositions(int $gameSessionId): void

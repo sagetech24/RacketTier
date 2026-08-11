@@ -94,6 +94,22 @@ class QueueingSessionDraftState
     }
 
     /**
+     * Keep an ongoing match on court: mark the new lineup playing and return
+     * swapped-out players to the end of the waiting queue.
+     *
+     * @param  list<int>  $previousPlayerIds
+     * @param  list<array<string, mixed>>  $picked
+     */
+    public function applyOngoingMatchLineup(QueueingSessionDraft $draft, array $previousPlayerIds, array $picked): void
+    {
+        $newIds = collect($picked)->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $outgoing = array_values(array_diff($previousPlayerIds, $newIds));
+
+        $this->markPlayersPlaying($draft, $picked);
+        $this->returnPlayersToQueue($draft, $outgoing);
+    }
+
+    /**
      * Drop players with no match history; soft-remove players who already played
      * so their session stats remain available for the end-of-session leaderboard.
      */

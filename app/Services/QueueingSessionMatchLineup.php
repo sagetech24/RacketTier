@@ -38,8 +38,27 @@ class QueueingSessionMatchLineup
     }
 
     /**
+     * @param  list<array<string, mixed>>|null  $lineup
+     * @return list<int>
+     */
+    public function playerIdsFromLineup(?array $lineup): array
+    {
+        if ($lineup === null) {
+            return [];
+        }
+
+        return collect($lineup)
+            ->pluck('game_session_player_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->values()
+            ->all();
+    }
+
+    /**
      * @param  Collection<int, GameSessionPlayer>  $players
      * @param  list<array{id: int, team?: int|null}>  $manualLineup
+     * @param  list<int>  $allowPlayingPlayerIds  On-court player ids already in this ongoing match.
      * @return Collection<int, GameSessionPlayer>
      */
     public function resolveManualLineup(
@@ -48,6 +67,7 @@ class QueueingSessionMatchLineup
         array $manualLineup,
         int $required,
         ?int $excludeReservedMatchId = null,
+        array $allowPlayingPlayerIds = [],
     ): Collection {
         if (count($manualLineup) !== $required) {
             abort(422, "Manual lineup must include exactly {$required} players.");
@@ -74,8 +94,11 @@ class QueueingSessionMatchLineup
             if ((int) $row->game_session_id !== (int) $session->id) {
                 abort(422, 'Invalid player id in manual lineup.');
             }
-            if (! $row->is_waiting || $row->is_playing) {
-                abort(422, 'Manual lineup players must be waiting and not already on court.');
+            $isCurrentOnCourt = in_array($id, $allowPlayingPlayerIds, true);
+            if (! $isCurrentOnCourt && (! $row->is_waiting || $row->is_playing)) {
+                abort(422, $row->is_playing
+                    ? 'Only waiting players can replace someone on court.'
+                    : 'Manual lineup players must be waiting and not already on court.');
             }
 
             $team = $spec['team'] ?? null;

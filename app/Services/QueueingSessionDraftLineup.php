@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Data\QueueingSessionDraft;
 use App\Models\GameSession;
 use App\Models\User;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class QueueingSessionDraftLineup
@@ -36,7 +35,26 @@ class QueueingSessionDraftLineup
     }
 
     /**
+     * @param  list<array<string, mixed>>|null  $lineup
+     * @return list<int>
+     */
+    public function playerIdsFromLineup(?array $lineup): array
+    {
+        if ($lineup === null) {
+            return [];
+        }
+
+        return collect($lineup)
+            ->pluck('game_session_player_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->values()
+            ->all();
+    }
+
+    /**
      * @param  list<array{id: int, team?: int|null}>  $manualLineup
+     * @param  list<int>  $allowPlayingPlayerIds  On-court player ids already in this ongoing match.
      * @return list<array<string, mixed>>
      */
     public function resolveManualLineup(
@@ -45,6 +63,7 @@ class QueueingSessionDraftLineup
         array $manualLineup,
         int $required,
         ?int $excludeReservedMatchId = null,
+        array $allowPlayingPlayerIds = [],
     ): array {
         if (count($manualLineup) !== $required) {
             abort(422, "Manual lineup must include exactly {$required} players.");
@@ -71,8 +90,11 @@ class QueueingSessionDraftLineup
             if ($row['is_removed'] ?? false) {
                 abort(422, 'Removed players cannot be added to a match.');
             }
-            if (! ($row['is_waiting'] ?? false) || ($row['is_playing'] ?? false)) {
-                abort(422, 'Manual lineup players must be waiting and not already on court.');
+            $isCurrentOnCourt = in_array($id, $allowPlayingPlayerIds, true);
+            if (! $isCurrentOnCourt && (! ($row['is_waiting'] ?? false) || ($row['is_playing'] ?? false))) {
+                abort(422, ($row['is_playing'] ?? false)
+                    ? 'Only waiting players can replace someone on court.'
+                    : 'Manual lineup players must be waiting and not already on court.');
             }
 
             $team = $spec['team'] ?? null;

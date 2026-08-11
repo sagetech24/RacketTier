@@ -201,6 +201,258 @@ class QueueingSessionMatchTest extends TestCase
         $this->assertSame(1, (int) $teams->get($players[2]->id));
     }
 
+    public function test_host_can_swap_waiting_player_into_ongoing_match(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedQueueingDoublesSession($host);
+        $players = $this->players($session);
+
+        $waiting = GameSessionPlayer::query()->create([
+            'game_session_id' => $session->id,
+            'user_id' => User::factory()->create()->id,
+            'queue_position' => 5,
+            'is_waiting' => true,
+            'is_playing' => false,
+        ]);
+
+        $create = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $players[0]->id, 'team' => 1],
+                    ['id' => $players[1]->id, 'team' => 1],
+                    ['id' => $players[2]->id, 'team' => 2],
+                    ['id' => $players[3]->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $matchId = (int) $create->json('data.id');
+
+        $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId.'/start',
+        )->assertOk();
+
+        $match = QueueingSessionMatch::query()->findOrFail($matchId);
+        $startedAt = $match->started_at?->toIso8601String();
+
+        $swap = $this->actingAs($host)->patchJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId,
+            [
+                'lineup' => [
+                    ['id' => $players[0]->id, 'team' => 1],
+                    ['id' => $players[1]->id, 'team' => 1],
+                    ['id' => $players[2]->id, 'team' => 2],
+                    ['id' => $waiting->id, 'team' => 2],
+                ],
+            ],
+        );
+
+        $swap->assertOk();
+        $swap->assertJsonPath('data.status', 'ongoing');
+
+        $match->refresh();
+        $this->assertSame('ongoing', $match->status);
+        $this->assertSame($startedAt, $match->started_at?->toIso8601String());
+
+        $lineupIds = collect(is_array($match->lineup) ? $match->lineup : [])
+            ->pluck('game_session_player_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+        $this->assertContains($waiting->id, $lineupIds);
+        $this->assertNotContains($players[3]->id, $lineupIds);
+
+        $waiting->refresh();
+        $players[3]->refresh();
+        $this->assertTrue($waiting->is_playing);
+        $this->assertFalse($waiting->is_waiting);
+        $this->assertFalse($players[3]->is_playing);
+        $this->assertTrue($players[3]->is_waiting);
+
+        $waitingPositions = GameSessionPlayer::query()
+            ->where('game_session_id', $session->id)
+            ->where('is_waiting', true)
+            ->where('is_playing', false)
+            ->orderBy('queue_position')
+            ->pluck('id')
+            ->all();
+        $this->assertSame($players[3]->id, end($waitingPositions));
+    }
+
+    public function test_host_can_reshuffle_ongoing_match_teams(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedQueueingDoublesSession($host);
+        $players = $this->players($session);
+
+        $create = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $players[0]->id, 'team' => 1],
+                    ['id' => $players[1]->id, 'team' => 1],
+                    ['id' => $players[2]->id, 'team' => 2],
+                    ['id' => $players[3]->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $matchId = (int) $create->json('data.id');
+        $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId.'/start',
+        )->assertOk();
+
+        $reshuffle = $this->actingAs($host)->patchJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId,
+            [
+                'lineup' => [
+                    ['id' => $players[0]->id, 'team' => 2],
+                    ['id' => $players[1]->id, 'team' => 2],
+                    ['id' => $players[2]->id, 'team' => 1],
+                    ['id' => $players[3]->id, 'team' => 1],
+                ],
+            ],
+        );
+
+        $reshuffle->assertOk();
+        $reshuffle->assertJsonPath('data.status', 'ongoing');
+
+        foreach (array_slice($players, 0, 4) as $p) {
+            $p->refresh();
+            $this->assertTrue($p->is_playing);
+            $this->assertFalse($p->is_waiting);
+        }
+
+        $match = QueueingSessionMatch::query()->findOrFail($matchId);
+        $teams = collect(is_array($match->lineup) ? $match->lineup : [])
+            ->pluck('team', 'game_session_player_id');
+        $this->assertSame(2, (int) $teams->get($players[0]->id));
+        $this->assertSame(1, (int) $teams->get($players[2]->id));
+    }
+
+    public function test_cannot_swap_queueing_player_into_ongoing_match(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Singles Swap Queue',
+            'match_type' => 'singles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $onCourt = [];
+        $queued = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $row = GameSessionPlayer::query()->create([
+                'game_session_id' => $session->id,
+                'user_id' => $i === 1 ? $host->id : User::factory()->create()->id,
+                'queue_position' => $i,
+                'is_waiting' => true,
+                'is_playing' => false,
+            ]);
+            if ($i <= 2) {
+                $onCourt[] = $row;
+            } else {
+                $queued[] = $row;
+            }
+        }
+
+        $ongoing = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $onCourt[0]->id, 'team' => 1],
+                    ['id' => $onCourt[1]->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $queuedMatch = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $queued[0]->id, 'team' => 1],
+                    ['id' => $queued[1]->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $ongoingId = (int) $ongoing->json('data.id');
+        $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$ongoingId.'/start',
+        )->assertOk();
+
+        $this->assertSame('queueing', QueueingSessionMatch::query()->findOrFail((int) $queuedMatch->json('data.id'))->status);
+
+        $response = $this->actingAs($host)->patchJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$ongoingId,
+            [
+                'lineup' => [
+                    ['id' => $onCourt[0]->id, 'team' => 1],
+                    ['id' => $queued[0]->id, 'team' => 2],
+                ],
+            ],
+        );
+
+        $response->assertUnprocessable();
+        $onCourt[1]->refresh();
+        $queued[0]->refresh();
+        $this->assertTrue($onCourt[1]->is_playing);
+        $this->assertFalse($queued[0]->is_playing);
+        $this->assertTrue($queued[0]->is_waiting);
+    }
+
+    public function test_cannot_edit_finished_match_lineup(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedQueueingDoublesSession($host);
+        $players = $this->players($session);
+
+        $create = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $players[0]->id, 'team' => 1],
+                    ['id' => $players[1]->id, 'team' => 1],
+                    ['id' => $players[2]->id, 'team' => 2],
+                    ['id' => $players[3]->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $matchId = (int) $create->json('data.id');
+        $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId.'/start',
+        )->assertOk();
+
+        QueueingSessionMatch::query()->whereKey($matchId)->update([
+            'status' => 'finished',
+            'finished_at' => now(),
+        ]);
+
+        $this->actingAs($host)->patchJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId,
+            [
+                'lineup' => [
+                    ['id' => $players[0]->id, 'team' => 2],
+                    ['id' => $players[1]->id, 'team' => 2],
+                    ['id' => $players[2]->id, 'team' => 1],
+                    ['id' => $players[3]->id, 'team' => 1],
+                ],
+            ],
+        )->assertUnprocessable();
+    }
+
     public function test_host_can_cancel_ongoing_match_and_release_players(): void
     {
         $host = User::factory()->create();

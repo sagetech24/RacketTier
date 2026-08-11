@@ -252,7 +252,7 @@ export function QueueingSessionMatchCard({
                 ) : null}
 
                 {canManageMatches && status === 'ongoing' ? (
-                    <div className="rt-match-actions rt-match-actions--split">
+                    <div className="rt-match-actions">
                         {canEndMatch ? (
                             <button
                                 type="button"
@@ -264,6 +264,16 @@ export function QueueingSessionMatchCard({
                                 End match
                             </button>
                         ) : null}
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onEditMatch?.(row)}
+                            className="rt-match-action rt-match-action--secondary"
+                            aria-label="Change match players"
+                        >
+                            <MaterialIcon name="edit" className="text-[16px]!" />
+                            Edit
+                        </button>
                         <button
                             type="button"
                             disabled={busy}

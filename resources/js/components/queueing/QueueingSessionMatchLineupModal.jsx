@@ -78,6 +78,7 @@ function LineupPlayerCard({ p, trailing = null }) {
  *   matches?: Array<{ status?: string, lineup?: unknown, id?: number }>,
  *   editingMatchId?: number | null,
  *   editingMatchNo?: number | null,
+ *   editingMatchStatus?: string | null,
  *   initialTeams?: { team1: number[], team2: number[] },
  *   busy?: boolean,
  *   onClose: () => void,
@@ -94,6 +95,7 @@ export function QueueingSessionMatchLineupModal({
     matches = [],
     editingMatchId = null,
     editingMatchNo = null,
+    editingMatchStatus = null,
     initialTeams = { team1: [], team2: [] },
     busy = false,
     onClose,
@@ -121,10 +123,21 @@ export function QueueingSessionMatchLineupModal({
         [matches, mode, editingMatchId],
     );
 
+    const isEditingOngoing = mode === 'edit' && editingMatchStatus === 'ongoing';
+    const onCourtPlayerIds = useMemo(() => {
+        if (!isEditingOngoing) return new Set();
+        return new Set([...initialTeams.team1, ...initialTeams.team2]);
+    }, [isEditingOngoing, initialTeams]);
+
     const assignableSessionPlayers = useMemo(() => {
         const rows = Array.isArray(session.players) ? session.players : [];
-        return rows.filter((p) => p.is_waiting && !p.is_playing && !p.is_removed && !reservedPlayerIds.has(p.id));
-    }, [session.players, reservedPlayerIds]);
+        return rows.filter((p) => {
+            if (p.is_removed) return false;
+            if (onCourtPlayerIds.has(p.id)) return true;
+            if (reservedPlayerIds.has(p.id)) return false;
+            return p.is_waiting && !p.is_playing;
+        });
+    }, [session.players, reservedPlayerIds, onCourtPlayerIds]);
 
     const matchLineupSearchResults = useMemo(() => {
         const assigned = new Set([...matchLineupTeams.team1, ...matchLineupTeams.team2]);
@@ -241,13 +254,15 @@ export function QueueingSessionMatchLineupModal({
                     <div className="border-b border-[#2a2a2d] p-5 pb-4">
                         <h3 className="text-lg md:text-3xl font-bold">
                             {mode === 'edit'
-                                ? `Edit Match${editingMatchNo != null ? ` #${editingMatchNo}` : ''}`
+                                ? `${isEditingOngoing ? 'Change players' : 'Edit Match'}${editingMatchNo != null ? ` #${editingMatchNo}` : ''}`
                                 : 'Create Match'}
                         </h3>
                     <p className="my-2 text-base! text-[#918f9c] md:text-lg!">
-                        {mode === 'edit'
-                            ? 'Update players on Team 1 or Team 2 for this queued match.'
-                            : 'Search eligible players, assign them to teams, then queue the match or start it immediately.'}
+                        {isEditingOngoing
+                            ? 'Swap someone on court with a waiting player. Players already queued for another match cannot be used.'
+                            : mode === 'edit'
+                              ? 'Update players on Team 1 or Team 2 for this queued match.'
+                              : 'Search eligible players, assign them to teams, then queue the match or start it immediately.'}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                         <span className="rounded-full border border-[#45454a] bg-[#c2c1ff] px-2 py-1 text-xs font-semibold capitalize text-[#131316]">
@@ -296,8 +311,9 @@ export function QueueingSessionMatchLineupModal({
                                             No eligible players
                                         </p>
                                         <p className="mt-1 text-xs text-[#918f9c] md:text-base">
-                                            Players must be waiting in queue and not in a match. Add players on the
-                                            Players tab or wait until a match ends.
+                                            {isEditingOngoing
+                                                ? 'Replacements must be waiting — not queued for another match and not already on court.'
+                                                : 'Players must be waiting in queue and not in a match. Add players on the Players tab or wait until a match ends.'}
                                         </p>
                                     </div>
                                 ) : matchLineupSearchResults.length === 0 ? (
