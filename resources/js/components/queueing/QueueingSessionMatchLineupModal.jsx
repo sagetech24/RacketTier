@@ -7,6 +7,8 @@ import { MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../app/ModalPortal.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { DraggableMatchLineup } from './DraggableMatchLineup.jsx';
 
+const PLAYER_LIST_PAGE_SIZE = 2;
+
 /** @param {number | null | undefined} skillLevel */
 function skillLevelLabel(skillLevel) {
     if (skillLevel == null) return null;
@@ -99,6 +101,7 @@ export function QueueingSessionMatchLineupModal({
 }) {
     const [matchLineupTeams, setMatchLineupTeams] = useState({ team1: [], team2: [] });
     const [matchLineupSearch, setMatchLineupSearch] = useState('');
+    const [visiblePlayerCount, setVisiblePlayerCount] = useState(PLAYER_LIST_PAGE_SIZE);
     const initialTeamsRef = useRef(initialTeams);
     initialTeamsRef.current = initialTeams;
 
@@ -106,7 +109,12 @@ export function QueueingSessionMatchLineupModal({
         if (!open) return;
         setMatchLineupTeams(initialTeamsRef.current);
         setMatchLineupSearch('');
+        setVisiblePlayerCount(PLAYER_LIST_PAGE_SIZE);
     }, [open]);
+
+    useEffect(() => {
+        setVisiblePlayerCount(PLAYER_LIST_PAGE_SIZE);
+    }, [matchLineupSearch]);
 
     const reservedPlayerIds = useMemo(
         () => reservedQueueingPlayerIds(matches, mode === 'edit' ? editingMatchId : null),
@@ -129,6 +137,12 @@ export function QueueingSessionMatchLineupModal({
             return label.includes(q) || email.includes(q);
         });
     }, [assignableSessionPlayers, matchLineupSearch, matchLineupTeams.team1, matchLineupTeams.team2]);
+
+    const visibleSearchResults = useMemo(
+        () => matchLineupSearchResults.slice(0, visiblePlayerCount),
+        [matchLineupSearchResults, visiblePlayerCount],
+    );
+    const hasMorePlayers = visiblePlayerCount < matchLineupSearchResults.length;
 
     const matchType = session.match_type === 'doubles' ? 'doubles' : 'singles';
     const matchLineupMaxPerTeam = matchType === 'doubles' ? 2 : 1;
@@ -248,32 +262,34 @@ export function QueueingSessionMatchLineupModal({
                     </p>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-12">
-                    <div className="space-y-5">
-                        <div className="min-w-0">
-                            <label
-                                htmlFor="create-match-player-search"
-                                className="mb-1.5 block text-[12px] font-bold uppercase tracking-wide text-[#918f9c] md:text-[14px]"
-                            >
-                                Search players
-                            </label>
-                            <div className="relative">
-                                <MaterialIcon
-                                    name="search"
-                                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[20px]! text-[#918f9c] md:text-2xl!"
-                                />
-                                <input
-                                    id="create-match-player-search"
-                                    type="search"
-                                    autoComplete="off"
-                                    placeholder="Name or email…"
-                                    value={matchLineupSearch}
-                                    onChange={(e) => setMatchLineupSearch(e.target.value)}
-                                    className="w-full rounded-xl border border-[#c2c1ff]/30 bg-[#131316] py-2.5 pr-3 pl-10 text-base text-[#e4e1e6] outline-none placeholder:text-[#918f9c] focus:border-[#c2c1ff]/60 md:text-lg"
-                                />
-                            </div>
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <div className="shrink-0 px-5 pt-4">
+                        <label
+                            htmlFor="create-match-player-search"
+                            className="mb-1.5 block text-[12px] font-bold uppercase tracking-wide text-[#918f9c] md:text-[14px]"
+                        >
+                            Search players
+                        </label>
+                        <div className="relative">
+                            <MaterialIcon
+                                name="search"
+                                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[20px]! text-[#918f9c] md:text-2xl!"
+                            />
+                            <input
+                                id="create-match-player-search"
+                                type="search"
+                                autoComplete="off"
+                                placeholder="Name or email…"
+                                value={matchLineupSearch}
+                                onChange={(e) => setMatchLineupSearch(e.target.value)}
+                                className="w-full rounded-xl border border-[#c2c1ff]/30 bg-[#131316] py-2.5 pr-3 pl-10 text-base text-[#e4e1e6] outline-none placeholder:text-[#918f9c] focus:border-[#c2c1ff]/60 md:text-lg"
+                            />
+                        </div>
+                    </div>
 
-                            <div className="mt-3 space-y-2">
+                    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-12">
+                        <div className="space-y-5">
+                            <div className="min-w-0 space-y-2">
                                 {assignableSessionPlayers.length === 0 ? (
                                     <div className="rounded-xl border border-dashed border-[#45454a] bg-[#131316] p-6 text-center">
                                         <p className="text-sm font-semibold text-[#e4e1e6] md:text-lg">
@@ -296,53 +312,77 @@ export function QueueingSessionMatchLineupModal({
                                         </p>
                                     </div>
                                 ) : (
-                                    <ul className="space-y-2">
-                                        {matchLineupSearchResults.map((p) => {
-                                            const t1Full = matchLineupTeams.team1.length >= matchLineupMaxPerTeam;
-                                            const t2Full = matchLineupTeams.team2.length >= matchLineupMaxPerTeam;
-                                            return (
-                                                <li key={p.id}>
-                                                    <LineupPlayerCard
-                                                        p={p}
-                                                        trailing={
-                                                            <div className="flex flex-col gap-2">
-                                                                <button
-                                                                    type="button"
-                                                                    disabled={busy || t1Full}
-                                                                    onClick={() => addPlayerToMatchLineupTeam(1, p.id)}
-                                                                    className="inline-flex items-center justify-center gap-1 rounded-full border border-[#4ce081]/50 bg-[#4ce081]/15 px-2.5 py-1 text-xs font-bold text-[#4ce081] disabled:cursor-not-allowed disabled:opacity-40"
-                                                                >
-                                                                    <MaterialIcon name="group_add" className="text-[16px]! md:text-lg!" />
-                                                                    Assign to {teamLabel} 1
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    disabled={busy || t2Full}
-                                                                    onClick={() => addPlayerToMatchLineupTeam(2, p.id)}
-                                                                    className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c2c1ff]/50 bg-[#c2c1ff]/15 px-2.5 py-1 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-40"
-                                                                >
-                                                                    <MaterialIcon name="group_add" className="text-[16px]! md:text-lg!" />
-                                                                    Assign to {teamLabel} 2
-                                                                </button>
-                                                            </div>
-                                                        }
-                                                    />
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
+                                    <>
+                                        <ul className="space-y-2">
+                                            {visibleSearchResults.map((p) => {
+                                                const t1Full = matchLineupTeams.team1.length >= matchLineupMaxPerTeam;
+                                                const t2Full = matchLineupTeams.team2.length >= matchLineupMaxPerTeam;
+                                                return (
+                                                    <li key={p.id}>
+                                                        <LineupPlayerCard
+                                                            p={p}
+                                                            trailing={
+                                                                <div className="flex flex-col gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={busy || t1Full}
+                                                                        onClick={() => addPlayerToMatchLineupTeam(1, p.id)}
+                                                                        className="inline-flex items-center justify-center gap-1 rounded-full border border-[#4ce081]/50 bg-[#4ce081]/15 px-2.5 py-1 text-xs font-bold text-[#4ce081] disabled:cursor-not-allowed disabled:opacity-40"
+                                                                    >
+                                                                        <MaterialIcon name="group_add" className="text-[16px]! md:text-lg!" />
+                                                                        Assign to {teamLabel} 1
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={busy || t2Full}
+                                                                        onClick={() => addPlayerToMatchLineupTeam(2, p.id)}
+                                                                        className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c2c1ff]/50 bg-[#c2c1ff]/15 px-2.5 py-1 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-40"
+                                                                    >
+                                                                        <MaterialIcon name="group_add" className="text-[16px]! md:text-lg!" />
+                                                                        Assign to {teamLabel} 2
+                                                                    </button>
+                                                                </div>
+                                                            }
+                                                        />
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                        {hasMorePlayers ? (
+                                            <div className="flex justify-center pt-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setVisiblePlayerCount((prev) =>
+                                                            Math.min(
+                                                                prev + PLAYER_LIST_PAGE_SIZE,
+                                                                matchLineupSearchResults.length,
+                                                            ),
+                                                        )
+                                                    }
+                                                    className="inline-flex min-h-10 cursor-pointer items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-[#c8c5d2] transition-colors duration-200 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60 md:text-sm"
+                                                >
+                                                    <MaterialIcon name="expand_more" className="text-lg!" />
+                                                    Show more
+                                                    <span className="font-semibold text-[#918f9c]">
+                                                        ({matchLineupSearchResults.length - visiblePlayerCount} left)
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        ) : null}
+                                    </>
                                 )}
                             </div>
-                        </div>
 
-                        <DraggableMatchLineup
-                            matchType={matchType}
-                            team1={lineupTeam1Players}
-                            team2={lineupTeam2Players}
-                            disabled={busy}
-                            onChange={setMatchLineupTeams}
-                            onRemove={removePlayerFromMatchLineup}
-                        />
+                            <DraggableMatchLineup
+                                matchType={matchType}
+                                team1={lineupTeam1Players}
+                                team2={lineupTeam2Players}
+                                disabled={busy}
+                                onChange={setMatchLineupTeams}
+                                onRemove={removePlayerFromMatchLineup}
+                            />
+                        </div>
                     </div>
                 </div>
 

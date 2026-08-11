@@ -211,21 +211,13 @@ function ProposalCard({
 
     return (
         <li className="rounded-xl border border-[#c2c1ff]/35 bg-[#1b1b1e] p-4 shadow-lg transition-colors duration-200">
-            <div className="mb-3 flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
-                        Suggestion {index + 1} of {total}
-                    </p>
-                    <p className="mt-0.5 text-lg font-semibold tracking-tight text-[#e4e1e6]">
-                        Suggested match
-                    </p>
-                </div>
+            <div className="mb-3 flex items-center gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#bab9c0]">Match Suggestion Type:</p>
                 {proposal.bracket_label ? (
                     <span
-                        className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-3 py-1 text-[10px] font-semibold capitalize tracking-wide text-[#c2c1ff] md:text-sm"
+                        className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-3 py-1 text-[10px] font-semibold capitalize tracking-wide text-[#c2c1ff] md:text-xs"
                         title="Match grouping bracket"
-                    >
-                        {proposal.bracket_label}
+                    >{proposal.bracket_label}
                     </span>
                 ) : null}
             </div>
@@ -236,7 +228,6 @@ function ProposalCard({
                 team2={team2Players}
                 disabled={busy}
                 title={null}
-                showHint
                 framed={false}
                 onChange={(next) => onDraftChange(proposal.proposal_id, next)}
             />
@@ -270,9 +261,6 @@ function ProposalCard({
                     <span className="text-sm md:text-base">Skip</span>
                 </button>
             </div>
-            <p className="mt-2 text-center text-[11px] text-[#918f9c]">
-                Queue keeps the session open · Start begins play now · Skip hides this card
-            </p>
         </li>
     );
 }
@@ -617,27 +605,6 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                                 ) : null}
                             </div>
                         ) : null}
-
-                        <button
-                            type="button"
-                            onClick={() => setEligibilityOpen((v) => !v)}
-                            className="mt-3 flex w-full min-h-11 cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-left transition-colors duration-200 hover:border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60"
-                            aria-expanded={eligibilityOpen}
-                        >
-                            <span className="min-w-0">
-                                <span className="block text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
-                                    Roster readiness
-                                </span>
-                                <span className="mt-0.5 block truncate text-sm font-semibold text-[#e4e1e6]">
-                                    {eligibilityLine ??
-                                        `${totalEligible} eligible · ${required} per ${matchType} match`}
-                                </span>
-                            </span>
-                            <MaterialIcon
-                                name={eligibilityOpen ? 'expand_less' : 'expand_more'}
-                                className="shrink-0 text-xl! text-[#918f9c]"
-                            />
-                        </button>
                         {eligibilityOpen ? (
                             <div className="mt-2 rounded-xl border border-[#2a2a2d] bg-[#131316]/80 px-3 py-2.5 text-xs text-[#c8c5d2]">
                                 <p>
@@ -652,6 +619,52 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                                         <li>Not in queue: {breakdown.not_in_queue}</li>
                                     </ul>
                                 ) : null}
+                            </div>
+                        ) : null}
+
+                        {!loading && visibleProposals.length > 1 ? (
+                            <div className="mt-3 flex items-center justify-between gap-2">
+                                <button
+                                    type="button"
+                                    disabled={busy || safeFocusIndex <= 0}
+                                    onClick={() => setFocusIndex((i) => Math.max(0, i - 1))}
+                                    className="inline-flex min-h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 text-[#c8c5d2] transition-colors duration-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60"
+                                    aria-label="Previous suggestion"
+                                >
+                                    <MaterialIcon name="chevron_left" className="text-2xl!" />
+                                </button>
+                                <div className="flex items-center gap-1.5" role="tablist" aria-label="Suggestions">
+                                    {visibleProposals.map((p, i) => (
+                                        <button
+                                            key={p.proposal_id}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={i === safeFocusIndex}
+                                            disabled={busy}
+                                            onClick={() => setFocusIndex(i)}
+                                            className={[
+                                                'h-2.5 cursor-pointer rounded-full transition-all duration-200',
+                                                i === safeFocusIndex
+                                                    ? 'w-6 bg-[#c2c1ff]'
+                                                    : 'w-2.5 bg-[#45454a] hover:bg-[#918f9c]',
+                                            ].join(' ')}
+                                            aria-label={`Suggestion ${i + 1}`}
+                                        />
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    disabled={busy || safeFocusIndex >= visibleProposals.length - 1}
+                                    onClick={() =>
+                                        setFocusIndex((i) =>
+                                            Math.min(visibleProposals.length - 1, i + 1),
+                                        )
+                                    }
+                                    className="inline-flex min-h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 text-[#c8c5d2] transition-colors duration-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60"
+                                    aria-label="Next suggestion"
+                                >
+                                    <MaterialIcon name="chevron_right" className="text-2xl!" />
+                                </button>
                             </div>
                         ) : null}
                     </div>
@@ -711,52 +724,6 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                             </div>
                         ) : (
                             <>
-                                {visibleProposals.length > 1 ? (
-                                    <div className="mb-3 flex items-center justify-between gap-2">
-                                        <button
-                                            type="button"
-                                            disabled={busy || safeFocusIndex <= 0}
-                                            onClick={() => setFocusIndex((i) => Math.max(0, i - 1))}
-                                            className="inline-flex min-h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 text-[#c8c5d2] transition-colors duration-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60"
-                                            aria-label="Previous suggestion"
-                                        >
-                                            <MaterialIcon name="chevron_left" className="text-2xl!" />
-                                        </button>
-                                        <div className="flex items-center gap-1.5" role="tablist" aria-label="Suggestions">
-                                            {visibleProposals.map((p, i) => (
-                                                <button
-                                                    key={p.proposal_id}
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-selected={i === safeFocusIndex}
-                                                    disabled={busy}
-                                                    onClick={() => setFocusIndex(i)}
-                                                    className={[
-                                                        'h-2.5 cursor-pointer rounded-full transition-all duration-200',
-                                                        i === safeFocusIndex
-                                                            ? 'w-6 bg-[#c2c1ff]'
-                                                            : 'w-2.5 bg-[#45454a] hover:bg-[#918f9c]',
-                                                    ].join(' ')}
-                                                    aria-label={`Suggestion ${i + 1}`}
-                                                />
-                                            ))}
-                                        </div>
-                                        <button
-                                            type="button"
-                                            disabled={busy || safeFocusIndex >= visibleProposals.length - 1}
-                                            onClick={() =>
-                                                setFocusIndex((i) =>
-                                                    Math.min(visibleProposals.length - 1, i + 1),
-                                                )
-                                            }
-                                            className="inline-flex min-h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 text-[#c8c5d2] transition-colors duration-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60"
-                                            aria-label="Next suggestion"
-                                        >
-                                            <MaterialIcon name="chevron_right" className="text-2xl!" />
-                                        </button>
-                                    </div>
-                                ) : null}
-
                                 <ul className="space-y-3">
                                     {focusedProposal ? (
                                         <ProposalCard
@@ -779,12 +746,6 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                                         />
                                     ) : null}
                                 </ul>
-
-                                {visibleProposals.length > 1 ? (
-                                    <p className="mt-3 text-center text-[11px] text-[#918f9c]">
-                                        Swipe through suggestions, or use Queue all below for every visible card.
-                                    </p>
-                                ) : null}
                             </>
                         )}
                     </div>

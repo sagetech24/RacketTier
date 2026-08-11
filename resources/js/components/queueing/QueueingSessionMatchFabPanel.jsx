@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { fetchGameSession } from '../../api/gameSession.js';
 import {
@@ -316,132 +317,157 @@ export function QueueingSessionMatchFabPanel({
 
     return (
         <>
-            {menuOpen ? (
-                <div
-                    className="rt-match-fab-backdrop fixed inset-0 z-[39] bg-[#131316]/35 backdrop-blur-[4px]"
-                    aria-hidden
-                    onPointerDown={closeMenu}
-                />
-            ) : null}
+            {typeof document !== 'undefined'
+                ? createPortal(
+                      <>
+                          {menuOpen ? (
+                              <div
+                                  className="rt-match-fab-backdrop fixed inset-0 z-[55] bg-[#131316]/35 backdrop-blur-[4px]"
+                                  aria-hidden
+                                  onPointerDown={closeMenu}
+                              />
+                          ) : null}
 
-            <div ref={fabRef} className="fixed bottom-24 right-5 z-[999] flex flex-col items-end md:bottom-8 md:right-8">
-                {menuOpen ? (
-                    <div
-                        className="rt-match-fab-callout mb-3 w-[min(16rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border border-[#686898] bg-[#1b1b1e] p-1.5 shadow-2xl shadow-black/40"
-                        role="menu"
-                        aria-label="Match and session options"
-                    >
-                        <div className="rt-match-fab-callout__matches">
-                            <button
-                                type="button"
-                                role="menuitem"
-                                disabled={busy || endingSession}
-                                onClick={() => handleOpenAutoMatch()}
-                                className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ce081]/15 text-[#4ce081]">
-                                    <MaterialIcon name="auto_awesome" className="text-xl!" />
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block text-sm font-bold text-[#e4e1e6]">Auto-match</span>
-                                    <span className="block text-[10px] leading-snug text-[#918f9c]">
-                                        Generate matches from the queue
-                                    </span>
-                                </span>
-                            </button>
-                            <button
-                                type="button"
-                                role="menuitem"
-                                disabled={busy || endingSession}
-                                onClick={() => handleOpenCreateMatch()}
-                                className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15">
-                                    <img src="/images/rt-logo.png" alt="" className="h-6 w-6" aria-hidden />
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block text-sm font-bold text-[#e4e1e6]">Manual match</span>
-                                    <span className="block text-[10px] leading-snug text-[#918f9c]">
-                                        Pick players and teams yourself
-                                    </span>
-                                </span>
-                            </button>
-                        </div>
+                          <div
+                              ref={fabRef}
+                              className="fixed bottom-24 right-5 z-[60] flex flex-col items-end md:bottom-8 md:right-8"
+                          >
+                              {menuOpen ? (
+                                  <div
+                                      className="rt-match-fab-callout mb-3 w-[min(16rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border border-[#686898] bg-[#1b1b1e] p-1.5 shadow-2xl shadow-black/40"
+                                      role="menu"
+                                      aria-label="Match and session options"
+                                  >
+                                      <div className="rt-match-fab-callout__matches">
+                                          <button
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={busy || endingSession}
+                                              onClick={() => handleOpenAutoMatch()}
+                                              className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ce081]/15 text-[#4ce081]">
+                                                  <MaterialIcon name="auto_awesome" className="text-xl!" />
+                                              </span>
+                                              <span className="min-w-0">
+                                                  <span className="block text-sm font-bold text-[#e4e1e6]">
+                                                      Auto-match
+                                                  </span>
+                                                  <span className="block text-[10px] leading-snug text-[#918f9c]">
+                                                      Generate matches from the queue
+                                                  </span>
+                                              </span>
+                                          </button>
+                                          <button
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={busy || endingSession}
+                                              onClick={() => handleOpenCreateMatch()}
+                                              className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15">
+                                                  <img
+                                                      src="/images/rt-logo.png"
+                                                      alt=""
+                                                      className="h-6 w-6"
+                                                      aria-hidden
+                                                  />
+                                              </span>
+                                              <span className="min-w-0">
+                                                  <span className="block text-sm font-bold text-[#e4e1e6]">
+                                                      Manual match
+                                                  </span>
+                                                  <span className="block text-[10px] leading-snug text-[#918f9c]">
+                                                      Pick players and teams yourself
+                                                  </span>
+                                              </span>
+                                          </button>
+                                      </div>
 
-                        <div className="rt-match-fab-callout__players">
-                            <button
-                                type="button"
-                                role="menuitem"
-                                disabled={busy || endingSession}
-                                onClick={handleOpenAddPlayers}
-                                className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ce081]/15 text-[#4ce081]">
-                                    <MaterialIcon name="group_add" className="text-xl!" />
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block text-sm font-bold text-[#e4e1e6]">Add players</span>
-                                    <span className="block text-[10px] leading-snug text-[#918f9c]">
-                                        Search and add members to the roster
-                                    </span>
-                                </span>
-                            </button>
-                            <button
-                                type="button"
-                                role="menuitem"
-                                disabled={busy || endingSession}
-                                onClick={handleOpenAddGuestPlayer}
-                                className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15 text-[#c2c1ff]">
-                                    <MaterialIcon name="person_add" className="text-xl!" />
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block text-sm font-bold text-[#e4e1e6]">Add guest players</span>
-                                    <span className="block text-[10px] leading-snug text-[#918f9c]">
-                                        Quick-add a guest to the roster
-                                    </span>
-                                </span>
-                            </button>
-                        </div>
+                                      <div className="rt-match-fab-callout__players">
+                                          <button
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={busy || endingSession}
+                                              onClick={handleOpenAddPlayers}
+                                              className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ce081]/15 text-[#4ce081]">
+                                                  <MaterialIcon name="group_add" className="text-xl!" />
+                                              </span>
+                                              <span className="min-w-0">
+                                                  <span className="block text-sm font-bold text-[#e4e1e6]">
+                                                      Add players
+                                                  </span>
+                                                  <span className="block text-[10px] leading-snug text-[#918f9c]">
+                                                      Search and add members to the roster
+                                                  </span>
+                                              </span>
+                                          </button>
+                                          <button
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={busy || endingSession}
+                                              onClick={handleOpenAddGuestPlayer}
+                                              className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15 text-[#c2c1ff]">
+                                                  <MaterialIcon name="person_add" className="text-xl!" />
+                                              </span>
+                                              <span className="min-w-0">
+                                                  <span className="block text-sm font-bold text-[#e4e1e6]">
+                                                      Add guest players
+                                                  </span>
+                                                  <span className="block text-[10px] leading-snug text-[#918f9c]">
+                                                      Quick-add a guest to the roster
+                                                  </span>
+                                              </span>
+                                          </button>
+                                      </div>
 
-                        <div className="rt-match-fab-callout__session">
-                            <button
-                                type="button"
-                                role="menuitem"
-                                disabled={busy || endingSession}
-                                onClick={handleOpenEndSession}
-                                className="rt-match-fab-callout-item rt-match-fab-callout-item--danger flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-400/15 text-red-300">
-                                    <MaterialIcon name="power_settings_new" className="text-xl!" />
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block text-sm font-bold text-red-200">End session</span>
-                                    <span className="block text-[10px] leading-snug text-red-200/70">
-                                        Close this queue for all players
-                                    </span>
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-                ) : null}
+                                      <div className="rt-match-fab-callout__session">
+                                          <button
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={busy || endingSession}
+                                              onClick={handleOpenEndSession}
+                                              className="rt-match-fab-callout-item rt-match-fab-callout-item--danger flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-400/15 text-red-300">
+                                                  <MaterialIcon name="power_settings_new" className="text-xl!" />
+                                              </span>
+                                              <span className="min-w-0">
+                                                  <span className="block text-sm font-bold text-red-200">
+                                                      End session
+                                                  </span>
+                                                  <span className="block text-[10px] leading-snug text-red-200/70">
+                                                      Close this queue for all players
+                                                  </span>
+                                              </span>
+                                          </button>
+                                      </div>
+                                  </div>
+                              ) : null}
 
-                <button
-                    type="button"
-                    disabled={busy || endingSession}
-                    onClick={toggleMenu}
-                    aria-expanded={menuOpen}
-                    aria-haspopup="menu"
-                    aria-label={menuOpen ? 'Close match options' : 'Create match'}
-                    className="rt-kinetic-gradient opacity-70 hover:opacity-90 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#8181ac] text-[#131316] shadow-lg shadow-black/30 transition-transform transform duration-200 enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    <MaterialIcon
-                        name="add"
-                        className={`text-4xl! font-bold transition-transform duration-200 ${menuOpen ? 'rotate-45' : ''}`}
-                    />
-                </button>
-            </div>
+                              <button
+                                  type="button"
+                                  disabled={busy || endingSession}
+                                  onClick={toggleMenu}
+                                  aria-expanded={menuOpen}
+                                  aria-haspopup="menu"
+                                  aria-label={menuOpen ? 'Close match options' : 'Create match'}
+                                  className="rt-kinetic-gradient opacity-70 hover:opacity-90 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#8181ac] text-[#131316] shadow-lg shadow-black/30 transition-transform transform duration-200 enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                  <MaterialIcon
+                                      name="add"
+                                      className={`text-4xl! font-bold transition-transform duration-200 ${menuOpen ? 'rotate-45' : ''}`}
+                                  />
+                              </button>
+                          </div>
+                      </>,
+                      document.body,
+                  )
+                : null}
 
             <AutoMatchCriteriaModal
                 open={autoMatchCriteriaOpen}

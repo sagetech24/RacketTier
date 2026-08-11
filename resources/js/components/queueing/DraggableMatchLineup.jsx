@@ -87,13 +87,15 @@ function LineupDragCard({ player, dragProps = {}, isDragging = false, disabled =
                             </span>
                         ) : null}
                     </div>
-                    {skillLabel ? (
-                        <p className="inline-flex items-center gap-0.5" title="Skill level">
-                            <MaterialIcon name="star" className="text-[15px]! text-[#c2c1ff] md:text-xl!" />
-                            <span className="truncate text-xs font-medium text-[#c2c1ff] md:text-lg">{skillLabel}</span>
-                        </p>
-                    ) : null}
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[#918f9c]">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        {skillLabel ? (
+                            <p className="inline-flex items-center gap-0.5" title="Skill level">
+                                <MaterialIcon name="star" className="text-[15px]! text-[#c2c1ff] md:text-xl!" />
+                                <span className="truncate text-xs font-medium text-[#c2c1ff] md:text-lg">
+                                    {skillLabel}
+                                </span>
+                            </p>
+                        ) : null}
                         <span className="inline-flex items-center gap-0.5" title="Wins">
                             <MaterialIcon name="arrow_upward" className="text-[13px]! text-[#4ce081] md:text-xl!" />
                             <span className="text-xs font-medium tabular-nums text-[#e4e1e6] md:text-lg">
@@ -226,7 +228,6 @@ function TeamColumn({ team, label, players, maxPerTeam, disabled = false, onRemo
  *   onChange: (next: { team1: number[], team2: number[] }) => void,
  *   disabled?: boolean,
  *   onRemove?: ((id: number) => void) | null,
- *   showHint?: boolean,
  *   title?: string | null,
  *   framed?: boolean,
  * }} props
@@ -238,7 +239,6 @@ export function DraggableMatchLineup({
     onChange,
     disabled = false,
     onRemove = null,
-    showHint = true,
     title = 'Match Lineup',
     framed = true,
 }) {
@@ -330,10 +330,7 @@ export function DraggableMatchLineup({
             }
         >
             {title ? (
-                <p className="mb-1 text-2xl font-semibold text-[#e4e1e6]">{title}</p>
-            ) : null}
-            {showHint ? (
-                <p className="mb-3 text-sm text-[#918f9c] md:text-lg">Hold a player card to drag and swap teams or partners.</p>
+                <p className="mb-3 text-2xl font-semibold text-[#e4e1e6]">{title}</p>
             ) : null}
 
             <DndContext
