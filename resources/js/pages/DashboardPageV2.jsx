@@ -313,25 +313,14 @@ export function DashboardPageV2() {
                                         </p>
                                     </div>
                                 </Link>
-
-                                <Link to="/facilities" className="rt-dashboard-v2-action-card">
-                                    <MaterialIcon name="stadium" className="text-2xl text-[#c8c5d2]" />
-                                    <div className="mt-auto">
-                                        <h3 className="text-base font-bold text-[#e4e1e6]">Venues</h3>
-                                        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#918f9c]">
-                                            Facilities
-                                        </p>
-                                    </div>
-                                </Link>
                             </div>
                         </section>
 
                         <section className="rt-dashboard-v2-season" aria-labelledby="dashboard-season-heading">
                             <div className="mb-4 flex items-end justify-between gap-3">
                                 <div>
-                                    <p className="rt-section-eyebrow mb-1">Season</p>
                                     <h2 id="dashboard-season-heading" className="text-lg font-bold tracking-tight text-[#e4e1e6]">
-                                        {played > 0 ? 'Your record' : 'Start your season'}
+                                        {played > 0 ? 'Your Performance' : 'Start Your Season'}
                                     </h2>
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#918f9c]">
@@ -394,9 +383,8 @@ export function DashboardPageV2() {
                         <section className="rt-dashboard-v2-feed" aria-labelledby="dashboard-feed-heading">
                             <div className="mb-4 flex items-end justify-between gap-3">
                                 <div>
-                                    <p className="rt-section-eyebrow mb-1">Feed</p>
                                     <h2 id="dashboard-feed-heading" className="text-lg font-bold tracking-tight text-[#e4e1e6]">
-                                        Recent activity
+                                        Recent Activity
                                     </h2>
                                 </div>
                                 <Link to="/activity" className="rt-btn-secondary shrink-0 px-3 py-1.5 text-[10px]">
