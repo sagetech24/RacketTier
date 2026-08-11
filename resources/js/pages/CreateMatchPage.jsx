@@ -6,6 +6,7 @@ import { AppShell } from '../components/app/AppShell.jsx';
 import { PageHeader } from '../components/app/PageHeader.jsx';
 import { SportCard } from '../components/dashboard/SportCard.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
+import { MemberInviteCardMeta } from '../components/facilities/MemberInviteCardMeta.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const GAME_TYPE_OPTIONS = [
@@ -157,6 +158,7 @@ export function CreateMatchPage() {
                   (p) =>
                       p.name.toLowerCase().includes(q) ||
                       p.email.toLowerCase().includes(q) ||
+                      (p.primary_sport?.name ?? '').toLowerCase().includes(q) ||
                       String(p.id).includes(q),
               );
         if (hostId == null) {
@@ -589,7 +591,7 @@ export function CreateMatchPage() {
                                 {pageLoading ? (
                                     <div className="space-y-2">
                                         {Array.from({ length: 5 }).map((_, i) => (
-                                            <div key={i} className="rt-skeleton h-16 rounded-xl" aria-hidden />
+                                            <div key={i} className="rt-skeleton h-[5.5rem] rounded-xl" aria-hidden />
                                         ))}
                                     </div>
                                 ) : filteredPlayers.length === 0 ? (
@@ -627,8 +629,13 @@ export function CreateMatchPage() {
                                                         {initialsFromName(p.name)}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="truncate text-sm font-bold text-[#e4e1e6]">{p.name}</p>
-                                                        <p className="truncate text-xs text-[#918f9c]">{p.email}</p>
+                                                        <p className="truncate text-lg font-bold text-[#e4e1e6]">{p.name}</p>
+                                                        <MemberInviteCardMeta
+                                                            rating={p.rating}
+                                                            points={p.total_point_balance}
+                                                            stats={p.stats}
+                                                            primarySport={p.primary_sport}
+                                                        />
                                                     </div>
                                                 </div>
                                                 <button
@@ -694,7 +701,6 @@ export function CreateMatchPage() {
                                                             </span>
                                                         ) : null}
                                                     </p>
-                                                    <p className="truncate text-xs text-[#918f9c]">{row.email}</p>
                                                 </div>
                                             </div>
                                             <div className="flex shrink-0 gap-2">
@@ -805,14 +811,8 @@ export function CreateMatchPage() {
                             {invitedPlayers.length > 0 ? (
                                 <ul className="space-y-3">
                                     {invitedPlayers.map((p) => (
-                                        <li
-                                            key={p.id}
-                                            className="flex items-start justify-between gap-3 text-sm font-semibold text-[#e4e1e6]"
-                                        >
+                                        <li key={p.id} className="text-sm font-semibold text-[#e4e1e6]">
                                             <span>{p.name}</span>
-                                            <span className="max-w-[45%] truncate text-xs font-medium text-[#918f9c]">
-                                                {p.email}
-                                            </span>
                                         </li>
                                     ))}
                                 </ul>

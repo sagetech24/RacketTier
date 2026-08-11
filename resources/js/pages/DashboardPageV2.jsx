@@ -227,7 +227,7 @@ export function DashboardPageV2() {
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="rt-dashboard-stat-label">ELO</p>
+                                    <p className="rt-dashboard-stat-label">Rating</p>
                                     <p className="rt-dashboard-stat-value mt-1 flex items-center gap-1.5">
                                         <MaterialIcon name="trending_up" className="text-lg text-[#a6a5ed]" />
                                         {rating != null ? formatRating(rating) : '—'}

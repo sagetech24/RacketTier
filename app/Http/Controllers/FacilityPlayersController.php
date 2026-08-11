@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\EnrichFacilityPlayers;
 use App\Models\GameSessionPlayer;
 use App\Models\MemberPointWallet;
 use App\Models\TierRank;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class FacilityPlayersController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, EnrichFacilityPlayers $enrichFacilityPlayers): JsonResponse
     {
         $user = $request->user();
         abort_if(! $user, 401);
@@ -40,6 +41,7 @@ class FacilityPlayersController extends Controller
         }
 
         $rows = $query->get(['id', 'name', 'email', 'pronoun']);
+        $profileByUserId = $enrichFacilityPlayers->execute($rows->pluck('id')->all());
 
         $tierRows = collect();
         $balancesByUserId = [];
@@ -73,12 +75,27 @@ class FacilityPlayersController extends Controller
                 ->all();
         }
 
-        $players = $rows->map(function (User $u) use ($sportId, $balancesByUserId, $tierRows, $statsByUserId): array {
+        $players = $rows->map(function (User $u) use ($sportId, $balancesByUserId, $tierRows, $statsByUserId, $profileByUserId): array {
+            $profile = $profileByUserId[(int) $u->id] ?? [
+                'primary_sport' => null,
+                'rating' => null,
+                'rank' => null,
+                'tier' => null,
+                'total_point_balance' => 0,
+                'stats' => ['wins' => 0, 'losses' => 0, 'total_matches' => 0],
+            ];
+
             $base = [
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
                 'pronoun' => $u->pronoun,
+                'rating' => $profile['rating'],
+                'rank' => $profile['rank'],
+                'tier' => $profile['tier'],
+                'primary_sport' => $profile['primary_sport'],
+                'total_point_balance' => $profile['total_point_balance'],
+                'stats' => $profile['stats'],
             ];
 
             if ($sportId === null) {
