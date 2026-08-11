@@ -51,6 +51,7 @@ function PlayerStatusBadge({ status }) {
  * @param {{
  *   player: NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number];
  *   status: ReturnType<typeof playerRosterStatus>;
+ *   position?: number | null;
  *   sessionActive?: boolean;
  *   isYou?: boolean;
  *   canEdit?: boolean;
@@ -63,6 +64,7 @@ function PlayerStatusBadge({ status }) {
 export function QueueingSessionPlayerCard({
     player: p,
     status,
+    position = null,
     sessionActive = false,
     isYou = false,
     canEdit = false,
@@ -76,7 +78,6 @@ export function QueueingSessionPlayerCard({
     const losses = p.losses_count ?? 0;
     const points = p.session_points ?? 0;
     const isPlaying = Boolean(sessionActive && p.is_playing);
-    const showQueuePosition = sessionActive && status?.key === 'waiting' && p.queue_position != null;
 
     const cardClass = [
         'rt-roster-player-card',
@@ -106,9 +107,17 @@ export function QueueingSessionPlayerCard({
                     handleCardActivate();
                 }
             }}
-            aria-label={canEdit ? `Edit ${name}` : undefined}
+            aria-label={canEdit ? `Edit ${name}` : position != null ? `${position}. ${name}` : undefined}
         >
             <div className="rt-roster-player-card-inner">
+                {position != null ? (
+                    <div className="rt-roster-player-position" aria-hidden>
+                        <span className="text-xl font-extrabold italic tabular-nums sm:text-2xl">
+                            {position}
+                        </span>
+                    </div>
+                ) : null}
+
                 <div className="rt-roster-player-main">
                     <div
                         className={[

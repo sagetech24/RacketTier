@@ -833,7 +833,7 @@
 
 .rt-ranking-row {
     display: flex;
-    align-items: center;
+    align-items: start;
     gap: 0.875rem;
     border-radius: 0.75rem;
     border: 1px solid rgb(255 255 255 / 0.05);
@@ -2151,6 +2151,25 @@
     align-items: stretch;
     gap: 0.75rem;
     padding: 0.875rem 0.875rem 0.875rem 1rem;
+}
+
+.rt-roster-player-position {
+    display: flex;
+    width: 1.5rem;
+    flex-shrink: 0;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 0.35rem;
+    color: #c8c5d2;
+    transition: color 0.2s ease-out;
+}
+
+.rt-roster-player-card:hover .rt-roster-player-position {
+    color: #c2c1ff;
+}
+
+.rt-roster-player-card--you .rt-roster-player-position {
+    color: #c2c1ff;
 }
 
 .rt-roster-player-main {

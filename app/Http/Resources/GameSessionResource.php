@@ -158,6 +158,7 @@ class GameSessionResource extends JsonResource
                         'guest_name' => $p->guest_name,
                         'pronoun' => $p->pronoun,
                         'skill_level' => $p->skill_level !== null ? (int) $p->skill_level : null,
+                        'checked_in_at' => $p->created_at?->toIso8601String(),
                         'user' => $isGuest
                             ? null
                             : [

@@ -91,7 +91,9 @@ class QueueingSessionDraftHydrator
             $player->id = (int) $row['id'];
             $player->exists = true;
             $player->setAttribute('is_removed', (bool) ($row['is_removed'] ?? false));
-
+            if (! empty($row['checked_in_at'])) {
+                $player->setAttribute('created_at', Carbon::parse((string) $row['checked_in_at']));
+            }
             $uid = $row['user_id'] ?? null;
             if ($uid !== null && $usersById->has((int) $uid)) {
                 $player->setRelation('user', $usersById->get((int) $uid));

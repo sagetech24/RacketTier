@@ -143,6 +143,9 @@ class QueueingSessionDraftState
                 'is_playing' => false,
                 'team' => null,
                 'queue_position' => $next,
+                'checked_in_at' => ! empty($player['checked_in_at'])
+                    ? $player['checked_in_at']
+                    : now()->toIso8601String(),
             ]);
             break;
         }

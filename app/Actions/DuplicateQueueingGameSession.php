@@ -116,6 +116,7 @@ class DuplicateQueueingGameSession
                     'wins_count' => 0,
                     'losses_count' => 0,
                     'session_points' => 0,
+                    'checked_in_at' => now()->toIso8601String(),
                 ];
 
                 continue;
@@ -145,6 +146,7 @@ class DuplicateQueueingGameSession
                 'wins_count' => 0,
                 'losses_count' => 0,
                 'session_points' => 0,
+                'checked_in_at' => now()->toIso8601String(),
             ];
         }
 

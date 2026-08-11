@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\MatchResultProcessor;
 use App\Services\QueueingSessionDraftLineup;
 use App\Services\QueueingSessionDraftStore;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -88,6 +89,14 @@ class PersistQueueingSession
                 'last_match_id' => isset($row['last_match_id']) ? (int) $row['last_match_id'] : null,
                 'session_points' => (int) ($row['session_points'] ?? 0),
             ]);
+
+            if (! empty($row['checked_in_at'])) {
+                $checkedInAt = Carbon::parse((string) $row['checked_in_at']);
+                GameSessionPlayer::query()->whereKey($player->id)->update([
+                    'created_at' => $checkedInAt,
+                ]);
+            }
+
             $map[(int) $row['id']] = (int) $player->id;
         }
 

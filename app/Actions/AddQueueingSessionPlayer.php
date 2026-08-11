@@ -20,7 +20,7 @@ class AddQueueingSessionPlayer
     ) {}
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
      */
     public function executeMember(GameSession $session, int $userId, int $skillLevel, ?string $pronoun = null): array
     {
@@ -72,7 +72,7 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
      */
     public function executeGuest(GameSession $session, string $guestName, ?string $pronoun, ?int $skillLevel): array
     {
@@ -126,8 +126,8 @@ class AddQueueingSessionPlayer
         });
     }
 
-  /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
+    /**
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
      */
     private function executeMemberDraft(GameSession $session, int $userId, int $skillLevel, ?string $pronoun): array
     {
@@ -170,6 +170,7 @@ class AddQueueingSessionPlayer
                 'wins_count' => 0,
                 'losses_count' => 0,
                 'session_points' => 0,
+                'checked_in_at' => now()->toIso8601String(),
             ];
             $draft->players[] = $created;
 
@@ -180,7 +181,7 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
      */
     private function executeGuestDraft(GameSession $session, string $guestName, ?string $pronoun, ?int $skillLevel): array
     {
@@ -219,6 +220,7 @@ class AddQueueingSessionPlayer
                 'wins_count' => 0,
                 'losses_count' => 0,
                 'session_points' => 0,
+                'checked_in_at' => now()->toIso8601String(),
             ];
             $draft->players[] = $created;
 
@@ -229,7 +231,7 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
      */
     private function payload(GameSessionPlayer $row): array
     {
@@ -243,15 +245,18 @@ class AddQueueingSessionPlayer
             'guest_name' => $row->guest_name,
             'pronoun' => $row->pronoun,
             'skill_level' => $row->skill_level !== null ? (int) $row->skill_level : null,
+            'checked_in_at' => $row->created_at?->toIso8601String(),
         ];
     }
 
     /**
      * @param  array<string, mixed>  $row
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
      */
     private function payloadFromArray(array $row): array
     {
+        $checkedInAt = $row['checked_in_at'] ?? null;
+
         return [
             'id' => (int) $row['id'],
             'queue_position' => (int) $row['queue_position'],
@@ -262,6 +267,7 @@ class AddQueueingSessionPlayer
             'guest_name' => $row['guest_name'],
             'pronoun' => $row['pronoun'],
             'skill_level' => $row['skill_level'] !== null ? (int) $row['skill_level'] : null,
+            'checked_in_at' => is_string($checkedInAt) && $checkedInAt !== '' ? $checkedInAt : null,
         ];
     }
 }

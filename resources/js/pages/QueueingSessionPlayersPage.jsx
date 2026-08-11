@@ -33,6 +33,7 @@ const ROSTER_SORT_OPTIONS = [
     { value: 'losses', label: 'No. of losses' },
     { value: 'status', label: 'Status' },
     { value: 'rank', label: 'Skill level' },
+    { value: 'check_in', label: 'Check-in time' },
     { value: 'name', label: 'Name' },
     { value: 'pronoun', label: 'Pronoun' },
     { value: 'player_type', label: 'Player type' },
@@ -95,8 +96,8 @@ export function QueueingSessionPlayersPage() {
     const [actionError, setActionError] = useState('');
     const [visibleRosterCount, setVisibleRosterCount] = useState(ROSTER_PAGE_SIZE);
     const [loadingMoreRoster, setLoadingMoreRoster] = useState(false);
-    const [rosterSortField, setRosterSortField] = useState('total_games');
-    const [rosterSortDirection, setRosterSortDirection] = useState('desc');
+    const [rosterSortField, setRosterSortField] = useState('check_in');
+    const [rosterSortDirection, setRosterSortDirection] = useState('asc');
     const [statusFilter, setStatusFilter] = useState('all');
     const [playerSearch, setPlayerSearch] = useState('');
     const [editPlayerModal, setEditPlayerModal] = useState(
@@ -182,6 +183,22 @@ export function QueueingSessionPlayersPage() {
                     const aRank = a.skill_level ?? 99;
                     const bRank = b.skill_level ?? 99;
                     cmp = aRank - bRank;
+                    break;
+                }
+                case 'check_in': {
+                    const aTime = a.checked_in_at ? Date.parse(a.checked_in_at) : Number.NaN;
+                    const bTime = b.checked_in_at ? Date.parse(b.checked_in_at) : Number.NaN;
+                    const aValid = Number.isFinite(aTime);
+                    const bValid = Number.isFinite(bTime);
+                    if (!aValid && !bValid) {
+                        cmp = 0;
+                    } else if (!aValid) {
+                        return 1;
+                    } else if (!bValid) {
+                        return -1;
+                    } else {
+                        cmp = aTime - bTime;
+                    }
                     break;
                 }
                 case 'name':
@@ -464,7 +481,13 @@ export function QueueingSessionPlayersPage() {
                                             <select
                                                 id="roster-sort-field"
                                                 value={rosterSortField}
-                                                onChange={(e) => setRosterSortField(e.target.value)}
+                                                onChange={(e) => {
+                                                    const next = e.target.value;
+                                                    setRosterSortField(next);
+                                                    if (next === 'check_in') {
+                                                        setRosterSortDirection('asc');
+                                                    }
+                                                }}
                                                 className="rt-roster-sort-select min-w-0 flex-1 text-xs! md:text-sm!"
                                             >
                                                 {ROSTER_SORT_OPTIONS.map((option) => (
@@ -535,6 +558,7 @@ export function QueueingSessionPlayersPage() {
                                                 key={p.id}
                                                 player={p}
                                                 status={status}
+                                                position={index + 1}
                                                 sessionActive={sessionActive}
                                                 isYou={user?.id != null && p.user?.id === user.id}
                                                 canEdit={canEditPlayer}
