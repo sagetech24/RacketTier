@@ -527,7 +527,7 @@ export function QueueingSessionListPage() {
                                         ? 'Manage or open summary for finished sessions from today.'
                                         : 'View only — open summary for leaderboard and session stats.'}
                                 </p>
-                                <div className="rt-queue-list grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                                <div className="rt-queue-list grid grid-cols-1 gap-3 md:gap-4">
                                     {finishedTodayRows.map((row) => (
                                         <QueueingSessionCard
                                             key={row.id}
