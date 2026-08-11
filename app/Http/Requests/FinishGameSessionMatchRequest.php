@@ -31,9 +31,12 @@ class FinishGameSessionMatchRequest extends FormRequest
     public function rules(): array
     {
         $session = $this->route('gameSession');
-        $skipScores = $session instanceof GameSession
+        $queueingSkipScores = $session instanceof GameSession
             && $session->isQueueing()
             && (bool) $session->skip_scores;
+        $facilityWinnerOnly = $session instanceof GameSession
+            && ! $session->isQueueing()
+            && $this->filled('winning_team');
 
         $base = [
             'facility_id' => ['sometimes', 'integer', 'exists:facilities,id'],
@@ -42,7 +45,7 @@ class FinishGameSessionMatchRequest extends FormRequest
                 : ['sometimes', 'integer', 'exists:queueing_session_matches,id'],
         ];
 
-        if ($skipScores) {
+        if ($queueingSkipScores || $facilityWinnerOnly) {
             return array_merge($base, [
                 'winning_team' => ['required', 'integer', 'in:1,2'],
                 'team1_score' => ['prohibited'],

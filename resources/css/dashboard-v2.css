@@ -3124,6 +3124,12 @@
     height: 100%;
 }
 
+.rt-game-room-session-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
 /* Tablet (768px+): queue session matches — tab panels stack, no horizontal swipe */
 @media (min-width: 768px) {
     .dashboard-v2-shell {
@@ -3205,7 +3211,7 @@
 
     .rt-game-room-session-layout {
         display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
         gap: 2rem;
         align-items: start;
     }
@@ -3929,6 +3935,62 @@
     box-shadow: 0 0 0 3px rgb(194 193 255 / 0.12);
 }
 
+.rt-finish-mode-seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+    background-color: #131316;
+    border: 1px solid #2a2a2d;
+}
+
+.rt-finish-mode-seg__btn {
+    min-height: 2.75rem;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    border: 0;
+    background: transparent;
+    padding: 0 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #918f9c;
+    transition:
+        background-color 0.18s ease-out,
+        color 0.18s ease-out;
+}
+
+.rt-finish-mode-seg__btn:hover:not(:disabled) {
+    color: #e4e1e6;
+}
+
+.rt-finish-mode-seg__btn[aria-checked='true'] {
+    background-color: #2a2a2d;
+    color: #e4e1e6;
+}
+
+.rt-finish-mode-seg__btn:focus-visible {
+    outline: 2px solid rgb(194 193 255 / 0.65);
+    outline-offset: 2px;
+}
+
+.rt-finish-mode-seg__btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.rt-facility-winner-card {
+    cursor: pointer;
+    transition:
+        border-color 0.18s ease-out,
+        background-color 0.18s ease-out,
+        transform 0.15s ease-out;
+}
+
+.rt-facility-winner-card:enabled:active {
+    transform: scale(0.98);
+}
+
 @media (min-width: 768px) {
     .rt-facility-card {
         grid-template-columns: minmax(12rem, 34%) minmax(0, 1fr);
@@ -3966,6 +4028,15 @@
     .rt-facility-modal-overlay,
     .rt-facility-modal-sheet {
         animation: none !important;
+    }
+
+    .rt-facility-winner-card,
+    .rt-finish-mode-seg__btn {
+        transition: none !important;
+    }
+
+    .rt-facility-winner-card:enabled:active {
+        transform: none;
     }
 
     .rt-facility-btn:active {
@@ -4089,6 +4160,53 @@
     background-color: #5aeba0;
 }
 
+.rt-game-room-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    list-style: none;
+    padding: 0;
+}
+
+.rt-game-room-fact {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background-color: rgb(27 27 30 / 0.92);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #c8c5d2;
+}
+
+.rt-game-room-roster {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.rt-game-room-player {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4.5rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgb(255 255 255 / 0.06);
+    background-color: rgb(27 27 30 / 0.92);
+    padding: 0.75rem 1rem;
+}
+
+.rt-game-room-player--you {
+    border-color: rgb(194 193 255 / 0.28);
+    background-color: rgb(194 193 255 / 0.08);
+}
+
 .rt-game-room-meta {
     display: grid;
     gap: 0.75rem 1.5rem;
@@ -4117,9 +4235,35 @@
     color: #e4e1e6;
 }
 
+.rt-game-room-lobby-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+@media (min-width: 1024px) {
+    .rt-game-room-lobby-list--multi {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .rt-game-room-lobby-list--multi > li {
+        height: 100%;
+    }
+
+    .rt-game-room-lobby-list--multi .rt-game-room-session-card {
+        height: 100%;
+    }
+}
+
 .rt-game-room-session-card {
     display: flex;
     min-height: 4.5rem;
+    align-items: center;
     cursor: pointer;
     gap: 0.75rem;
     border-radius: 0.75rem;
@@ -4129,6 +4273,15 @@
     transition:
         border-color 0.2s ease-out,
         background-color 0.2s ease-out;
+}
+
+.rt-game-room-session-card--live {
+    border-color: rgb(248 113 113 / 0.32);
+    background-color: rgb(248 113 113 / 0.04);
+}
+
+.rt-game-room-session-card--finished {
+    border-color: rgb(27 203 77 / 0.16);
 }
 
 .rt-game-room-session-card:hover {

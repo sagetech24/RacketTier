@@ -263,7 +263,8 @@ class FinishGameSessionMatch
         ?int $team2Score,
         ?int $winningTeamOverride,
     ): array {
-        $useWinnerOnly = $session->isQueueing() && (bool) $session->skip_scores;
+        $useWinnerOnly = ($session->isQueueing() && (bool) $session->skip_scores)
+            || (! $session->isQueueing() && in_array($winningTeamOverride, [1, 2], true));
 
         if ($useWinnerOnly) {
             if (! in_array($winningTeamOverride, [1, 2], true)) {

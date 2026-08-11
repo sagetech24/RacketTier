@@ -22,7 +22,7 @@ class GameSessionFinishMatchController extends Controller
             ? (int) $validated['queueing_session_match_id']
             : null;
 
-        if ($gameSession->isQueueing() && (bool) $gameSession->skip_scores) {
+        if (isset($validated['winning_team'])) {
             $gameSession = $finishGameSessionMatch->execute(
                 $gameSession,
                 null,

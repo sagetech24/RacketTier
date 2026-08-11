@@ -187,4 +187,30 @@ class GameSessionFinishMatchTest extends TestCase
         $response->assertJsonPath('data.last_match.winning_team', 1);
         $this->assertSame(4, RatingHistory::query()->where('game_session_id', $session->id)->count());
     }
+
+    public function test_host_can_finish_facility_match_by_winning_team_without_scores(): void
+    {
+        $host = User::factory()->create();
+        $guest = User::factory()->create();
+        $session = $this->seedSinglesSession($host, $guest, 1);
+
+        $this->actingAs($host)->postJson('/auth/game-sessions/'.$session->id.'/start-match', [
+            'facility_id' => 1,
+        ])->assertOk();
+
+        $response = $this->actingAs($host)->postJson('/auth/game-sessions/'.$session->id.'/finish-match', [
+            'facility_id' => 1,
+            'winning_team' => 2,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.status', 'finished');
+        $response->assertJsonPath('data.is_active', false);
+        $response->assertJsonPath('data.last_match.winning_team', 2);
+        $response->assertJsonPath('data.last_match.team1_score', null);
+        $response->assertJsonPath('data.last_match.team2_score', null);
+
+        $this->assertSame(25, (int) MemberPointWallet::query()->where('user_id', $guest->id)->where('sport_id', $session->sport_id)->value('balance'));
+        $this->assertSame(8, (int) MemberPointWallet::query()->where('user_id', $host->id)->where('sport_id', $session->sport_id)->value('balance'));
+    }
 }
