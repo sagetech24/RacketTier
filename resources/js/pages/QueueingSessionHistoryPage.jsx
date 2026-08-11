@@ -519,7 +519,7 @@ export function QueueingSessionHistoryPage() {
                                                 {rows.length}
                                             </span>
                                         </div>
-                                        <div className="rt-queue-list grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-2">
+                                        <div className="rt-queue-list grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-1">
                                             {rows.map((row) => (
                                                 <HistoryCard
                                                     key={row.id}
