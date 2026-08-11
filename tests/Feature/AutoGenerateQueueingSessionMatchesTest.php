@@ -419,6 +419,100 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         );
     }
 
+    public function test_queue_first_doubles_includes_zero_game_players_at_front_of_queue(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Fresh Queue Doubles',
+            'match_type' => 'doubles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $freshA = $this->addPlayer($session, 1, 3, 0, 0);
+        $freshB = $this->addPlayer($session, 2, 3, 0, 0);
+        $freshC = $this->addPlayer($session, 3, 3, 0, 0);
+        $filler = $this->addPlayer($session, 4, 3, 0, 1, lastMatchResult: 'loss', lastMatchId: 1);
+
+        // Extra played players further back in queue — must not jump ahead of fresh.
+        $this->addPlayer($session, 5, 5, 1, 0, lastMatchResult: 'win', lastMatchId: 1);
+        $this->addPlayer($session, 6, 4, 1, 0, lastMatchResult: 'win', lastMatchId: 2);
+        $this->addPlayer($session, 7, 2, 0, 1, lastMatchResult: 'loss', lastMatchId: 2);
+        $this->addPlayer($session, 8, 1, 0, 1, lastMatchResult: 'loss', lastMatchId: 1);
+
+        $criteria = new AutoMatchCriteria(
+            skillLevel: false,
+            wlStatistics: false,
+            sequence: true,
+            genderlessMixed: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $firstIds = collect($result['proposals'][0]['lineup'])->pluck('id')->sort()->values()->all();
+        $this->assertSame(
+            collect([$freshA->id, $freshB->id, $freshC->id, $filler->id])->sort()->values()->all(),
+            $firstIds,
+        );
+    }
+
+    public function test_wl_doubles_does_not_orphan_fresh_players_behind_loser_pools(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'WL Fresh Orphan Doubles',
+            'match_type' => 'doubles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $freshA = $this->addPlayer($session, 1, 3, 0, 0);
+        $freshB = $this->addPlayer($session, 2, 3, 0, 0);
+        $freshC = $this->addPlayer($session, 3, 3, 0, 0);
+
+        for ($i = 0; $i < 4; $i++) {
+            $this->addPlayer($session, 4 + $i, 3, 1, 0, lastMatchResult: 'win', lastMatchId: 10 + $i);
+        }
+        for ($i = 0; $i < 4; $i++) {
+            $this->addPlayer($session, 8 + $i, 3, 0, 1, lastMatchResult: 'loss', lastMatchId: 20 + $i);
+        }
+
+        $criteria = new AutoMatchCriteria(
+            skillLevel: false,
+            wlStatistics: true,
+            sequence: true,
+            genderlessMixed: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $matchedIds = collect($result['proposals'])
+            ->flatMap(fn (array $p) => collect($p['lineup'])->pluck('id'))
+            ->all();
+
+        $this->assertContains($freshA->id, $matchedIds);
+        $this->assertContains($freshB->id, $matchedIds);
+        $this->assertContains($freshC->id, $matchedIds);
+    }
+
     public function test_balanced_doubles_widens_fairness_when_min_band_is_undersized(): void
     {
         $host = User::factory()->create();

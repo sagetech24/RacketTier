@@ -255,14 +255,11 @@ class AutoGenerateQueueingSessionMatches
         if ($criteria->wlStatistics && $hasStats && $this->poolHasLastMatchResults($pool)) {
             $ordered = $this->selectByLastMatchBracket($ordered, $required, $criteria);
         } elseif ($criteria->wlStatistics && $hasStats) {
-            $ordered = $ordered
-                ->sortBy([
-                    fn (GameSessionPlayer $p): int => $this->matchesPlayed($p),
-                    fn (GameSessionPlayer $p): int => $this->sequenceSortKey($p, $criteria),
-                ])
-                ->values()
-                ->sortByDesc(fn (GameSessionPlayer $p): int => $this->winRateBand($p))
-                ->values();
+            $ordered = $this->sortByPlayerKeys($ordered, [
+                fn (GameSessionPlayer $p): int => $this->matchesPlayed($p),
+                fn (GameSessionPlayer $p): int => -$this->winRateBand($p),
+                fn (GameSessionPlayer $p): int => $this->sequenceSortKey($p, $criteria),
+            ]);
             $ordered = $this->applyRefreshTieBreak($ordered, $criteria);
         }
 
@@ -271,6 +268,8 @@ class AutoGenerateQueueingSessionMatches
 
     /**
      * Prefer winner-bracket groupings; deprioritize all-loser pairings when alternatives exist.
+     * Fresh (no last-match result) players must still be seated — never orphan them behind a
+     * pure loser pool when they cannot fill a match on their own.
      *
      * @param  Collection<int, GameSessionPlayer>  $ordered
      * @return Collection<int, GameSessionPlayer>
@@ -293,6 +292,19 @@ class AutoGenerateQueueingSessionMatches
                 $this->fairnessSort($winners->merge($fresh), $criteria),
                 $criteria,
             )->take($required)->values();
+        }
+
+        // Fresh alone cannot fill a match, and winners are short — mix fresh in before
+        // falling through to a losers-only bracket that would leave them unmatched.
+        if ($fresh->isNotEmpty()
+            && $fresh->count() < $required
+            && ($winners->count() + $fresh->count() + $losers->count()) >= $required) {
+            $preferred = $this->fairnessSort($winners->merge($fresh), $criteria);
+            $fill = $this->fairnessSort($losers, $criteria);
+
+            return $this->applyRefreshTieBreak($preferred->concat($fill)->values(), $criteria)
+                ->take($required)
+                ->values();
         }
 
         if ($losers->count() >= $required) {
@@ -643,7 +655,7 @@ class AutoGenerateQueueingSessionMatches
 
         $sortKeys[] = fn (GameSessionPlayer $p): int => $this->sequenceSortKey($p, $criteria);
 
-        $sorted = $pool->sortBy($sortKeys)->values();
+        $sorted = $this->sortByPlayerKeys($pool, $sortKeys);
 
         if ($preferDifferentPronounFrom !== null) {
             $anchorGroup = $this->strictPronounGroup($preferDifferentPronounFrom);
@@ -704,7 +716,7 @@ class AutoGenerateQueueingSessionMatches
         $sortKeys[] = fn (GameSessionPlayer $p): int => $this->sequenceSortKey($p, $criteria);
 
         return $this->applyRefreshTieBreak(
-            $pool->sortBy($sortKeys)->values(),
+            $this->sortByPlayerKeys($pool, $sortKeys),
             $criteria,
         );
     }
@@ -830,10 +842,38 @@ class AutoGenerateQueueingSessionMatches
      */
     private function fairnessSort(Collection $pool, AutoMatchCriteria $criteria): Collection
     {
-        return $pool->sortBy([
+        return $this->sortByPlayerKeys($pool, [
             fn (GameSessionPlayer $p): int => $this->matchesPlayed($p),
             fn (GameSessionPlayer $p): int => $this->sequenceSortKey($p, $criteria),
-        ])->values();
+        ]);
+    }
+
+    /**
+     * Multi-key ascending sort using value retrievers.
+     *
+     * Laravel's Collection::sortBy([...]) treats array callables as ($a, $b) comparators,
+     * so one-arg value retrievers (especially ones that return 0) silently break ordering.
+     *
+     * @param  Collection<int, GameSessionPlayer>  $pool
+     * @param  list<callable(GameSessionPlayer): (int|string|float)>  $keyFns
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function sortByPlayerKeys(Collection $pool, array $keyFns): Collection
+    {
+        if ($pool->count() <= 1 || $keyFns === []) {
+            return $pool->values();
+        }
+
+        return $pool->sort(function (GameSessionPlayer $a, GameSessionPlayer $b) use ($keyFns): int {
+            foreach ($keyFns as $keyFn) {
+                $result = $keyFn($a) <=> $keyFn($b);
+                if ($result !== 0) {
+                    return $result;
+                }
+            }
+
+            return ((int) $a->id) <=> ((int) $b->id);
+        })->values();
     }
 
     /**
