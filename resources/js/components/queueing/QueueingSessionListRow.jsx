@@ -1,4 +1,5 @@
 import { playerInitials } from '../ranking/rankingUtils.js';
+import { PlayerSkillLevelBadge } from './PlayerSkillLevelBadge.jsx';
 import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardStats.jsx';
 
 /**
@@ -12,12 +13,14 @@ import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardSta
  *     total_matches?: number;
  *     earned_points?: number;
  *     is_guest?: boolean;
+ *     skill_level?: number | null;
  *   };
  *   isYou?: boolean;
  * }} props
  */
 export function QueueingSessionListRow({ player, isYou = false }) {
     const points = player.earned_points ?? 0;
+    const isGuest = Boolean(player.is_guest);
 
     return (
         <article className={['rt-ranking-row', isYou ? 'rt-ranking-row--you' : ''].filter(Boolean).join(' ')}>
@@ -25,7 +28,7 @@ export function QueueingSessionListRow({ player, isYou = false }) {
                 <span className="text-2xl font-extrabold italic tabular-nums">{player.rank ?? '—'}</span>
             </div>
 
-            <div className="rt-ranking-avatar size-8 sm:size-10 text-xs sm:text-lg" aria-hidden>
+            <div className="rt-ranking-avatar size-10 text-md sm:text-lg" aria-hidden>
                 {playerInitials(player.name ?? 'Player')}
             </div>
 
@@ -39,11 +42,19 @@ export function QueueingSessionListRow({ player, isYou = false }) {
                     ) : null}
                 </h4>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                    {player.is_guest ? (
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c8c5d2]">
-                            Guest
-                        </span>
-                    ) : null}
+                    <div
+                        className={[
+                            'flex gap-1.5',
+                            isGuest ? 'flex-col items-start tab:flex-row tab:items-center' : 'flex-row items-center',
+                        ].join(' ')}
+                    >
+                        {isGuest ? (
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c8c5d2]">
+                                Guest
+                            </span>
+                        ) : null}
+                        <PlayerSkillLevelBadge skillLevel={player.skill_level} truncateOnMobile />
+                    </div>
                     <QueueingSessionLeaderboardStats
                         wins={player.wins}
                         losses={player.losses}
