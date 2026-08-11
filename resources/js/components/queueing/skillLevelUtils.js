@@ -2,8 +2,8 @@ export const SKILL_LEVEL_NAMES = {
     1: 'Starter',
     2: 'Beginner',
     3: 'Intermediate',
-    4: 'Sempai',
-    5: 'Sensie',
+    4: 'Advance',
+    5: 'Pro Elite',
 };
 
 /** @param {number | null | undefined} skillLevel */

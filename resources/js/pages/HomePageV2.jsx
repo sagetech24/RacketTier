@@ -41,7 +41,7 @@ const FEATURES = [
     {
         icon: 'military_tech',
         title: 'Session Points & Tiers',
-        description: 'Win and loss points fill a per-sport wallet. Climb Starter → Sensie across five brackets.',
+        description: 'Win and loss points fill a per-sport wallet. Climb Starter → Level 5 - Pro Elite across five brackets.',
         span: 'md',
     },
     {
@@ -79,8 +79,8 @@ const TIERS = [
     { name: 'Starter', range: '0–499', width: '18%' },
     { name: 'Beginner', range: '500–1.4k', width: '32%' },
     { name: 'Intermediate', range: '1.5k–4.9k', width: '48%' },
-    { name: 'Sempai', range: '5k–14.9k', width: '68%' },
-    { name: 'Sensie', range: '15k+', width: '92%' },
+    { name: 'Level 4 - Advance', range: '5k–14.9k', width: '68%' },
+    { name: 'Level 5 - Pro Elite', range: '15k+', width: '92%' },
 ];
 
 const PODIUM = [
@@ -547,7 +547,7 @@ export function HomePageV2() {
                             </h2>
                             <p className="mt-3 text-sm leading-relaxed text-[#c8c5d2] tab:text-base">
                                 Session points fill your per-sport wallet. Your tier label moves with you — from Starter
-                                through Sensie — while ELO tracks pure skill separately.
+                                through Level 5 - Pro Elite — while ELO tracks pure skill separately.
                             </p>
                             <ul className="mt-8 space-y-4">
                                 {TIERS.map((tier) => (

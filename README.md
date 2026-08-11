@@ -50,7 +50,7 @@ Member-organized, multi-match, with a live leaderboard.
 
 - **ELO** (`rankings`, `rating_histories`): skill rating per user+sport, default **1000**, K-factor **32**. Members only; guests excluded.
 - **Session points / wallets** (`member_point_wallets`, `point_wallet_transactions`): per-sport balance credited on match finish (queueing uses the session's win/loss points; facility uses win `25 + min(10, margin)`, loss `8`).
-- **Tiers** (`tier_ranks`): 5 brackets per sport resolved from wallet balance — **1 Starter, 2 Beginner, 3 Intermediate, 4 Sempai, 5 Sensie**.
+- **Tiers** (`tier_ranks`): 5 brackets per sport resolved from wallet balance — **1 Starter, 2 Beginner, 3 Intermediate, 4 Level 4 - Advance, 5 Level 5 - Pro Elite**.
 
 ### Supporting screens
 

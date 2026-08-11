@@ -83,7 +83,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
 
         $this->assertSame([$highSecond->id, $highFourth->id], $firstIds);
         $this->assertSame([$lowFirst->id, $lowThird->id], $secondIds);
-        $this->assertSame('Level 5 — Sensie', $result['proposals'][0]['bracket_label']);
+        $this->assertSame('Level 5 — Pro Elite', $result['proposals'][0]['bracket_label']);
         $this->assertSame('Level 1 — Starter', $result['proposals'][1]['bracket_label']);
     }
 
@@ -217,7 +217,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $this->assertSame(1, $lineup[$p5b->id]['team']);
         $this->assertSame(2, $lineup[$p5c->id]['team']);
         $this->assertSame(2, $lineup[$p5d->id]['team']);
-        $this->assertSame('Level 5 — Sensie', $result['proposals'][0]['bracket_label']);
+        $this->assertSame('Level 5 — Pro Elite', $result['proposals'][0]['bracket_label']);
     }
 
     public function test_sequence_only_uses_fifo_when_skill_disabled(): void
@@ -316,7 +316,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.criteria.skill_match_mode', 'same_level');
-        $response->assertJsonPath('data.proposals.0.bracket_label', 'Level 4 — Sempai');
+        $response->assertJsonPath('data.proposals.0.bracket_label', 'Level 4 — Advance');
     }
 
     public function test_refresh_seed_can_change_balanced_singles_pairings(): void
@@ -373,7 +373,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.criteria.skill_match_mode', 'same_level');
         $response->assertJsonPath('data.criteria.wl_statistics', false);
-        $response->assertJsonPath('data.proposals.0.bracket_label', 'Level 4 — Sempai');
+        $response->assertJsonPath('data.proposals.0.bracket_label', 'Level 4 — Advance');
     }
 
     public function test_auto_proposals_endpoint_accepts_refresh_seed(): void

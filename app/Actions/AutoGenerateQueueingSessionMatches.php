@@ -18,8 +18,8 @@ class AutoGenerateQueueingSessionMatches
         1 => 'Starter',
         2 => 'Beginner',
         3 => 'Intermediate',
-        4 => 'Sempai',
-        5 => 'Sensie',
+        4 => 'Advance',
+        5 => 'Pro Elite',
     ];
 
     private const SCORE_WINNER_VS_WINNER = 30;

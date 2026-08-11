@@ -43,7 +43,7 @@ const FEATURES = [
     {
         icon: 'military_tech',
         title: 'Points & five tiers',
-        body: 'Wallet balances climb Starter → Sensie while ratings tracks pure skill.',
+        body: 'Wallet balances climb Starter → Level 5 - Pro Elite while ratings tracks pure skill.',
     },
 ];
 
@@ -58,8 +58,8 @@ const TIERS = [
     { name: 'Starter', pts: '0–499', fill: 18 },
     { name: 'Beginner', pts: '500–1.4k', fill: 34 },
     { name: 'Intermediate', pts: '1.5k–4.9k', fill: 52 },
-    { name: 'Sempai', pts: '5k–14.9k', fill: 72 },
-    { name: 'Sensie', pts: '15k+', fill: 94 },
+    { name: 'Level 4 - Advance', pts: '5k–14.9k', fill: 72 },
+    { name: 'Level 5 - Pro Elite', pts: '15k+', fill: 94 },
 ];
 
 const PODIUM = [
@@ -74,7 +74,7 @@ const TICKER = [
     'Maya K. reached Intermediate',
     'Facility match finished · +30 pts',
     'Casey N. joined the waiting list',
-    'Sempai unlocked · Tennis wallet',
+    'Level 4 - Advance unlocked · Tennis wallet',
 ];
 
 function Icon({ name, className = '' }) {

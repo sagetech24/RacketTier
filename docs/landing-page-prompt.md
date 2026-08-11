@@ -33,7 +33,7 @@ You are a senior front-end engineer and product designer. Build a **modern, high
 1. **Smart Queueing** — Member-organized sessions run by a **Queue Master** with **FIFO rotation** so everyone gets fair court time. Auto-generate matches or build them manually.
 2. **Auto-Matchmaking** — Generate balanced matches from the queue using configurable criteria: **skill level** (balanced or same-level), **FIFO sequence**, **win/loss statistics**, and **genderless mixed** teams. Supports singles (2 players) and doubles (4 players).
 3. **Live Ranking (ELO)** — Every match updates your skill rating per sport, with a transparent rating history. Base rating 1000, standard ELO math. See a live per-sport leaderboard with a top-3 podium.
-4. **Session Points & Tiers** — Earn points per win and per loss, filling a **per-sport wallet**. Points bracket you into **5 tiers: Starter → Beginner → Intermediate → Sempai → Sensie**.
+4. **Session Points & Tiers** — Earn points per win and per loss, filling a **per-sport wallet**. Points bracket you into **5 tiers: Starter → Beginner → Intermediate → Level 4 - Advance → Level 5 - Pro Elite**.
 5. **Two ways to play** —
    - **Facility game session:** a single scored match hosted at a venue; finish the match and the session wraps up with ratings + points applied.
    - **Queueing session:** a member-run, multi-match session with a live leaderboard that stays active across many matches, then produces a summary report.
@@ -65,7 +65,7 @@ Design these so real numbers can be dropped in later; show tasteful placeholders
 3. **Sports band (optional but encouraged)** — "Built for racket sports. One platform. Four sports. Independent ratings, wallets, and tiers for each." Show the four sports (Badminton, Pickleball, Tennis, Table Tennis) as icon/cards.
 4. **Features grid** — Section eyebrow "What you get", heading "Everything a thriving club needs", then the feature cards from §3.
 5. **How it works** — 4-step section from §4.
-6. **Ranking / tiers showcase** — Visualize the tier ladder (Starter → Beginner → Intermediate → Sempai → Sensie) and/or a sample leaderboard with a podium (1st/2nd/3rd) to make the ranking tangible.
+6. **Ranking / tiers showcase** — Visualize the tier ladder (Starter → Beginner → Intermediate → Level 4 - Advance → Level 5 - Pro Elite) and/or a sample leaderboard with a podium (1st/2nd/3rd) to make the ranking tangible.
 7. **Final CTA band** — "Ready to start your tier journey?" with a gradient/bordered card and CTAs. Subcopy: "Join RacketTier and turn every casual rally into ranked, recordable progress."
 8. **Footer** — Wordmark + copyright line: "© {year} RacketTier | The kinetic world of racket sports". Include placeholder links (Terms, Privacy, Contact).
 

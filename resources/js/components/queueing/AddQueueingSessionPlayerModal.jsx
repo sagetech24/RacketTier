@@ -13,8 +13,8 @@ const SKILL_LEVEL_OPTIONS = [
     { value: '1', label: '1 — Starter' },
     { value: '2', label: '2 — Beginner' },
     { value: '3', label: '3 — Intermediate' },
-    { value: '4', label: '4 — Sempai' },
-    { value: '5', label: '5 — Sensie' },
+    { value: '4', label: '4 — Advance' },
+    { value: '5', label: '5 — Pro Elite' },
 ];
 
 const inputClassName =
