@@ -1,0 +1,131 @@
+.rt-toast-region {
+    position: fixed;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    z-index: 300;
+    display: flex;
+    width: min(calc(100vw - 1.5rem), 24rem);
+    transform: translateX(-50%);
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+@media (min-width: 768px) {
+    .rt-toast-region {
+        bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+    }
+}
+
+.rt-toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    padding: 0.75rem 0.75rem 0.75rem 0.875rem;
+    backdrop-filter: blur(12px);
+    animation: rt-toast-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rt-toast--out {
+    animation: rt-toast-out 0.18s ease-out both;
+}
+
+.rt-toast--success {
+    background-color: rgb(76 224 129 / 0.1);
+    border-color: rgb(76 224 129 / 0.28);
+}
+
+.rt-toast--error,
+.rt-toast--info {
+    background-color: rgb(255 59 48 / 0.1);
+    border-color: rgb(255 59 48 / 0.28);
+}
+
+.rt-toast-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+.rt-toast--success .rt-toast-icon {
+    color: #4ce081;
+}
+
+.rt-toast--error .rt-toast-icon,
+.rt-toast--info .rt-toast-icon {
+    color: #ff5c5c;
+}
+
+.rt-toast-message {
+    flex: 1;
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    font-weight: 500;
+    color: #e4e1e6;
+}
+
+.rt-toast-dismiss {
+    display: inline-flex;
+    height: 1.75rem;
+    width: 1.75rem;
+    flex-shrink: 0;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border: 0;
+    background: transparent;
+    color: #918f9c;
+    transition:
+        background-color 0.16s ease-out,
+        color 0.16s ease-out;
+}
+
+.rt-toast-dismiss svg {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+.rt-toast-dismiss:hover {
+    background-color: rgb(255 255 255 / 0.06);
+    color: #e4e1e6;
+}
+
+.rt-toast-dismiss:focus-visible {
+    outline: 2px solid rgb(194 193 255 / 0.65);
+    outline-offset: 2px;
+}
+
+@keyframes rt-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes rt-toast-out {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(0.35rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rt-toast,
+    .rt-toast--out {
+        animation: none;
+    }
+}

@@ -4,6 +4,7 @@ import {
     postCreateQueueingSessionMatch,
     postStartQueueingSessionMatch,
 } from '../../api/queueingSession.js';
+import { toast, withSilentToasts } from '../../lib/toast.js';
 import { MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../app/ModalPortal.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { AutoMatchWizardSteps } from './AutoMatchWizardSteps.jsx';
@@ -447,14 +448,15 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
         setBusy(true);
         setError('');
         try {
-            for (const proposal of proposals) {
-                await createMatchFromProposal(proposal);
-            }
-            showStatus(
-                proposals.length === 1
-                    ? '1 match queued.'
-                    : `${proposals.length} matches queued.`,
-            );
+            await withSilentToasts(async () => {
+                for (const proposal of proposals) {
+                    await createMatchFromProposal(proposal);
+                }
+            });
+            const queued =
+                proposals.length === 1 ? '1 match queued.' : `${proposals.length} matches queued.`;
+            showStatus(queued);
+            toast.success(queued);
             if (onApproved) {
                 await onApproved();
             }

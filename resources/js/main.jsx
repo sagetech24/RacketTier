@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AppRoutes } from './AppRoutes.jsx';
+import { ToastHost } from './components/app/ToastHost.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { queryClient } from './lib/queryClient.js';
 import { initPwa } from './pwa.js';
@@ -21,6 +22,7 @@ createRoot(el).render(
             <BrowserRouter>
                 <AuthProvider>
                     <AppRoutes />
+                    <ToastHost />
                 </AuthProvider>
             </BrowserRouter>
         </QueryClientProvider>
