@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
     DndContext,
     DragOverlay,
@@ -40,6 +41,34 @@ function skillLevelLabel(skillLevel) {
 function prefersReducedMotion() {
     if (typeof window === 'undefined' || !window.matchMedia) return false;
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * Render DragOverlay on document.body. Lineup modals keep a CSS `transform`
+ * after their enter animation (`forwards`), which makes in-tree
+ * `position: fixed` resolve against the sheet instead of the viewport — the
+ * preview then appears far from the press point, often outside the modal.
+ *
+ * @param {{
+ *   children: import('react').ReactNode,
+ * }} props
+ */
+function PortaledDragOverlay({ children }) {
+    const overlay = (
+        <DragOverlay
+            dropAnimation={prefersReducedMotion() ? null : undefined}
+            style={{ pointerEvents: 'none' }}
+            zIndex={300}
+        >
+            {children}
+        </DragOverlay>
+    );
+
+    if (typeof document === 'undefined') {
+        return overlay;
+    }
+
+    return createPortal(overlay, document.body);
 }
 
 /**
@@ -362,13 +391,13 @@ export function DraggableMatchLineup({
                     />
                 </div>
 
-                <DragOverlay dropAnimation={prefersReducedMotion() ? null : undefined}>
+                <PortaledDragOverlay>
                     {activePlayer ? (
-                        <div className="scale-[1.02] opacity-95 shadow-xl">
+                        <div className="w-full opacity-95 shadow-xl">
                             <LineupDragCard player={activePlayer} isDragging disabled />
                         </div>
                     ) : null}
-                </DragOverlay>
+                </PortaledDragOverlay>
             </DndContext>
         </div>
     );
