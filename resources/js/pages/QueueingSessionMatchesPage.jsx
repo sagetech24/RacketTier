@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import { postFinishGameSessionMatch } from '../api/gameSession.js';
@@ -150,6 +150,7 @@ export function QueueingSessionMatchesPage() {
     const tabScrollerRef = useRef(null);
     const skipScrollSyncRef = useRef(false);
     const scrollRafRef = useRef(null);
+    const needsInitialTabSnapRef = useRef(true);
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
     const invalidateQueueingSession = useInvalidateQueueingSession();
@@ -351,10 +352,12 @@ export function QueueingSessionMatchesPage() {
         return base;
     }, [matches]);
 
-    const availableMatchTabs = useMemo(
-        () => (session?.is_active ? MATCH_STATUS_TABS : ['finished']),
-        [session?.is_active],
-    );
+    const availableMatchTabs = useMemo(() => {
+        if (session && !session.is_active) {
+            return ['finished'];
+        }
+        return MATCH_STATUS_TABS;
+    }, [session]);
 
     const tabParam = searchParams.get('tab');
     const activeMatchTab = availableMatchTabs.includes(tabParam ?? '') ? tabParam : availableMatchTabs[0];
@@ -375,10 +378,50 @@ export function QueueingSessionMatchesPage() {
     }, [loading, session, tabParam, activeMatchTab, setSearchParams]);
 
     useEffect(() => {
+        if (loading) {
+            needsInitialTabSnapRef.current = true;
+        }
+    }, [loading]);
+
+    useLayoutEffect(() => {
+        if (loading || !needsInitialTabSnapRef.current) return;
+        const el = tabScrollerRef.current;
+        if (!el) return;
+
+        const snapToActiveTab = () => {
+            const index = availableMatchTabs.indexOf(activeMatchTab ?? '');
+            if (index < 0 || el.clientWidth === 0) return false;
+            skipScrollSyncRef.current = true;
+            const previousBehavior = el.style.scrollBehavior;
+            el.style.scrollBehavior = 'auto';
+            el.scrollLeft = index * el.clientWidth;
+            el.style.scrollBehavior = previousBehavior;
+            needsInitialTabSnapRef.current = false;
+            return true;
+        };
+
+        if (snapToActiveTab()) {
+            const frameId = requestAnimationFrame(() => {
+                skipScrollSyncRef.current = false;
+            });
+            return () => cancelAnimationFrame(frameId);
+        }
+
+        const frameId = requestAnimationFrame(() => {
+            if (!snapToActiveTab()) return;
+            requestAnimationFrame(() => {
+                skipScrollSyncRef.current = false;
+            });
+        });
+        return () => cancelAnimationFrame(frameId);
+    }, [loading, activeMatchTab, availableMatchTabs]);
+
+    useEffect(() => {
+        if (loading) return;
         const el = tabScrollerRef.current;
         if (!el) return;
         const index = availableMatchTabs.indexOf(activeMatchTab ?? '');
-        if (index < 0) return;
+        if (index < 0 || el.clientWidth === 0) return;
         const targetLeft = index * el.clientWidth;
         if (Math.abs(el.scrollLeft - targetLeft) < 2) return;
         skipScrollSyncRef.current = true;
@@ -387,7 +430,7 @@ export function QueueingSessionMatchesPage() {
             skipScrollSyncRef.current = false;
         }, 400);
         return () => window.clearTimeout(timeoutId);
-    }, [activeMatchTab, availableMatchTabs]);
+    }, [activeMatchTab, availableMatchTabs, loading]);
 
     const handleMatchTabScroll = useCallback(() => {
         if (skipScrollSyncRef.current) return;
