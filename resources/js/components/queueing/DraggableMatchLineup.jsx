@@ -359,7 +359,10 @@ export function DraggableMatchLineup({
             }
         >
             {title ? (
-                <p className="mb-3 text-2xl font-semibold text-[#e4e1e6]">{title}</p>
+                <div className="flex md:flex-row flex-col items-start justify-start md:justify-between mb-3">
+                    <p className="text-2xl font-semibold text-[#e4e1e6]">{title}</p>
+                    <p className="text-sm text-[#bbbbbb]">Drag and drop players to reorder</p>
+                </div>
             ) : null}
 
             <DndContext
