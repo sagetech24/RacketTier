@@ -8,9 +8,10 @@ import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
  *   description: string;
  *   actionLabel?: string;
  *   actionTo?: string;
+ *   actionDataTour?: string;
  * }} props
  */
-export function EmptyState({ icon = 'sports_tennis', title, description, actionLabel, actionTo }) {
+export function EmptyState({ icon = 'sports_tennis', title, description, actionLabel, actionTo, actionDataTour }) {
     return (
         <div className="rt-empty-state flex flex-col items-center justify-center">
             <div className="rt-empty-state-icon" aria-hidden>
@@ -19,7 +20,7 @@ export function EmptyState({ icon = 'sports_tennis', title, description, actionL
             <h3 className="text-base font-bold text-[#e4e1e6]">{title}</h3>
             <p className="mt-1.5 text-center  max-w-sm text-sm leading-relaxed text-[#c8c5d2]">{description}</p>
             {actionLabel && actionTo ? (
-                <Link to={actionTo} className="rt-btn-secondary mt-4 inline-flex">
+                <Link to={actionTo} className="rt-btn-secondary mt-4 inline-flex" data-tour={actionDataTour}>
                     {actionLabel}
                 </Link>
             ) : null}

@@ -4,6 +4,7 @@ import { fetchDashboardSummary } from '../api/dashboard.js';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { PageHeader } from '../components/app/PageHeader.jsx';
 import { LogoutButton } from '../components/LogoutButton.jsx';
+import { useProductTour } from '../components/tour/useProductTour.js';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal.jsx';
 import { EditProfileModal } from '../components/profile/EditProfileModal.jsx';
 import { EmailVerificationCard } from '../components/profile/EmailVerificationCard.jsx';
@@ -12,6 +13,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 export function ProfilePage() {
     const { user: authUser, setUser, refreshUser } = useAuth();
+    const { replayTour, replayRunSessionTour } = useProductTour();
     const location = useLocation();
     const navigate = useNavigate();
     const [summary, setSummary] = useState(null);
@@ -142,6 +144,47 @@ export function ProfilePage() {
                             >
                                 Change
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="rt-surface-card p-5 md:p-6">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <div className="text-[10px] font-semibold uppercase tracking-widest text-[#918f9c]">
+                                    Getting started
+                                </div>
+                                <div className="mt-1 text-base font-bold text-[#e4e1e6]">Create a queue</div>
+                                <p className="mt-1 text-xs text-[#c8c5d2]">
+                                    Replay the walkthrough for starting a queueing session as Queue Master.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={replayTour}
+                                className="rt-btn-secondary shrink-0 px-3 py-1.5 text-[10px] md:px-4 md:text-xs"
+                            >
+                                Replay
+                            </button>
+                        </div>
+                        <div className="border-t border-white/5 pt-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <div className="mt-0 text-base font-bold text-[#e4e1e6]">Run a session</div>
+                                    <p className="mt-1 text-xs text-[#c8c5d2]">
+                                        Add players, auto-match, and start matches. Opens your queue list — pick an
+                                        active session you manage to begin.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={replayRunSessionTour}
+                                    className="rt-btn-secondary shrink-0 px-3 py-1.5 text-[10px] md:px-4 md:text-xs"
+                                >
+                                    Replay
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

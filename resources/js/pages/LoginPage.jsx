@@ -6,6 +6,7 @@ import { AuthPageShell } from '../components/auth/AuthPageShell.jsx';
 import { AuthPasswordField } from '../components/auth/AuthPasswordField.jsx';
 import { AuthSubmitButton } from '../components/auth/AuthSubmitButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { markTourPending } from '../lib/productTourStorage.js';
 import { normalizeAuthUser } from '../lib/userRoles.js';
 import { postForm } from '../lib/http.js';
 
@@ -53,6 +54,7 @@ export function LoginPage() {
             });
             const { user: nextUserRaw } = await userRes.json();
             setUser(normalizeAuthUser(nextUserRaw));
+            markTourPending();
             navigate(from, { replace: true });
         } catch {
             setError('Network error. Check your connection.');

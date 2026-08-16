@@ -483,7 +483,7 @@ export function QueueingSessionMatchesPage() {
                 {!loading && session ? <QueueingSessionHeader session={session} /> : null}
 
                 {!loading && !error ? (
-                    <div className="rt-matches-content space-y-4">
+                    <div className="rt-matches-content space-y-4" data-tour="session-matches-hint">
                         <div className="rt-matches-head">
                             <div className="mb-1 flex flex-wrap items-end justify-between gap-3">
                                 <h1 className="text-2xl font-extrabold leading-none tracking-tighter md:text-4xl">

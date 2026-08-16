@@ -5,6 +5,7 @@ import { AuthPageShell } from '../components/auth/AuthPageShell.jsx';
 import { AuthSubmitButton } from '../components/auth/AuthSubmitButton.jsx';
 import { resendVerificationEmail } from '../api/profile.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { markTourPending } from '../lib/productTourStorage.js';
 
 export function VerifyEmailPage() {
     const navigate = useNavigate();
@@ -15,6 +16,7 @@ export function VerifyEmailPage() {
 
     useEffect(() => {
         if (user?.email_verified) {
+            markTourPending();
             navigate('/dashboard', { replace: true });
         }
     }, [user?.email_verified, navigate]);
@@ -27,6 +29,7 @@ export function VerifyEmailPage() {
             const res = await resendVerificationEmail();
             if (res.already_verified) {
                 await refreshUser();
+                markTourPending();
                 navigate('/dashboard', { replace: true });
                 return;
             }
@@ -39,6 +42,7 @@ export function VerifyEmailPage() {
     }
 
     function handleVerifyLater() {
+        markTourPending();
         navigate('/dashboard', { replace: true });
     }
 

@@ -22,6 +22,13 @@ export function QueueingSessionNav({ sessionId, tabSuffix = '' }) {
     const navPath = normalizedAppPath(location.pathname);
     const paths = queueingSessionNavPaths(sessionId);
 
+    /** @type {Record<QueueingSessionNavId, string | undefined>} */
+    const tourIds = {
+        dash: 'session-nav-dashboard',
+        players: 'session-nav-players',
+        matches: 'session-nav-matches',
+    };
+
     return (
         <nav className="rt-qs-session-nav" aria-label="Session sections">
             <div className="rt-qs-session-nav__tabs" role="tablist">
@@ -36,6 +43,7 @@ export function QueueingSessionNav({ sessionId, tabSuffix = '' }) {
                             role="tab"
                             aria-selected={active}
                             aria-current={active ? 'page' : undefined}
+                            data-tour={tourIds[item.id]}
                             className={[
                                 'rt-qs-session-nav__tab',
                                 active ? 'rt-qs-session-nav__tab--active' : '',

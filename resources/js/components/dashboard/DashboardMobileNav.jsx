@@ -69,7 +69,7 @@ export function DashboardMobileNav() {
                     icon={IconTrophy}
                     active={rankingActive}
                 />
-                <DashboardMobileNavItem to="/queueing-session" label="Queue" icon={IconQueue} active={queueActive} />
+                <DashboardMobileNavItem to="/queueing-session" label="Queue" icon={IconQueue} active={queueActive} data-tour="nav-queue" />
                 <DashboardMobileNavItem
                     to="/facilities"
                     label="Facilities"

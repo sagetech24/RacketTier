@@ -10,6 +10,7 @@ import {
     postStartQueueingSessionMatch,
 } from '../../api/queueingSession.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useProductTour } from '../tour/useProductTour.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { AddQueueingSessionPlayerModal } from './AddQueueingSessionPlayerModal.jsx';
 import { AutoMatchCriteriaModal } from './AutoMatchCriteriaModal.jsx';
@@ -40,6 +41,8 @@ export function QueueingSessionMatchFabPanel({
 }) {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { maybeStartRunSessionTour, fabMenuOpen: tourFabMenuOpen, run: tourRunning, tourKind } =
+        useProductTour();
     const fabRef = useRef(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -67,6 +70,18 @@ export function QueueingSessionMatchFabPanel({
     }, [session]);
 
     useEffect(() => {
+        if (canManage && session?.is_active && sessionId != null) {
+            maybeStartRunSessionTour(sessionId);
+        }
+    }, [canManage, session?.is_active, sessionId, maybeStartRunSessionTour]);
+
+    useEffect(() => {
+        if (tourRunning && tourKind === 'run-session') {
+            setMenuOpen(Boolean(tourFabMenuOpen));
+        }
+    }, [tourRunning, tourKind, tourFabMenuOpen]);
+
+    useEffect(() => {
         if (matchesProp != null) {
             setMatches(matchesProp);
         }
@@ -74,6 +89,9 @@ export function QueueingSessionMatchFabPanel({
 
     useEffect(() => {
         if (!menuOpen) return undefined;
+        if (tourRunning && tourKind === 'run-session' && tourFabMenuOpen) {
+            return undefined;
+        }
 
         function onPointerDown(event) {
             if (fabRef.current && !fabRef.current.contains(event.target)) {
@@ -93,7 +111,7 @@ export function QueueingSessionMatchFabPanel({
             document.removeEventListener('pointerdown', onPointerDown);
             document.removeEventListener('keydown', onKeyDown);
         };
-    }, [menuOpen]);
+    }, [menuOpen, tourRunning, tourKind, tourFabMenuOpen]);
 
     const refreshMatchData = useCallback(async () => {
         if (sessionId == null) return;
@@ -344,6 +362,7 @@ export function QueueingSessionMatchFabPanel({
                                               role="menuitem"
                                               disabled={busy || endingSession}
                                               onClick={() => handleOpenAutoMatch()}
+                                              data-tour="session-fab-auto-match"
                                               className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
                                           >
                                               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ce081]/15 text-[#4ce081]">
@@ -390,6 +409,7 @@ export function QueueingSessionMatchFabPanel({
                                               role="menuitem"
                                               disabled={busy || endingSession}
                                               onClick={handleOpenAddPlayers}
+                                              data-tour="session-fab-add-players"
                                               className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
                                           >
                                               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ce081]/15 text-[#4ce081]">
@@ -409,6 +429,7 @@ export function QueueingSessionMatchFabPanel({
                                               role="menuitem"
                                               disabled={busy || endingSession}
                                               onClick={handleOpenAddGuestPlayer}
+                                              data-tour="session-fab-add-guest"
                                               className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
                                           >
                                               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15 text-[#c2c1ff]">
@@ -453,6 +474,7 @@ export function QueueingSessionMatchFabPanel({
                                   type="button"
                                   disabled={busy || endingSession}
                                   onClick={toggleMenu}
+                                  data-tour="session-fab"
                                   aria-expanded={menuOpen}
                                   aria-haspopup="menu"
                                   aria-label={menuOpen ? 'Close match options' : 'Create match'}

@@ -405,7 +405,7 @@ export function QueueingSessionListPage() {
                         title="Queueing Sessions"
                         subtitle={subtitle}
                         action={
-                            <Link to="/queueing-session/new" className="rt-queue-new-btn">
+                            <Link to="/queueing-session/new" className="rt-queue-new-btn" data-tour="new-queue">
                                 <MaterialIcon name="add" className="text-base!" />
                                 New queue
                             </Link>
@@ -491,6 +491,7 @@ export function QueueingSessionListPage() {
                                 }
                                 actionLabel={q.trim() ? undefined : 'New queue'}
                                 actionTo={q.trim() ? undefined : '/queueing-session/new'}
+                                actionDataTour={q.trim() ? undefined : 'new-queue'}
                             />
                         ) : null}
 

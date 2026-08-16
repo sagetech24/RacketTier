@@ -7,9 +7,10 @@ import { Link } from 'react-router-dom';
  *   icon: import('react').ComponentType<{ className?: string }>;
  *   active?: boolean;
  *   disabled?: boolean;
+ *   'data-tour'?: string;
  * }} props
  */
-export function DashboardMobileNavItem({ to, label, icon: Icon, active = false, disabled = false }) {
+export function DashboardMobileNavItem({ to, label, icon: Icon, active = false, disabled = false, 'data-tour': dataTour }) {
     const base =
         'group flex min-h-[3.25rem] min-w-[3.25rem] flex-1 cursor-pointer flex-col items-center justify-center px-1 py-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#c2c1ff]/60';
 
@@ -27,7 +28,7 @@ export function DashboardMobileNavItem({ to, label, icon: Icon, active = false, 
 
     if (disabled || !to) {
         return (
-            <div className={[base, 'cursor-not-allowed'].join(' ')} title="Coming soon">
+            <div className={[base, 'cursor-not-allowed'].join(' ')} title="Coming soon" data-tour={dataTour}>
                 <span className={contentClass}>
                     <Icon className="size-6 shrink-0" />
                     <span className={labelClass}>{label}</span>
@@ -37,7 +38,7 @@ export function DashboardMobileNavItem({ to, label, icon: Icon, active = false, 
     }
 
     return (
-        <Link to={to} className={base} aria-current={active ? 'page' : undefined}>
+        <Link to={to} className={base} aria-current={active ? 'page' : undefined} data-tour={dataTour}>
             <span className={contentClass}>
                 <Icon className="size-6 shrink-0" />
                 <span className={labelClass}>{label}</span>

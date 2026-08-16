@@ -103,12 +103,15 @@ export function CreateQueueingSessionPage() {
         <div className="dashboard-v2-shell bg-[#131316] font-sans text-[#e4e1e6] selection:bg-[#c2c1ff] selection:text-[#282671]">
             <DashboardV2Header user={user} profileLoading={false} />
             <main className="rt-page-main">
-                <h1 className="mb-2 text-2xl font-extrabold tracking-tight md:text-3xl lg:text-4xl">
-                    Create <span className="text-[#c2c1ff]">New Queue</span>
-                </h1>
-                <p className="mb-8 text-sm text-[#c8c5d2]/80 md:max-w-2xl md:text-base">
-                    You will be the queue master. After creating the session, you can add players and start matches when the players are ready.
-                </p>
+                <div className="mb-8" data-tour="create-queue-intro">
+                    <h1 className="mb-2 text-2xl font-extrabold tracking-tight md:text-3xl lg:text-4xl">
+                        Create <span className="text-[#c2c1ff]">New Queue</span>
+                    </h1>
+                    <p className="text-sm text-[#c8c5d2]/80 md:max-w-2xl md:text-base">
+                        You will be the queue master. After creating the session, you can add players and start matches when the
+                        players are ready.
+                    </p>
+                </div>
 
                 {loadError ? (
                     <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{loadError}</p>
@@ -127,7 +130,7 @@ export function CreateQueueingSessionPage() {
                 ) : (
                     <form onSubmit={handleSubmit}>
                         <div className="mb-4 space-y-6">
-                            <div>
+                            <div data-tour="create-queue-sport">
                                 <label className="mb-4 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Sport</label>
                                 {sports.length === 0 ? (
                                     <p className="text-sm text-[#918f9c]">No sports configured. Run database migrations.</p>
@@ -146,7 +149,7 @@ export function CreateQueueingSessionPage() {
                                     </div>
                                 )}
                             </div>
-                            <div>
+                            <div data-tour="create-queue-name">
                                 <label htmlFor="queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
                                     Queue Name
                                 </label>
@@ -161,66 +164,70 @@ export function CreateQueueingSessionPage() {
                                     className="w-full rounded-lg border border-[#484848] bg-[#131316] outline-none focus:ring-1 focus:ring-green-400 px-3 py-2.5 text-base placeholder:text-[#918f9c]/60 md:py-3"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4">
-                                <div className="col-span-2">
-                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
-                                    <div className="flex">
-                                        {(['singles', 'doubles']).map((t) => (
-                                            <button
-                                                key={t}
-                                                type="button"
-                                                onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
-                                                className={
-                                                    matchType === t
-                                                        ? 'flex-1 rounded-l-none bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
-                                                        : 'flex-1 rounded-r-none border border-[#484848] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
-                                                }
-                                                style={{
-                                                    borderRadius: t === 'singles' ? '0.5rem 0 0 0.5rem' : '0 0.5rem 0.5rem 0',
-                                                }}
-                                            >
-                                                {t === 'singles' ? 'Singles' : 'Doubles'}
-                                            </button>
-                                        ))}
+                            <div className="space-y-6" data-tour="create-queue-settings">
+                                <div className="grid grid-cols-2 md:grid-cols-4">
+                                    <div className="col-span-2">
+                                        <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
+                                        <div className="flex">
+                                            {(['singles', 'doubles']).map((t) => (
+                                                <button
+                                                    key={t}
+                                                    type="button"
+                                                    onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
+                                                    className={
+                                                        matchType === t
+                                                            ? 'flex-1 rounded-l-none bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
+                                                            : 'flex-1 rounded-r-none border border-[#484848] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
+                                                    }
+                                                    style={{
+                                                        borderRadius: t === 'singles' ? '0.5rem 0 0 0.5rem' : '0 0.5rem 0.5rem 0',
+                                                    }}
+                                                >
+                                                    {t === 'singles' ? 'Singles' : 'Doubles'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={30}
+                                            value={winPoints}
+                                            onChange={(e) => setWinPoints(e.target.value)}
+                                            className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-base md:text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Loss points</label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={15}
+                                            value={lossPoints}
+                                            onChange={(e) => setLossPoints(e.target.value)}
+                                            className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-base md:text-sm"
+                                        />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={30}
-                                        value={winPoints}
-                                        onChange={(e) => setWinPoints(e.target.value)}
-                                        className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-base md:text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Loss points</label>
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={15}
-                                        value={lossPoints}
-                                        onChange={(e) => setLossPoints(e.target.value)}
-                                        className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-base md:text-sm"
-                                    />
-                                </div>
+                                <QueueingSessionSkipScoresField checked={skipScores} onChange={setSkipScores} disabled={submitting} />
+                                <QueueingSessionGuestOptionalFields
+                                    optionalGuestSkill={optionalGuestSkill}
+                                    optionalGuestGender={optionalGuestGender}
+                                    onOptionalGuestSkillChange={setOptionalGuestSkill}
+                                    onOptionalGuestGenderChange={setOptionalGuestGender}
+                                    disabled={submitting}
+                                />
                             </div>
-                            <QueueingSessionSkipScoresField checked={skipScores} onChange={setSkipScores} disabled={submitting} />
-                            <QueueingSessionGuestOptionalFields
-                                optionalGuestSkill={optionalGuestSkill}
-                                optionalGuestGender={optionalGuestGender}
-                                onOptionalGuestSkillChange={setOptionalGuestSkill}
-                                onOptionalGuestGenderChange={setOptionalGuestGender}
-                                disabled={submitting}
-                            />
 
-                            <QueueingSessionAutoMatchCriteriaField
-                                value={autoMatchCriteria}
-                                onChange={setAutoMatchCriteria}
-                                disabled={submitting}
-                            />
+                            <div data-tour="create-queue-auto-match">
+                                <QueueingSessionAutoMatchCriteriaField
+                                    value={autoMatchCriteria}
+                                    onChange={setAutoMatchCriteria}
+                                    disabled={submitting}
+                                />
+                            </div>
                             {submitError ? (
                                 <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">{submitError}</p>
                             ) : null}
@@ -228,6 +235,7 @@ export function CreateQueueingSessionPage() {
                         <button
                             type="submit"
                             disabled={submitting}
+                            data-tour="create-queue-submit"
                             className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             {submitting ? 'Creating…' : 'Create Queue'}

@@ -38,14 +38,15 @@ function userInitials(user) {
 }
 
 /**
- * @param {{ active: boolean; to: string; children: import('react').ReactNode }} props
+ * @param {{ active: boolean; to: string; children: import('react').ReactNode; 'data-tour'?: string }} props
  */
-function DesktopNavLink({ active, to, children }) {
+function DesktopNavLink({ active, to, children, 'data-tour': dataTour }) {
     return (
         <Link
             to={to}
             className={['rt-nav-link', active ? 'rt-nav-link-active font-semibold' : 'rt-nav-link-idle'].join(' ')}
             aria-current={active ? 'page' : undefined}
+            data-tour={dataTour}
         >
             {children}
         </Link>
@@ -89,7 +90,7 @@ export function DashboardV2Header({ user, profileLoading = false }) {
                     <DesktopNavLink active={rankingActive} to="/ranking">
                         Rankings
                     </DesktopNavLink>
-                    <DesktopNavLink active={queueActive} to="/queueing-session">
+                    <DesktopNavLink active={queueActive} to="/queueing-session" data-tour="nav-queue">
                         Queue
                     </DesktopNavLink>
                     <DesktopNavLink active={facilitiesActive} to="/facilities">
