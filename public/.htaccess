@@ -24,13 +24,7 @@
     RewriteRule ^ index.php [L]
 </IfModule>
 
-# Allow the PWA service worker (built into /build/) to claim site-root scope.
-# Required because vite-plugin-pwa registers sw.js with scope `/` while the
-# file lives under /build/. Without this header browsers reject the scope.
 <IfModule mod_headers.c>
-    <FilesMatch "^sw\.js$">
-        Header set Service-Worker-Allowed "/"
-    </FilesMatch>
     <FilesMatch "\.(js|css|woff2|woff|png|svg|ico|webmanifest)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>

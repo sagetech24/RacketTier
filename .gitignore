@@ -16,6 +16,8 @@
 /node_modules
 /public/build
 /public/hot
+/public/sw.js
+/public/workbox-*.js
 /public/index.php
 /public/storage
 /storage/*.key
