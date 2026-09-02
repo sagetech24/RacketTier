@@ -3,13 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Actions\UpdateQueueingGameSession;
+use App\Http\Controllers\Concerns\PreparesQueueingSessionResponse;
 use App\Http\Requests\UpdateQueueingGameSessionRequest;
-use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
 use Illuminate\Http\JsonResponse;
 
 class QueueingGameSessionUpdateController extends Controller
 {
+    use PreparesQueueingSessionResponse;
+
     public function __invoke(
         UpdateQueueingGameSessionRequest $request,
         GameSession $gameSession,
@@ -34,16 +36,6 @@ class QueueingGameSessionUpdateController extends Controller
             $request->hasAnyAutoMatchCriteriaInput() ? $request->autoMatchCriteria() : null,
         );
 
-        $session->load([
-            'sport',
-            'creator:id,name,email',
-            'players' => fn ($q) => $q->orderByDesc('is_playing')->orderBy('queue_position'),
-            'players.user:id,name,email',
-        ]);
-        $session->loadCount('players');
-
-        return response()->json([
-            'data' => new GameSessionResource($session),
-        ]);
+        return $this->queueingSessionJson($session);
     }
 }

@@ -29,8 +29,9 @@ class StoreQueueingSessionPlayerRequest extends FormRequest
         $session = $this->route('gameSession');
         $isGuest = $this->isGuestPayload();
         $requireGuestSkill = $isGuest && $session instanceof GameSession && $session->requiresGuestSkillLevel();
+        $requireMemberSkill = ! $isGuest && $session instanceof GameSession && $session->requiresMemberSkillLevel();
         $requireGuestGender = $isGuest && $session instanceof GameSession && $session->requiresGuestGender();
-        $requireSkill = ! $isGuest || $requireGuestSkill;
+        $requireSkill = $requireGuestSkill || $requireMemberSkill;
 
         return [
             'user_id' => ['nullable', 'integer', 'exists:users,id'],

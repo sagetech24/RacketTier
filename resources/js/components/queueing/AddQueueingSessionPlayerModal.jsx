@@ -30,6 +30,7 @@ const labelClassName = 'mb-1 block text-[10px] font-black uppercase tracking-wid
  *   guest?: { name?: string, pronoun?: string | null, skill_level?: number | null } | null,
  *   optionalGuestSkill?: boolean,
  *   optionalGuestGender?: boolean,
+ *   showSkillLevel?: boolean,
  *   busy?: boolean,
  *   onCancel: () => void,
  *   onConfirm: (payload: { guest_name?: string, pronoun?: string | null, skill_level: number | null }) => void | Promise<void>,
@@ -43,6 +44,7 @@ export function AddQueueingSessionPlayerModal({
     guest = null,
     optionalGuestSkill = true,
     optionalGuestGender = true,
+    showSkillLevel = true,
     busy = false,
     onCancel,
     onConfirm,
@@ -54,7 +56,8 @@ export function AddQueueingSessionPlayerModal({
 
     const isGuest = mode === 'guest';
     const isEdit = intent === 'edit';
-    const requireSkill = isGuest ? !optionalGuestSkill : true;
+    const collectSkillLevel = showSkillLevel;
+    const requireSkill = collectSkillLevel && (isGuest ? !optionalGuestSkill : true);
     const requireGender = isGuest ? !optionalGuestGender : false;
 
     useEffect(() => {
@@ -101,7 +104,9 @@ export function AddQueueingSessionPlayerModal({
         ? guestName.trim() !== '' &&
           (!requireSkill || skillLevel !== '') &&
           (!requireGender || pronoun !== '')
-        : skillLevel !== '';
+        : collectSkillLevel
+          ? skillLevel !== ''
+          : true;
     const submitLabel = busy
         ? isEdit
             ? 'Saving…'
@@ -117,7 +122,7 @@ export function AddQueueingSessionPlayerModal({
         const payload = {
             ...(isGuest ? { guest_name: guestName.trim() } : {}),
             ...(isGuest ? { pronoun: pronoun !== '' ? pronoun : null } : {}),
-            skill_level: skillLevel !== '' ? Number(skillLevel) : null,
+            skill_level: collectSkillLevel && skillLevel !== '' ? Number(skillLevel) : null,
         };
 
         try {
@@ -197,6 +202,7 @@ export function AddQueueingSessionPlayerModal({
                         </>
                     ) : null}
 
+                    {collectSkillLevel ? (
                     <div>
                         <label htmlFor="rt-add-player-skill-level" className={labelClassName}>
                             Tier Level{isGuest && !requireSkill ? ' (optional)' : ''}
@@ -225,6 +231,7 @@ export function AddQueueingSessionPlayerModal({
                             </p>
                         ) : null}
                     </div>
+                    ) : null}
 
                     <div className="flex gap-2 pt-1">
                         <button

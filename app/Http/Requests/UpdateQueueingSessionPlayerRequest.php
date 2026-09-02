@@ -35,8 +35,9 @@ class UpdateQueueingSessionPlayerRequest extends FormRequest
         $player = $this->route('gameSessionPlayer');
         $isGuest = $player instanceof GameSessionPlayer && $player->isGuest();
         $requireGuestSkill = $isGuest && $session instanceof GameSession && $session->requiresGuestSkillLevel();
+        $requireMemberSkill = ! $isGuest && $session instanceof GameSession && $session->requiresMemberSkillLevel();
         $requireGuestGender = $isGuest && $session instanceof GameSession && $session->requiresGuestGender();
-        $requireSkill = ! $isGuest || $requireGuestSkill;
+        $requireSkill = $requireGuestSkill || $requireMemberSkill;
 
         return [
             'guest_name' => $isGuest ? ['required', 'string', 'max:191'] : ['prohibited'],

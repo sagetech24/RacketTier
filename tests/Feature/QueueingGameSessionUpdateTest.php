@@ -158,4 +158,56 @@ class QueueingGameSessionUpdateTest extends TestCase
             'loss_points' => 1,
         ])->assertForbidden();
     }
+
+    public function test_queue_master_can_update_draft_session_settings_and_roster_is_preserved(): void
+    {
+        $host = User::factory()->create();
+        $member = User::factory()->create();
+
+        $create = $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Draft Queue',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'skill_level' => false,
+            'wl_statistics' => false,
+            'sequence' => true,
+            'genderless_mixed' => true,
+        ])->assertCreated();
+
+        $sessionId = (int) $create->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $member->id,
+            'skill_level' => null,
+        ])->assertOk();
+
+        $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$sessionId, [
+            'queue_name' => 'Updated Draft Queue',
+            'win_points' => 40,
+            'loss_points' => 12,
+            'skip_scores' => true,
+            'optional_guest_skill' => false,
+            'optional_guest_gender' => true,
+            'skill_level' => true,
+            'skill_match_mode' => 'balanced',
+            'wl_statistics' => false,
+            'sequence' => true,
+            'genderless_mixed' => true,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.queue_name', 'Updated Draft Queue');
+        $response->assertJsonPath('data.win_points', 40);
+        $response->assertJsonPath('data.auto_match_criteria.skill_level', true);
+        $response->assertJsonPath('data.optional_guest_skill', false);
+        $players = collect($response->json('data.players'));
+        $this->assertCount(1, $players);
+        $this->assertSame($member->id, $players->first()['user']['id']);
+
+        $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
+        $show->assertJsonPath('data.auto_match_criteria.skill_level', true);
+        $this->assertCount(1, $show->json('data.players'));
+    }
 }

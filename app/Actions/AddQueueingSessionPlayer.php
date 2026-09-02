@@ -22,7 +22,7 @@ class AddQueueingSessionPlayer
     /**
      * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
      */
-    public function executeMember(GameSession $session, int $userId, int $skillLevel, ?string $pronoun = null): array
+    public function executeMember(GameSession $session, int $userId, ?int $skillLevel, ?string $pronoun = null): array
     {
         if (! $session->isQueueing()) {
             abort(422, 'This action only applies to queueing sessions.');
@@ -129,7 +129,7 @@ class AddQueueingSessionPlayer
     /**
      * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
      */
-    private function executeMemberDraft(GameSession $session, int $userId, int $skillLevel, ?string $pronoun): array
+    private function executeMemberDraft(GameSession $session, int $userId, ?int $skillLevel, ?string $pronoun): array
     {
         $user = User::query()->whereKey($userId)->firstOrFail();
         $resolvedPronoun = $pronoun !== null && trim($pronoun) !== ''

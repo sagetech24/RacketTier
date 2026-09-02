@@ -16,8 +16,9 @@ import { AddQueueingSessionPlayerModal } from './AddQueueingSessionPlayerModal.j
 import { AutoMatchCriteriaModal } from './AutoMatchCriteriaModal.jsx';
 import { AutoMatchProposalsModal } from './AutoMatchProposalsModal.jsx';
 import { ConfirmActionModal } from './ConfirmActionModal.jsx';
-import { parseAutoMatchCriteria } from './QueueingSessionAutoMatchCriteriaField.jsx';
+import { parseAutoMatchCriteria, sessionUsesSkillLevel } from './QueueingSessionAutoMatchCriteriaField.jsx';
 import { QueueingSessionAddMemberPickerModal } from './QueueingSessionAddMemberPickerModal.jsx';
+import { QueueingSessionSettingsModal } from './QueueingSessionSettingsModal.jsx';
 import { QueueingSessionEndLoadingOverlay } from './QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionMatchLineupModal } from './QueueingSessionMatchLineupModal.jsx';
 
@@ -61,6 +62,7 @@ export function QueueingSessionMatchFabPanel({
          * } | null} */ (null),
     );
     const [stopSessionOpen, setStopSessionOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [endingSession, setEndingSession] = useState(false);
     /** @type {import('../../api/queueingSession.js').AutoMatchCriteria | null} */
     const [autoMatchCriteria, setAutoMatchCriteria] = useState(null);
@@ -153,6 +155,24 @@ export function QueueingSessionMatchFabPanel({
         return ids;
     }, [localSession?.players]);
 
+    const skillLevelEnabled = useMemo(
+        () => sessionUsesSkillLevel(session ?? localSession),
+        [session, localSession],
+    );
+
+    async function refreshSessionForPlayerActions() {
+        if (sessionId == null) {
+            return session ?? localSession;
+        }
+
+        const [result] = await Promise.all([
+            refreshMatchData(),
+            onReload ? onReload() : Promise.resolve(),
+        ]);
+
+        return result?.sessionData ?? session ?? localSession;
+    }
+
     function closeMenu() {
         setMenuOpen(false);
     }
@@ -213,23 +233,92 @@ export function QueueingSessionMatchFabPanel({
         setStopSessionOpen(true);
     }
 
-    function handleOpenAddPlayers() {
+    function handleOpenSettings() {
         closeMenu();
         onActionError?.('');
-        setAddMemberPickerOpen(true);
+        setSettingsOpen(true);
     }
 
-    function handleOpenAddGuestPlayer() {
+    /**
+     * @param {import('../../api/gameSession.js').GameSessionDetail} updated
+     */
+    async function handleSettingsSaved(updated) {
+        setLocalSession(updated);
+        if (onReload) {
+            await onReload();
+        }
+    }
+
+    async function handleOpenAddPlayers() {
         closeMenu();
         onActionError?.('');
-        setAddPlayerModal({ mode: 'guest', intent: 'add' });
+        setBusy(true);
+        try {
+            await refreshSessionForPlayerActions();
+            setAddMemberPickerOpen(true);
+        } catch (e) {
+            reportError(e instanceof Error ? e.message : 'Could not load session data.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function handleOpenAddGuestPlayer() {
+        closeMenu();
+        onActionError?.('');
+        setBusy(true);
+        try {
+            await refreshSessionForPlayerActions();
+            setAddPlayerModal({ mode: 'guest', intent: 'add' });
+        } catch (e) {
+            reportError(e instanceof Error ? e.message : 'Could not load session data.');
+        } finally {
+            setBusy(false);
+        }
     }
 
     /**
      * @param {{ id: number, name: string, pronoun?: string | null, skill_level?: number | null }} member
      */
-    function handleSelectMember(member) {
+    async function handleSelectMember(member) {
         setAddMemberPickerOpen(false);
+
+        let currentSession = session ?? localSession;
+        if (sessionId != null) {
+            setBusy(true);
+            try {
+                currentSession = (await refreshSessionForPlayerActions()) ?? currentSession;
+            } catch (e) {
+                reportError(e instanceof Error ? e.message : 'Could not load session data.');
+                setBusy(false);
+                return;
+            }
+        }
+
+        if (!sessionUsesSkillLevel(currentSession)) {
+            if (sessionId == null) {
+                setBusy(false);
+                return;
+            }
+            try {
+                await postAddQueueingSessionPlayer(sessionId, {
+                    user_id: member.id,
+                    skill_level: null,
+                });
+                if (onReload) {
+                    await onReload();
+                } else {
+                    await refreshMatchData();
+                }
+            } catch (e) {
+                reportError(e instanceof Error ? e.message : 'Could not add player.');
+            } finally {
+                setBusy(false);
+            }
+            return;
+        }
+
+        setBusy(false);
         setAddPlayerModal({
             mode: 'member',
             intent: 'add',
@@ -451,6 +540,25 @@ export function QueueingSessionMatchFabPanel({
                                               type="button"
                                               role="menuitem"
                                               disabled={busy || endingSession}
+                                              onClick={handleOpenSettings}
+                                              className="rt-match-fab-callout-item flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15 text-[#c2c1ff]">
+                                                  <MaterialIcon name="settings" className="text-xl!" />
+                                              </span>
+                                              <span className="min-w-0">
+                                                  <span className="block text-sm font-bold text-[#e4e1e6]">
+                                                      Queue settings
+                                                  </span>
+                                                  <span className="block text-[10px] leading-snug text-[#918f9c]">
+                                                      Points, guests, and auto-match rules
+                                                  </span>
+                                              </span>
+                                          </button>
+                                          <button
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={busy || endingSession}
                                               onClick={handleOpenEndSession}
                                               className="rt-match-fab-callout-item rt-match-fab-callout-item--danger flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
                                           >
@@ -566,6 +674,13 @@ export function QueueingSessionMatchFabPanel({
                 onSelectMember={handleSelectMember}
             />
 
+            <QueueingSessionSettingsModal
+                open={settingsOpen}
+                session={session ?? localSession}
+                onClose={() => setSettingsOpen(false)}
+                onSaved={handleSettingsSaved}
+            />
+
             <AddQueueingSessionPlayerModal
                 open={addPlayerModal != null}
                 mode={addPlayerModal?.mode ?? 'guest'}
@@ -573,6 +688,7 @@ export function QueueingSessionMatchFabPanel({
                 member={addPlayerModal?.mode === 'member' ? addPlayerModal.member ?? null : null}
                 optionalGuestSkill={localSession?.optional_guest_skill !== false}
                 optionalGuestGender={localSession?.optional_guest_gender !== false}
+                showSkillLevel={skillLevelEnabled}
                 busy={busy}
                 onCancel={() => {
                     if (!busy) setAddPlayerModal(null);

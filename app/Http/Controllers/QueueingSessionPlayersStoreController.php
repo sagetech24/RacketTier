@@ -33,7 +33,7 @@ class QueueingSessionPlayersStoreController extends Controller
                 $skillLevel,
             );
         } else {
-            $action->executeMember($gameSession, (int) $validated['user_id'], (int) $skillLevel, $pronoun);
+            $action->executeMember($gameSession, (int) $validated['user_id'], $skillLevel, $pronoun);
         }
 
         $gameSession->refresh();

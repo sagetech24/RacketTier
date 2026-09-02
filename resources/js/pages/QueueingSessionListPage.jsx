@@ -1,32 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import '../../css/dashboard-v2.css';
 import {
     fetchQueueingSessions,
-    patchUpdateQueueingSession,
     deleteQueueingSession,
     postDuplicateQueueingSession,
 } from '../api/queueingSession.js';
-import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
-import { QueueingSessionGuestOptionalFields } from '../components/queueing/QueueingSessionGuestOptionalFields.jsx';
-import {
-    DEFAULT_AUTO_MATCH_CRITERIA,
-    QueueingSessionAutoMatchCriteriaField,
-    autoMatchCriteriaHasAny,
-    normalizeAutoMatchCriteria,
-    parseAutoMatchCriteria,
-} from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
+import { QueueingSessionSettingsModal } from '../components/queueing/QueueingSessionSettingsModal.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { QueueingSessionPageLoading } from '../components/queueing/QueueingSessionPageLoading.jsx';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
 import { PageHeader } from '../components/app/PageHeader.jsx';
 import { ToggleField } from '../components/app/ToggleSwitch.jsx';
-import { MODAL_OVERLAY_CLASS, MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
+import { MODAL_OVERLAY_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
+import { queryKeys } from '../lib/queryClient.js';
 import { normalizedAppPath, queueingSessionNavPaths, queueSessionCardActionClass } from '../lib/queueingSessionNav.js';
 import { canDeleteQueueingSession } from '../lib/queueingSessionPermissions.js';
 import { userIsAdmin } from '../lib/userRoles.js';
@@ -219,6 +212,7 @@ export function QueueingSessionListPage() {
     const isAdmin = userIsAdmin(user);
     const location = useLocation();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const navPath = normalizedAppPath(location.pathname);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -230,15 +224,6 @@ export function QueueingSessionListPage() {
     const [sort, setSort] = useState('updated_desc');
     /** @type {import('../api/gameSession.js').GameSessionDetail | null} */
     const [editRow, setEditRow] = useState(null);
-    const [editQueueName, setEditQueueName] = useState('');
-    const [editWinPoints, setEditWinPoints] = useState('30');
-    const [editLossPoints, setEditLossPoints] = useState('8');
-    const [editSkipScores, setEditSkipScores] = useState(false);
-    const [editOptionalGuestSkill, setEditOptionalGuestSkill] = useState(true);
-    const [editOptionalGuestGender, setEditOptionalGuestGender] = useState(true);
-    const [editAutoMatchCriteria, setEditAutoMatchCriteria] = useState(DEFAULT_AUTO_MATCH_CRITERIA);
-    const [editSubmitting, setEditSubmitting] = useState(false);
-    const [editError, setEditError] = useState('');
     /** @type {import('../api/gameSession.js').GameSessionDetail | null} */
     const [deleteRow, setDeleteRow] = useState(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
@@ -250,58 +235,17 @@ export function QueueingSessionListPage() {
 
     function openEditModal(row) {
         setEditRow(row);
-        setEditQueueName(row.queue_name?.trim() ?? '');
-        setEditWinPoints(String(row.win_points ?? 30));
-        setEditLossPoints(String(row.loss_points ?? 8));
-        setEditSkipScores(Boolean(row.skip_scores));
-        setEditOptionalGuestSkill(row.optional_guest_skill !== false);
-        setEditOptionalGuestGender(row.optional_guest_gender !== false);
-        setEditAutoMatchCriteria(parseAutoMatchCriteria(row.auto_match_criteria));
-        setEditError('');
     }
 
     function closeEditModal() {
         setEditRow(null);
-        setEditError('');
     }
 
-    async function onSaveEdit() {
-        if (!editRow) return;
-        const w = Number.parseInt(editWinPoints, 10);
-        const l = Number.parseInt(editLossPoints, 10);
-        const name = editQueueName.trim();
-        if (!name) {
-            setEditError('Enter a name for this queue.');
-            return;
-        }
-        if (!Number.isFinite(w) || w < 0 || !Number.isFinite(l) || l < 0) {
-            setEditError('Enter valid point numbers.');
-            return;
-        }
-        if (!autoMatchCriteriaHasAny(editAutoMatchCriteria)) {
-            setEditError('Select at least one auto-match criterion.');
-            return;
-        }
-        setEditSubmitting(true);
-        setEditError('');
-        try {
-            const normalizedCriteria = normalizeAutoMatchCriteria(editAutoMatchCriteria);
-            const updated = await patchUpdateQueueingSession(editRow.id, {
-                queue_name: name,
-                win_points: w,
-                loss_points: l,
-                skip_scores: editSkipScores,
-                optional_guest_skill: editOptionalGuestSkill,
-                optional_guest_gender: editOptionalGuestGender,
-                ...normalizedCriteria,
-            });
-            setRows((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
-            closeEditModal();
-        } catch (e) {
-            setEditError(e instanceof Error ? e.message : 'Could not update session.');
-        } finally {
-            setEditSubmitting(false);
-        }
+    /**
+     * @param {import('../api/gameSession.js').GameSessionDetail} updated
+     */
+    function handleSettingsSaved(updated) {
+        setRows((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
     }
 
     function openDeleteConfirm(row) {
@@ -330,6 +274,8 @@ export function QueueingSessionListPage() {
         setDuplicateError('');
         try {
             const created = await postDuplicateQueueingSession(duplicateRow.id);
+            queryClient.setQueryData(queryKeys.queueingSession(created.id), created);
+            queryClient.invalidateQueries({ queryKey: queryKeys.queueingSession(created.id) });
             closeDuplicateConfirm();
             navigate(`/queueing-session/${created.id}/players`);
         } catch (e) {
@@ -551,114 +497,12 @@ export function QueueingSessionListPage() {
             )}
 
             {editRow ? (
-                <ModalPortal open={Boolean(editRow)}>
-                    <div className={MODAL_OVERLAY_SHEET_CLASS} role="presentation">
-                        <div
-                            className="rt-end-match-modal-sheet relative flex max-h-[min(90dvh,40rem)] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl sm:rounded-2xl md:max-w-lg"
-                            role="dialog"
-                            aria-modal="true"
-                            aria-labelledby="edit-queue-title"
-                        >
-                            <div className="shrink-0 border-b border-white/5 px-5 pb-3 pt-5">
-                                <h2 id="edit-queue-title" className="text-lg font-bold tracking-tight text-[#e4e1e6]">
-                                    Edit queue
-                                </h2>
-                                <p className="mt-1 text-xs text-[#918f9c]">
-                                    Update settings for {editRow.queue_name?.trim() || `session #${editRow.id}`}.
-                                </p>
-                            </div>
-                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label
-                                            htmlFor="edit-queue-name"
-                                            className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]"
-                                        >
-                                            Name of the queue
-                                        </label>
-                                        <input
-                                            id="edit-queue-name"
-                                            type="text"
-                                            value={editQueueName}
-                                            onChange={(e) => setEditQueueName(e.target.value)}
-                                            maxLength={120}
-                                            autoComplete="off"
-                                            className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6]"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                                Win points
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                max={9999}
-                                                value={editWinPoints}
-                                                onChange={(e) => setEditWinPoints(e.target.value)}
-                                                className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6]"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                                Loss points
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                max={9999}
-                                                value={editLossPoints}
-                                                onChange={(e) => setEditLossPoints(e.target.value)}
-                                                className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6]"
-                                            />
-                                        </div>
-                                    </div>
-                                    <QueueingSessionSkipScoresField
-                                        checked={editSkipScores}
-                                        onChange={setEditSkipScores}
-                                        disabled={editSubmitting}
-                                    />
-                                    <QueueingSessionGuestOptionalFields
-                                        optionalGuestSkill={editOptionalGuestSkill}
-                                        optionalGuestGender={editOptionalGuestGender}
-                                        onOptionalGuestSkillChange={setEditOptionalGuestSkill}
-                                        onOptionalGuestGenderChange={setEditOptionalGuestGender}
-                                        disabled={editSubmitting}
-                                    />
-                                    <QueueingSessionAutoMatchCriteriaField
-                                        value={editAutoMatchCriteria}
-                                        onChange={setEditAutoMatchCriteria}
-                                        disabled={editSubmitting}
-                                    />
-                                    {editError ? (
-                                        <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
-                                            {editError}
-                                        </p>
-                                    ) : null}
-                                </div>
-                            </div>
-                            <div className="flex shrink-0 gap-2 border-t border-[#2a2a2d] p-5 pt-4">
-                                <button
-                                    type="button"
-                                    disabled={editSubmitting}
-                                    onClick={() => closeEditModal()}
-                                    className="min-h-11 flex-1 rounded-lg border border-white/50 py-2.5 text-sm font-bold text-white/70 disabled:opacity-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={editSubmitting}
-                                    onClick={() => onSaveEdit()}
-                                    className="min-h-11 flex-1 rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] disabled:opacity-50"
-                                >
-                                    {editSubmitting ? 'Saving…' : 'Save changes'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </ModalPortal>
+                <QueueingSessionSettingsModal
+                    open={Boolean(editRow)}
+                    session={editRow}
+                    onClose={closeEditModal}
+                    onSaved={handleSettingsSaved}
+                />
             ) : null}
 
             {deleteRow ? (

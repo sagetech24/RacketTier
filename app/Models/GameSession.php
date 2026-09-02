@@ -181,9 +181,19 @@ class GameSession extends Model
         return AutoMatchCriteria::fromStored($stored);
     }
 
+    public function usesPlayerSkillLevel(): bool
+    {
+        return $this->resolveAutoMatchCriteria()->skillLevel;
+    }
+
     public function requiresGuestSkillLevel(): bool
     {
-        return ! (bool) ($this->optional_guest_skill ?? true);
+        return $this->usesPlayerSkillLevel() && ! (bool) ($this->optional_guest_skill ?? true);
+    }
+
+    public function requiresMemberSkillLevel(): bool
+    {
+        return $this->usesPlayerSkillLevel();
     }
 
     public function requiresGuestGender(): bool

@@ -116,6 +116,13 @@ export function parseAutoMatchCriteria(value) {
 }
 
 /**
+ * @param {{ auto_match_criteria?: unknown } | null | undefined} session
+ */
+export function sessionUsesSkillLevel(session) {
+    return parseAutoMatchCriteria(session?.auto_match_criteria).skill_level;
+}
+
+/**
  * @param {AutoMatchCriteria} criteria
  */
 export function autoMatchCriteriaHasAny(criteria) {

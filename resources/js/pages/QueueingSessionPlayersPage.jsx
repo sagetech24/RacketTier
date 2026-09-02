@@ -10,6 +10,7 @@ import { EmptyState } from '../components/app/EmptyState.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueueingSessionPlayerModal.jsx';
+import { sessionUsesSkillLevel } from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
 import {
     QueueingSessionPlayerCard,
     playerRosterStatus,
@@ -116,6 +117,7 @@ export function QueueingSessionPlayersPage() {
     const canManagePlayers = Boolean(session?.can_manage) && Boolean(session?.is_active);
     const canManageMatches = canManagePlayers;
     const sessionActive = Boolean(session?.is_active);
+    const skillLevelEnabled = sessionUsesSkillLevel(session);
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
@@ -294,6 +296,8 @@ export function QueueingSessionPlayersPage() {
             });
             return;
         }
+
+        if (!skillLevelEnabled) return;
 
         setEditPlayerModal({
             mode: 'member',
@@ -546,7 +550,10 @@ export function QueueingSessionPlayersPage() {
                             {visibleRosterPlayers.length > 0 ? (
                                 <div className="rt-roster-player-cards-grid">
                                     {visibleRosterPlayers.map((p, index) => {
-                                        const canEditPlayer = canManagePlayers && !p.is_playing;
+                                        const canEditPlayer =
+                                            canManagePlayers &&
+                                            !p.is_playing &&
+                                            (p.is_guest || skillLevelEnabled);
                                         const status = playerRosterStatus(
                                             p,
                                             reservedPlayerIds,
@@ -614,6 +621,7 @@ export function QueueingSessionPlayersPage() {
                 guest={editPlayerModal?.mode === 'guest' ? editPlayerModal.guest ?? null : null}
                 optionalGuestSkill={session?.optional_guest_skill !== false}
                 optionalGuestGender={session?.optional_guest_gender !== false}
+                showSkillLevel={skillLevelEnabled}
                 busy={busy}
                 onCancel={() => {
                     if (!busy) setEditPlayerModal(null);

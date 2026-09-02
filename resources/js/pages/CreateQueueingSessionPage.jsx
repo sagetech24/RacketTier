@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import '../../css/dashboard-v2.css';
 import { fetchSports } from '../api/gameSession.js';
 import { postCreateQueueingSession } from '../api/queueingSession.js';
@@ -15,9 +16,11 @@ import {
     normalizeAutoMatchCriteria,
 } from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { queryKeys } from '../lib/queryClient.js';
 
 export function CreateQueueingSessionPage() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { user } = useAuth();
     const [sports, setSports] = useState(/** @type {import('../api/gameSession.js').SportRow[]} */ ([]));
     const [loading, setLoading] = useState(true);
@@ -91,6 +94,8 @@ export function CreateQueueingSessionPage() {
                 optional_guest_gender: optionalGuestGender,
                 ...normalizedCriteria,
             });
+            queryClient.setQueryData(queryKeys.queueingSession(data.id), data);
+            queryClient.invalidateQueries({ queryKey: queryKeys.queueingSession(data.id) });
             navigate(`/queueing-session/${data.id}`, { replace: true });
         } catch (err) {
             setSubmitError(err instanceof Error ? err.message : 'Could not create session.');

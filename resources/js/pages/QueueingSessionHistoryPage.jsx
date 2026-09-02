@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import '../../css/dashboard-v2.css';
 import {
     fetchQueueingSessionHistory,
@@ -16,6 +17,7 @@ import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
+import { queryKeys } from '../lib/queryClient.js';
 import {
     normalizedAppPath,
     queueingSessionNavPaths,
@@ -231,6 +233,7 @@ function HistoryCard({
 export function QueueingSessionHistoryPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const location = useLocation();
     const navPath = normalizedAppPath(location.pathname);
     const isAdmin = userIsAdmin(user);
@@ -383,6 +386,8 @@ export function QueueingSessionHistoryPage() {
         setDuplicateError('');
         try {
             const created = await postDuplicateQueueingSession(duplicateRow.id);
+            queryClient.setQueryData(queryKeys.queueingSession(created.id), created);
+            queryClient.invalidateQueries({ queryKey: queryKeys.queueingSession(created.id) });
             closeDuplicateConfirm();
             navigate(`/queueing-session/${created.id}/players`);
         } catch (e) {
