@@ -16,9 +16,10 @@ import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardSta
  *     skill_level?: number | null;
  *   };
  *   isYou?: boolean;
+ *   showSkillLevel?: boolean;
  * }} props
  */
-export function QueueingSessionListRow({ player, isYou = false }) {
+export function QueueingSessionListRow({ player, isYou = false, showSkillLevel = true }) {
     const points = player.earned_points ?? 0;
     const isGuest = Boolean(player.is_guest);
 
@@ -53,7 +54,9 @@ export function QueueingSessionListRow({ player, isYou = false }) {
                                 Guest
                             </span>
                         ) : null}
-                        <PlayerSkillLevelBadge skillLevel={player.skill_level} truncateOnMobile />
+                        {showSkillLevel ? (
+                            <PlayerSkillLevelBadge skillLevel={player.skill_level} truncateOnMobile />
+                        ) : null}
                     </div>
                     <QueueingSessionLeaderboardStats
                         wins={player.wins}

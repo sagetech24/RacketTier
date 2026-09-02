@@ -25,8 +25,8 @@ export function QueueingSessionGuestOptionalFields({
                 onChange={(requireSkill) => onOptionalGuestSkillChange(!requireSkill)}
                 disabled={disabled}
                 layout="card"
-                label="Require skill level for guest players"
-                description="When on, guests must pick a tier level before joining."
+                label="Required skill level"
+                description="When on, guests and members must have a tier when joining. Members are pre-filled from their sport tier."
             />
             <ToggleField
                 checked={!optionalGuestGender}

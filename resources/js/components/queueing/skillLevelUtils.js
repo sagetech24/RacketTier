@@ -6,6 +6,11 @@ export const SKILL_LEVEL_NAMES = {
     5: 'Pro Elite',
 };
 
+/** @param {{ optional_guest_skill?: boolean } | null | undefined} session */
+export function sessionRequiresSkillLevel(session) {
+    return session?.optional_guest_skill === false;
+}
+
 /** @param {number | null | undefined} skillLevel */
 export function skillLevelLabel(skillLevel) {
     if (skillLevel == null) return null;

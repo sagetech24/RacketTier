@@ -56,6 +56,7 @@ function PlayerStatusBadge({ status }) {
  *   isYou?: boolean;
  *   canEdit?: boolean;
  *   busy?: boolean;
+ *   showSkillLevel?: boolean;
  *   style?: import('react').CSSProperties;
  *   onEdit?: () => void;
  *   onRemove?: () => void;
@@ -69,6 +70,7 @@ export function QueueingSessionPlayerCard({
     isYou = false,
     canEdit = false,
     busy = false,
+    showSkillLevel = true,
     style,
     onEdit,
     onRemove,
@@ -143,7 +145,9 @@ export function QueueingSessionPlayerCard({
                                     ) : null}
                                 </h3>
                                 <div className="mt-1.5 flex items-center gap-1.5">
-                                    <PlayerSkillLevelBadge skillLevel={p.skill_level} />
+                                    {showSkillLevel ? (
+                                        <PlayerSkillLevelBadge skillLevel={p.skill_level} />
+                                    ) : null}
                                 </div>
                             </div>
                         </div>

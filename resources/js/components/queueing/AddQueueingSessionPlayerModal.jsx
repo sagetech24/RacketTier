@@ -30,7 +30,6 @@ const labelClassName = 'mb-1 block text-[10px] font-black uppercase tracking-wid
  *   guest?: { name?: string, pronoun?: string | null, skill_level?: number | null } | null,
  *   optionalGuestSkill?: boolean,
  *   optionalGuestGender?: boolean,
- *   showSkillLevel?: boolean,
  *   busy?: boolean,
  *   onCancel: () => void,
  *   onConfirm: (payload: { guest_name?: string, pronoun?: string | null, skill_level: number | null }) => void | Promise<void>,
@@ -44,7 +43,6 @@ export function AddQueueingSessionPlayerModal({
     guest = null,
     optionalGuestSkill = true,
     optionalGuestGender = true,
-    showSkillLevel = true,
     busy = false,
     onCancel,
     onConfirm,
@@ -56,8 +54,8 @@ export function AddQueueingSessionPlayerModal({
 
     const isGuest = mode === 'guest';
     const isEdit = intent === 'edit';
-    const collectSkillLevel = showSkillLevel;
-    const requireSkill = collectSkillLevel && (isGuest ? !optionalGuestSkill : true);
+    const collectSkillLevel = !optionalGuestSkill;
+    const requireSkill = collectSkillLevel;
     const requireGender = isGuest ? !optionalGuestGender : false;
 
     useEffect(() => {

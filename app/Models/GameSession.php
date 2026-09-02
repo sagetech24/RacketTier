@@ -188,12 +188,17 @@ class GameSession extends Model
 
     public function requiresGuestSkillLevel(): bool
     {
-        return $this->usesPlayerSkillLevel() && ! (bool) ($this->optional_guest_skill ?? true);
+        return $this->requiresPlayerSkillLevel();
     }
 
     public function requiresMemberSkillLevel(): bool
     {
-        return $this->usesPlayerSkillLevel();
+        return $this->requiresPlayerSkillLevel();
+    }
+
+    public function requiresPlayerSkillLevel(): bool
+    {
+        return ! (bool) ($this->optional_guest_skill ?? true);
     }
 
     public function requiresGuestGender(): bool

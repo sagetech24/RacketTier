@@ -193,6 +193,7 @@ function ProposalsSkeleton() {
  *   onApproveAndQueue: (proposal: AutoMatchProposal) => void,
  *   onApproveAndStart: (proposal: AutoMatchProposal) => void,
  *   onSkip: (proposalId: string) => void,
+ *   showSkillLevel?: boolean,
  * }} props
  */
 function ProposalCard({
@@ -206,6 +207,7 @@ function ProposalCard({
     onApproveAndQueue,
     onApproveAndStart,
     onSkip,
+    showSkillLevel = true,
 }) {
     const team1Players = playersForIds(proposal, draft.team1);
     const team2Players = playersForIds(proposal, draft.team2);
@@ -230,6 +232,7 @@ function ProposalCard({
                 disabled={busy}
                 title={null}
                 framed={false}
+                showSkillLevel={showSkillLevel}
                 onChange={(next) => onDraftChange(proposal.proposal_id, next)}
             />
 
@@ -276,7 +279,15 @@ function ProposalCard({
  *   onApproved?: () => void | Promise<void>,
  * }} props
  */
-export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, onEditCriteria, onApproved }) {
+export function AutoMatchProposalsModal({
+    open,
+    sessionId,
+    criteria,
+    showSkillLevel = true,
+    onClose,
+    onEditCriteria,
+    onApproved,
+}) {
     /** @type {[AutoProposalsResponse | null, (v: AutoProposalsResponse | null) => void]} */
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -745,6 +756,7 @@ export function AutoMatchProposalsModal({ open, sessionId, criteria, onClose, on
                                             onApproveAndQueue={onApproveAndQueue}
                                             onApproveAndStart={onApproveAndStart}
                                             onSkip={onSkip}
+                                            showSkillLevel={showSkillLevel}
                                         />
                                     ) : null}
                                 </ul>

@@ -10,6 +10,7 @@ import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHea
 import { QueueingSessionListRow } from '../components/queueing/QueueingSessionListRow.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { QueueingSessionPodiumCard } from '../components/queueing/QueueingSessionPodiumCard.jsx';
+import { sessionRequiresSkillLevel } from '../components/queueing/skillLevelUtils.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
     useInvalidateQueueingSession,
@@ -115,6 +116,7 @@ export function QueueingSessionPage() {
 
     const topThree = useMemo(() => leaderboard.slice(0, 3), [leaderboard]);
     const restLeaderboard = useMemo(() => leaderboard.slice(3), [leaderboard]);
+    const showSkillLevel = sessionRequiresSkillLevel(session);
 
     const totals = summary?.totals;
 
@@ -256,6 +258,7 @@ export function QueueingSessionPage() {
                                                     player={player}
                                                     place={idx}
                                                     isYou={user?.id != null && player.user_id === user.id}
+                                                    showSkillLevel={showSkillLevel}
                                                 />
                                             ))}
                                         </div>
@@ -270,6 +273,7 @@ export function QueueingSessionPage() {
                                                     key={`${player.rank}-${player.name}`}
                                                     player={player}
                                                     isYou={user?.id != null && player.user_id === user.id}
+                                                    showSkillLevel={showSkillLevel}
                                                 />
                                             ))}
                                         </div>

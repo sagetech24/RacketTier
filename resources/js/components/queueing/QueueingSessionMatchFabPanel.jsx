@@ -16,11 +16,12 @@ import { AddQueueingSessionPlayerModal } from './AddQueueingSessionPlayerModal.j
 import { AutoMatchCriteriaModal } from './AutoMatchCriteriaModal.jsx';
 import { AutoMatchProposalsModal } from './AutoMatchProposalsModal.jsx';
 import { ConfirmActionModal } from './ConfirmActionModal.jsx';
-import { parseAutoMatchCriteria, sessionUsesSkillLevel } from './QueueingSessionAutoMatchCriteriaField.jsx';
+import { parseAutoMatchCriteria } from './QueueingSessionAutoMatchCriteriaField.jsx';
 import { QueueingSessionAddMemberPickerModal } from './QueueingSessionAddMemberPickerModal.jsx';
 import { QueueingSessionSettingsModal } from './QueueingSessionSettingsModal.jsx';
 import { QueueingSessionEndLoadingOverlay } from './QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionMatchLineupModal } from './QueueingSessionMatchLineupModal.jsx';
+import { sessionRequiresSkillLevel } from './skillLevelUtils.js';
 
 /**
  * @param {{
@@ -155,10 +156,7 @@ export function QueueingSessionMatchFabPanel({
         return ids;
     }, [localSession?.players]);
 
-    const skillLevelEnabled = useMemo(
-        () => sessionUsesSkillLevel(session ?? localSession),
-        [session, localSession],
-    );
+    const showSkillLevel = sessionRequiresSkillLevel(session ?? localSession);
 
     async function refreshSessionForPlayerActions() {
         if (sessionId == null) {
@@ -283,52 +281,42 @@ export function QueueingSessionMatchFabPanel({
     async function handleSelectMember(member) {
         setAddMemberPickerOpen(false);
 
-        let currentSession = session ?? localSession;
-        if (sessionId != null) {
-            setBusy(true);
-            try {
-                currentSession = (await refreshSessionForPlayerActions()) ?? currentSession;
-            } catch (e) {
-                reportError(e instanceof Error ? e.message : 'Could not load session data.');
-                setBusy(false);
-                return;
-            }
-        }
-
-        if (!sessionUsesSkillLevel(currentSession)) {
-            if (sessionId == null) {
-                setBusy(false);
-                return;
-            }
-            try {
-                await postAddQueueingSessionPlayer(sessionId, {
-                    user_id: member.id,
-                    skill_level: null,
-                });
-                if (onReload) {
-                    await onReload();
-                } else {
-                    await refreshMatchData();
-                }
-            } catch (e) {
-                reportError(e instanceof Error ? e.message : 'Could not add player.');
-            } finally {
-                setBusy(false);
-            }
+        if (sessionId == null) {
             return;
         }
 
-        setBusy(false);
-        setAddPlayerModal({
-            mode: 'member',
-            intent: 'add',
-            member: {
-                id: member.id,
-                name: member.name,
-                pronoun: member.pronoun ?? null,
+        setBusy(true);
+        try {
+            const currentSession = await refreshSessionForPlayerActions();
+
+            if (sessionRequiresSkillLevel(currentSession)) {
+                setAddPlayerModal({
+                    mode: 'member',
+                    intent: 'add',
+                    member: {
+                        id: member.id,
+                        name: member.name,
+                        pronoun: member.pronoun ?? null,
+                        skill_level: member.skill_level ?? null,
+                    },
+                });
+                return;
+            }
+
+            await postAddQueueingSessionPlayer(sessionId, {
+                user_id: member.id,
                 skill_level: member.skill_level ?? null,
-            },
-        });
+            });
+            if (onReload) {
+                await onReload();
+            } else {
+                await refreshMatchData();
+            }
+        } catch (e) {
+            reportError(e instanceof Error ? e.message : 'Could not add player.');
+        } finally {
+            setBusy(false);
+        }
     }
 
     /**
@@ -610,6 +598,7 @@ export function QueueingSessionMatchFabPanel({
                 open={autoMatchProposalsOpen}
                 sessionId={sessionId}
                 criteria={autoMatchCriteria}
+                showSkillLevel={showSkillLevel}
                 onClose={() => setAutoMatchProposalsOpen(false)}
                 onEditCriteria={handleEditAutoMatchCriteria}
                 onApproved={() => handleAutoMatchApproved()}
@@ -668,6 +657,7 @@ export function QueueingSessionMatchFabPanel({
                 sportName={localSession?.sport?.name ?? null}
                 rosterUserIds={rosterUserIds}
                 busy={busy}
+                showSkillLevel={showSkillLevel}
                 onClose={() => {
                     if (!busy) setAddMemberPickerOpen(false);
                 }}
@@ -688,7 +678,6 @@ export function QueueingSessionMatchFabPanel({
                 member={addPlayerModal?.mode === 'member' ? addPlayerModal.member ?? null : null}
                 optionalGuestSkill={localSession?.optional_guest_skill !== false}
                 optionalGuestGender={localSession?.optional_guest_gender !== false}
-                showSkillLevel={skillLevelEnabled}
                 busy={busy}
                 onCancel={() => {
                     if (!busy) setAddPlayerModal(null);

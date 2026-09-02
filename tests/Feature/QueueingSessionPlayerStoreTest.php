@@ -10,7 +10,7 @@ class QueueingSessionPlayerStoreTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_member_requires_skill_level_when_session_uses_skill_matching(): void
+    public function test_member_can_be_added_without_manual_skill_even_when_auto_match_uses_skill(): void
     {
         $host = User::factory()->create();
         $member = User::factory()->create();
@@ -29,10 +29,43 @@ class QueueingSessionPlayerStoreTest extends TestCase
 
         $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
             'user_id' => $member->id,
-        ])->assertUnprocessable();
+            'skill_level' => null,
+        ])->assertOk();
+
+        $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
+        $player = collect($show->json('data.players'))->firstWhere('user.id', $member->id);
+        $this->assertNotNull($player);
     }
 
-    public function test_member_can_be_added_without_skill_level_when_skill_matching_disabled(): void
+    public function test_member_requires_skill_level_when_required_skill_level_enabled(): void
+    {
+        $host = User::factory()->create();
+        $member = User::factory()->create();
+
+        $sessionId = (int) $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Skill Required',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'skill_level' => false,
+            'wl_statistics' => false,
+            'sequence' => true,
+            'genderless_mixed' => true,
+            'optional_guest_skill' => false,
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $member->id,
+        ])->assertUnprocessable();
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $member->id,
+            'skill_level' => 3,
+        ])->assertOk();
+    }
+
+    public function test_member_can_be_added_without_skill_level_when_required_skill_level_disabled(): void
     {
         $host = User::factory()->create();
         $member = User::factory()->create();
@@ -60,7 +93,7 @@ class QueueingSessionPlayerStoreTest extends TestCase
         $this->assertNull($player['skill_level']);
     }
 
-    public function test_guest_can_be_added_without_skill_level_when_skill_matching_disabled(): void
+    public function test_guest_requires_skill_level_when_required_skill_level_enabled(): void
     {
         $host = User::factory()->create();
 
@@ -75,6 +108,36 @@ class QueueingSessionPlayerStoreTest extends TestCase
             'sequence' => true,
             'genderless_mixed' => true,
             'optional_guest_skill' => false,
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'guest_name' => 'Drop-in Guest',
+            'pronoun' => 'They/Them',
+            'skill_level' => null,
+        ])->assertUnprocessable();
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'guest_name' => 'Drop-in Guest',
+            'pronoun' => 'They/Them',
+            'skill_level' => 2,
+        ])->assertOk();
+    }
+
+    public function test_guest_can_be_added_without_skill_level_when_required_skill_level_disabled(): void
+    {
+        $host = User::factory()->create();
+
+        $sessionId = (int) $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Queue First',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'skill_level' => false,
+            'wl_statistics' => false,
+            'sequence' => true,
+            'genderless_mixed' => true,
+            'optional_guest_skill' => true,
         ])->assertCreated()->json('data.id');
 
         $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [

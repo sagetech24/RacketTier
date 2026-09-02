@@ -10,12 +10,12 @@ import { EmptyState } from '../components/app/EmptyState.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueueingSessionPlayerModal.jsx';
-import { sessionUsesSkillLevel } from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
 import {
     QueueingSessionPlayerCard,
     playerRosterStatus,
     rosterPlayerName,
 } from '../components/queueing/QueueingSessionPlayerCard.jsx';
+import { sessionRequiresSkillLevel } from '../components/queueing/skillLevelUtils.js';
 import { QueueingSessionPlayersLoading } from '../components/queueing/QueueingSessionPlayersLoading.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
@@ -117,7 +117,7 @@ export function QueueingSessionPlayersPage() {
     const canManagePlayers = Boolean(session?.can_manage) && Boolean(session?.is_active);
     const canManageMatches = canManagePlayers;
     const sessionActive = Boolean(session?.is_active);
-    const skillLevelEnabled = sessionUsesSkillLevel(session);
+    const showSkillLevel = sessionRequiresSkillLevel(session);
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
@@ -284,27 +284,13 @@ export function QueueingSessionPlayersPage() {
     function onEditPlayerClick(p) {
         if (!canManagePlayers || busy || p.is_playing) return;
 
-        if (p.is_guest) {
-            setEditPlayerModal({
-                mode: 'guest',
-                playerRowId: p.id,
-                guest: {
-                    name: p.guest_name ?? '',
-                    pronoun: p.pronoun ?? null,
-                    skill_level: p.skill_level ?? null,
-                },
-            });
-            return;
-        }
-
-        if (!skillLevelEnabled) return;
+        if (!p.is_guest) return;
 
         setEditPlayerModal({
-            mode: 'member',
+            mode: 'guest',
             playerRowId: p.id,
-            member: {
-                id: p.user?.id,
-                name: rosterPlayerName(p),
+            guest: {
+                name: p.guest_name ?? '',
                 pronoun: p.pronoun ?? null,
                 skill_level: p.skill_level ?? null,
             },
@@ -551,9 +537,7 @@ export function QueueingSessionPlayersPage() {
                                 <div className="rt-roster-player-cards-grid">
                                     {visibleRosterPlayers.map((p, index) => {
                                         const canEditPlayer =
-                                            canManagePlayers &&
-                                            !p.is_playing &&
-                                            (p.is_guest || skillLevelEnabled);
+                                            canManagePlayers && !p.is_playing && p.is_guest;
                                         const status = playerRosterStatus(
                                             p,
                                             reservedPlayerIds,
@@ -570,6 +554,7 @@ export function QueueingSessionPlayersPage() {
                                                 isYou={user?.id != null && p.user?.id === user.id}
                                                 canEdit={canEditPlayer}
                                                 busy={busy}
+                                                showSkillLevel={showSkillLevel}
                                                 style={{
                                                     animationDelay: `${0.08 + (index % 10) * 0.04}s`,
                                                 }}
@@ -621,7 +606,6 @@ export function QueueingSessionPlayersPage() {
                 guest={editPlayerModal?.mode === 'guest' ? editPlayerModal.guest ?? null : null}
                 optionalGuestSkill={session?.optional_guest_skill !== false}
                 optionalGuestGender={session?.optional_guest_gender !== false}
-                showSkillLevel={skillLevelEnabled}
                 busy={busy}
                 onCancel={() => {
                     if (!busy) setEditPlayerModal(null);

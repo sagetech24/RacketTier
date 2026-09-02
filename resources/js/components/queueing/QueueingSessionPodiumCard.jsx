@@ -28,9 +28,10 @@ const MEDAL_ALT = ['First place', 'Second place', 'Third place'];
  *   };
  *   place: number;
  *   isYou?: boolean;
+ *   showSkillLevel?: boolean;
  * }} props
  */
-export function QueueingSessionPodiumCard({ player, place, isYou = false }) {
+export function QueueingSessionPodiumCard({ player, place, isYou = false, showSkillLevel = true }) {
     const frameClass = PODIUM_FRAME[place] ?? PODIUM_FRAME[2];
     const orderClass = `rt-ranking-podium-order-${PODIUM_ORDER[place] ?? place}`;
     const points = player.earned_points ?? 0;
@@ -86,7 +87,9 @@ export function QueueingSessionPodiumCard({ player, place, isYou = false }) {
                                     ) : null}
                                 </div>
                                 <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
-                                    <PlayerSkillLevelBadge skillLevel={player.skill_level} />
+                                    {showSkillLevel ? (
+                                        <PlayerSkillLevelBadge skillLevel={player.skill_level} />
+                                    ) : null}
                                 </div>
                             </div>
                         </div>

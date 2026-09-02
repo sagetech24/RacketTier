@@ -66,6 +66,7 @@ function PlayerListSkeleton() {
  *   sportName?: string | null,
  *   rosterUserIds: Set<number>,
  *   busy?: boolean,
+ *   showSkillLevel?: boolean,
  *   onClose: () => void,
  *   onSelectMember: (member: {
  *     id: number,
@@ -81,6 +82,7 @@ export function QueueingSessionAddMemberPickerModal({
     sportName = null,
     rosterUserIds,
     busy = false,
+    showSkillLevel = true,
     onClose,
     onSelectMember,
 }) {
@@ -206,7 +208,7 @@ export function QueueingSessionAddMemberPickerModal({
                                         <span className="flex min-w-0 flex-1 flex-col">
                                             <span className="flex min-w-0 items-center gap-2">
                                                 <span className="truncate">{r.name}</span>
-                                                {sportId != null ? (
+                                                {showSkillLevel && sportId != null ? (
                                                     <span
                                                         className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
                                                         title="Tier for this session's sport (lifetime session points)"

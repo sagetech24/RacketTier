@@ -32,7 +32,7 @@ import { maxPlayersPerTeam, moveLineupPlayer } from '../../lib/moveLineupPlayer.
  */
 
 /** @param {number | null | undefined} skillLevel */
-function skillLevelLabel(skillLevel) {
+function lineupSkillLevelLabel(skillLevel) {
     if (skillLevel == null) return null;
     const level = Math.min(5, Math.max(1, Number(skillLevel)));
     return `Lvl ${level}`;
@@ -78,10 +78,18 @@ function PortaledDragOverlay({ children }) {
  *   isDragging?: boolean,
  *   disabled?: boolean,
  *   onRemove?: ((id: number) => void) | null,
+ *   showSkillLevel?: boolean,
  * }} props
  */
-function LineupDragCard({ player, dragProps = {}, isDragging = false, disabled = false, onRemove = null }) {
-    const skillLabel = skillLevelLabel(player.skill_level);
+function LineupDragCard({
+    player,
+    dragProps = {},
+    isDragging = false,
+    disabled = false,
+    onRemove = null,
+    showSkillLevel = true,
+}) {
+    const skillLabel = showSkillLevel ? lineupSkillLevelLabel(player.skill_level) : null;
     const canDrag = !disabled && Object.keys(dragProps).length > 0;
 
     return (
@@ -164,9 +172,10 @@ function LineupDragCard({ player, dragProps = {}, isDragging = false, disabled =
  *   player: LineupPlayerView,
  *   disabled?: boolean,
  *   onRemove?: ((id: number) => void) | null,
+ *   showSkillLevel?: boolean,
  * }} props
  */
-function SortableLineupCard({ player, disabled = false, onRemove = null }) {
+function SortableLineupCard({ player, disabled = false, onRemove = null, showSkillLevel = true }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: String(player.id),
         disabled,
@@ -187,6 +196,7 @@ function SortableLineupCard({ player, disabled = false, onRemove = null }) {
                 disabled={disabled}
                 isDragging={isDragging}
                 onRemove={onRemove}
+                showSkillLevel={showSkillLevel}
                 dragProps={disabled ? {} : { ...attributes, ...listeners, 'aria-label': `Drag ${player.name}` }}
             />
         </div>
@@ -201,9 +211,18 @@ function SortableLineupCard({ player, disabled = false, onRemove = null }) {
  *   maxPerTeam: number,
  *   disabled?: boolean,
  *   onRemove?: ((id: number) => void) | null,
+ *   showSkillLevel?: boolean,
  * }} props
  */
-function TeamColumn({ team, label, players, maxPerTeam, disabled = false, onRemove = null }) {
+function TeamColumn({
+    team,
+    label,
+    players,
+    maxPerTeam,
+    disabled = false,
+    onRemove = null,
+    showSkillLevel = true,
+}) {
     const droppableId = `team-${team}`;
     const { setNodeRef, isOver } = useDroppable({
         id: droppableId,
@@ -238,6 +257,7 @@ function TeamColumn({ team, label, players, maxPerTeam, disabled = false, onRemo
                             player={player}
                             disabled={disabled}
                             onRemove={onRemove}
+                            showSkillLevel={showSkillLevel}
                         />
                     ))}
                 </SortableContext>
@@ -259,6 +279,7 @@ function TeamColumn({ team, label, players, maxPerTeam, disabled = false, onRemo
  *   onRemove?: ((id: number) => void) | null,
  *   title?: string | null,
  *   framed?: boolean,
+ *   showSkillLevel?: boolean,
  * }} props
  */
 export function DraggableMatchLineup({
@@ -270,6 +291,7 @@ export function DraggableMatchLineup({
     onRemove = null,
     title = 'Match Lineup',
     framed = true,
+    showSkillLevel = true,
 }) {
     const maxPerTeam = maxPlayersPerTeam(matchType);
     const teamLabel = matchType === 'doubles' ? 'Team' : 'Player';
@@ -383,6 +405,7 @@ export function DraggableMatchLineup({
                         maxPerTeam={maxPerTeam}
                         disabled={disabled}
                         onRemove={onRemove}
+                        showSkillLevel={showSkillLevel}
                     />
                     <TeamColumn
                         team={2}
@@ -391,13 +414,14 @@ export function DraggableMatchLineup({
                         maxPerTeam={maxPerTeam}
                         disabled={disabled}
                         onRemove={onRemove}
+                        showSkillLevel={showSkillLevel}
                     />
                 </div>
 
                 <PortaledDragOverlay>
                     {activePlayer ? (
                         <div className="w-full opacity-95 shadow-xl">
-                            <LineupDragCard player={activePlayer} isDragging disabled />
+                            <LineupDragCard player={activePlayer} isDragging disabled showSkillLevel={showSkillLevel} />
                         </div>
                     ) : null}
                 </PortaledDragOverlay>

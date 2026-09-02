@@ -6,6 +6,7 @@ import {
 import { MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../app/ModalPortal.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { DraggableMatchLineup } from './DraggableMatchLineup.jsx';
+import { sessionRequiresSkillLevel } from './skillLevelUtils.js';
 
 const PLAYER_LIST_PAGE_SIZE = 2;
 
@@ -20,10 +21,11 @@ function skillLevelLabel(skillLevel) {
  * @param {{
  *   p: NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number],
  *   trailing?: import('react').ReactNode,
+ *   showSkillLevel?: boolean,
  * }} props
  */
-function LineupPlayerCard({ p, trailing = null }) {
-    const skillLabel = skillLevelLabel(p.skill_level);
+function LineupPlayerCard({ p, trailing = null, showSkillLevel = true }) {
+    const skillLabel = showSkillLevel ? skillLevelLabel(p.skill_level) : null;
     const isGuest = Boolean(p.is_guest || p.guest_name);
 
     return (
@@ -101,6 +103,7 @@ export function QueueingSessionMatchLineupModal({
     onClose,
     onSave,
 }) {
+    const showSkillLevel = sessionRequiresSkillLevel(session);
     const [matchLineupTeams, setMatchLineupTeams] = useState({ team1: [], team2: [] });
     const [matchLineupSearch, setMatchLineupSearch] = useState('');
     const [visiblePlayerCount, setVisiblePlayerCount] = useState(PLAYER_LIST_PAGE_SIZE);
@@ -337,6 +340,7 @@ export function QueueingSessionMatchLineupModal({
                                                     <li key={p.id}>
                                                         <LineupPlayerCard
                                                             p={p}
+                                                            showSkillLevel={showSkillLevel}
                                                             trailing={
                                                                 <div className="flex flex-col gap-2">
                                                                     <button
@@ -395,6 +399,7 @@ export function QueueingSessionMatchLineupModal({
                                 team1={lineupTeam1Players}
                                 team2={lineupTeam2Players}
                                 disabled={busy}
+                                showSkillLevel={showSkillLevel}
                                 onChange={setMatchLineupTeams}
                                 onRemove={removePlayerFromMatchLineup}
                             />
