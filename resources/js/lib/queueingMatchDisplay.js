@@ -14,6 +14,19 @@ export function formatTimeOnly(iso) {
     return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 }
 
+/** 24-hour clock without AM/PM (e.g. 14:05:32). @param {string | null | undefined} iso */
+export function formatTimeMilitary(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    });
+}
+
 /** @param {string | null | undefined} start @param {string | null | undefined} end */
 export function durationInSeconds(start, end) {
     if (!start || !end) return null;

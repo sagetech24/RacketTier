@@ -2562,6 +2562,25 @@
     font-size: 0.75rem;
 }
 
+.rt-match-head-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background-color: rgb(255 255 255 / 0.04);
+    padding: 0.15rem 0.5rem;
+    font-size: 0.6875rem;
+    color: #c8c5d2;
+}
+
+.rt-match-head-badge--queueing {
+    border-color: rgb(251 191 36 / 0.28);
+    background-color: rgb(251 191 36 / 0.1);
+    color: #fbbf24;
+}
+
 .rt-match-status-pill {
     display: inline-flex;
     align-items: center;
@@ -2641,6 +2660,7 @@
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     gap: 0.5rem;
+    padding: 10px 0;
 }
 
 .rt-match-team {
@@ -2729,7 +2749,10 @@
 }
 
 .rt-match-team-names {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
     min-width: 0;
     max-width: 100%;
 }
@@ -2836,8 +2859,10 @@
 .rt-match-actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.5rem;
     margin-top: auto;
+    padding: 10px 0;
 }
 
 .rt-match-actions--split {
@@ -3154,12 +3179,31 @@
 
     .rt-match-cards-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         gap: 1rem;
     }
 
     .rt-match-cards-grid > li {
         height: 100%;
+    }
+
+    .rt-match-team-name {
+        font-size: 1.0625rem;
+        line-height: 1.3;
+    }
+
+    .rt-match-actions {
+        gap: 0.65rem;
+    }
+
+    .rt-match-action {
+        gap: 0.4rem;
+        padding: 0.6rem 1.05rem;
+        font-size: 0.8125rem;
+    }
+
+    .rt-match-action .material-symbols-outlined {
+        font-size: 1.125rem !important;
     }
 
     .rt-player-cards-grid {

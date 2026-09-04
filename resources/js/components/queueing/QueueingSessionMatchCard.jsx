@@ -4,6 +4,7 @@ import { playerInitials } from '../ranking/rankingUtils.js';
 import {
     formatDuration,
     formatTimeOnly,
+    formatTimeMilitary,
     lineupDisplayNamesByTeam,
     liveDurationSeconds,
     formatSecondsDuration,
@@ -67,9 +68,21 @@ function MatchTeamBlock({ names, teamNo, status, winningTeam }) {
             </div>
             <div className="rt-match-team-names">
                 {names.length > 0 ? (
-                    <span className="rt-match-team-name capitalize" title={names.join(' & ')}>
-                        {names.join(' & ')}
-                    </span>
+                    names.length === 1 ? (
+                        <span className="rt-match-team-name capitalize" title={names[0]}>
+                            {names[0]}
+                        </span>
+                    ) : (
+                        names.map((name, i) => (
+                            <span
+                                key={`${name}-${i}`}
+                                className="rt-match-team-name capitalize"
+                                title={name}
+                            >
+                                {name}
+                            </span>
+                        ))
+                    )
                 ) : (
                     <span className="rt-match-team-name text-[#918f9c]">—</span>
                 )}
@@ -124,22 +137,46 @@ export function QueueingSessionMatchCard({
             <div className="rt-match-card-inner">
                 <header className="rt-match-card-head">
                     <div className="flex min-w-0 items-center gap-2">
-                        {matchNo != null ? (
+                        {matchNo != null && status !== 'ongoing' ? (
                             <span className="rt-match-no" title={`Match ${matchNo}`}>
                                 #{matchNo}
                             </span>
                         ) : null}
+                        {status === 'queueing' ? (
+                            <span className="rt-match-head-badge rt-match-head-badge--queueing">
+                                <MaterialIcon name="hourglass_top" className="text-[14px]!" />
+                                Waiting to start
+                            </span>
+                        ) : null}
+                        {status === 'ongoing' && row.started_at ? (
+                            <span className="rt-match-head-badge">
+                                <MaterialIcon name="play_circle" className="text-[14px]! text-[#918f9c]" />
+                                <span>
+                                    <span className="font-semibold">Started</span>
+                                    {' '}
+                                    <span className="tabular-nums">{formatTimeMilitary(row.started_at)}</span>
+                                </span>
+                            </span>
+                        ) : null}
                         {status === 'finished' && row.finished_at ? (
-                            <span className="flex items-center gap-1 text-xs">
+                            <span className="flex items-center gap-1 text-xs text-[#918f9c]">
                                 <MaterialIcon name="timer" className="text-[14px]! text-slate-300" />
                                 {formatDuration(row.started_at, row.finished_at)}
                             </span>
                         ) : null}
                     </div>
-                    <span className={matchStatusPillClass(status)}>
-                        <span className="rt-match-status-dot" aria-hidden />
-                        {matchStatusLabel(status)}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                        {status === 'ongoing' && row.started_at ? (
+                            <span className="flex items-center gap-1 text-xs">
+                                <MaterialIcon name="timer" className="text-[14px]! text-[#4ce081]" />
+                                <LiveMatchDuration startedAt={row.started_at} />
+                            </span>
+                        ) : null}
+                        <span className={matchStatusPillClass(status)}>
+                            <span className="rt-match-status-dot" aria-hidden />
+                            {matchStatusLabel(status)}
+                        </span>
+                    </div>
                 </header>
 
                 <div className="rt-match-lineup">
@@ -160,50 +197,30 @@ export function QueueingSessionMatchCard({
                     />
                 </div>
 
-                <div
-                    className={[
-                        'rt-match-meta',
-                        status === 'ongoing' || status === 'finished' ? 'rt-match-meta--split' : '',
-                    ]
-                        .filter(Boolean)
-                        .join(' ')}
-                >
-                    {status === 'queueing' ? (
-                        <span className="rt-match-meta-item text-[#c8c5d2]">
-                            <MaterialIcon name="hourglass_top" className="text-[14px]! text-[#fbbf24]" />
-                            Waiting to start
-                        </span>
-                    ) : null}
-
-                    {(status === 'ongoing' || status === 'finished') && row.started_at ? (
-                        <span className="rt-match-meta-item">
-                            <MaterialIcon name="play_circle" className="text-[14px]! text-[#918f9c]" />
-                            <span>
-                                <span className="font-semibold">Started</span>
-                                {' '}
-                                <span className="tabular-nums">{formatTimeOnly(row.started_at)}</span>
+                {status === 'finished' && (row.started_at || row.finished_at) ? (
+                    <div className="rt-match-meta rt-match-meta--split">
+                        {row.started_at ? (
+                            <span className="rt-match-meta-item">
+                                <MaterialIcon name="play_circle" className="text-[14px]! text-[#918f9c]" />
+                                <span>
+                                    <span className="font-semibold">Started</span>
+                                    {' '}
+                                    <span className="tabular-nums">{formatTimeOnly(row.started_at)}</span>
+                                </span>
                             </span>
-                        </span>
-                    ) : null}
-
-                    {status === 'ongoing' && row.started_at ? (
-                        <span className="rt-match-meta-item rt-match-meta-item--end">
-                            <MaterialIcon name="timer" className="text-[14px]! text-[#4ce081]" />
-                            <LiveMatchDuration startedAt={row.started_at} />
-                        </span>
-                    ) : null}
-
-                    {status === 'finished' && row.finished_at ? (
-                        <span className="rt-match-meta-item rt-match-meta-item--end">
-                            <MaterialIcon name="flag" className="text-[14px]! text-[#918f9c]" />
-                            <span>
-                                <span className="font-semibold">Ended</span>
-                                {' '}
-                                <span className="tabular-nums">{formatTimeOnly(row.finished_at)}</span>
+                        ) : null}
+                        {row.finished_at ? (
+                            <span className="rt-match-meta-item rt-match-meta-item--end">
+                                <MaterialIcon name="flag" className="text-[14px]! text-[#918f9c]" />
+                                <span>
+                                    <span className="font-semibold">Ended</span>
+                                    {' '}
+                                    <span className="tabular-nums">{formatTimeOnly(row.finished_at)}</span>
+                                </span>
                             </span>
-                        </span>
-                    ) : null}
-                </div>
+                        ) : null}
+                    </div>
+                ) : null}
 
                 {hasScore || winningTeam ? (
                     <div>

@@ -574,7 +574,7 @@ export function QueueingSessionMatchFabPanel({
                                   aria-expanded={menuOpen}
                                   aria-haspopup="menu"
                                   aria-label={menuOpen ? 'Close match options' : 'Create match'}
-                                  className="rt-kinetic-gradient opacity-70 hover:opacity-90 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#8181ac] text-[#131316] shadow-lg shadow-black/30 transition-transform transform duration-200 enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="rt-kinetic-gradient opacity-70 hover:opacity-90 flex md:h-20 md:w-20 h-14 w-14 items-center justify-center rounded-full border-2 border-[#8181ac] text-[#131316] shadow-lg shadow-black/30 transition-transform transform duration-200 enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                   <MaterialIcon
                                       name="add"
