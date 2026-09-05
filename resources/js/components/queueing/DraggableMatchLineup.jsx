@@ -76,8 +76,8 @@ function PortaledDragOverlay({ children }) {
 /**
  * @param {{
  *   player: LineupPlayerView,
- *   handleProps?: Record<string, unknown>,
- *   handleRef?: ((node: HTMLElement | null) => void) | null,
+ *   dragProps?: Record<string, unknown>,
+ *   dragRef?: ((node: HTMLElement | null) => void) | null,
  *   isDragging?: boolean,
  *   disabled?: boolean,
  *   onRemove?: ((id: number) => void) | null,
@@ -86,58 +86,55 @@ function PortaledDragOverlay({ children }) {
  */
 function LineupDragCard({
     player,
-    handleProps = {},
-    handleRef = null,
+    dragProps = {},
+    dragRef = null,
     isDragging = false,
     disabled = false,
     onRemove = null,
     showSkillLevel = true,
 }) {
     const skillLabel = showSkillLevel ? lineupSkillLevelLabel(player.skill_level) : null;
-    const canDrag = !disabled && Object.keys(handleProps).length > 0;
+    const canDrag = !disabled && Object.keys(dragProps).length > 0;
+    const displayName = player.name?.trim() || 'Player';
 
     return (
         <div
+            ref={canDrag ? dragRef : undefined}
             className={[
-                'flex items-start justify-between gap-1.5 rounded-lg border border-[#c2c1ff]/30 bg-[#131316] p-2 shadow-sm select-none md:gap-2 md:p-3',
+                'rt-lineup-drag-card flex items-start gap-1 rounded-lg border-2 border-dashed border-[#c2c1ff]/50 bg-[#131316] p-2 shadow-sm select-none md:gap-2 md:p-3',
+                canDrag ? 'rt-lineup-drag-card--active' : '',
                 isDragging ? 'opacity-60 ring-2 ring-[#c2c1ff]/50' : '',
             ]
                 .filter(Boolean)
                 .join(' ')}
+            draggable={false}
+            {...(canDrag ? dragProps : {})}
+            onContextMenu={canDrag ? (event) => event.preventDefault() : undefined}
         >
-            <div className="flex min-w-0 flex-1 items-start gap-0.5 md:gap-1.5">
-                {canDrag ? (
+            <div className="flex min-w-0 flex-1 items-start gap-1 md:gap-1 relative">
+                {onRemove ? (
                     <button
                         type="button"
-                        ref={handleRef}
-                        className="rt-lineup-drag-handle"
-                        aria-label={`Drag ${player.name}`}
-                        draggable={false}
-                        {...handleProps}
-                        onContextMenu={(event) => event.preventDefault()}
+                        disabled={disabled}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onRemove(player.id);
+                        }}
+                        className="absolute -top-5 -left-4 inline-flex size-6 md:size-8 shrink-0 items-center justify-center rounded-full bg-red-300/30 p-1 text-red-300 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label={`Remove ${displayName}`}
                     >
-                        <MaterialIcon name="drag_indicator" className="text-[20px]! md:text-2xl!" />
+                        <MaterialIcon name="close" className="text-[16px]! md:text-2xl!" />
                     </button>
-                ) : (
-                    <span className="rt-lineup-drag-handle rt-lineup-drag-handle--static" aria-hidden>
-                        <MaterialIcon name="drag_indicator" className="text-[20px]! md:text-2xl!" />
-                    </span>
-                )}
+                ) : null}
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                        <p className="mb-1 truncate text-sm font-semibold capitalize text-[#e4e1e6] md:text-lg">
-                            {player.name}
-                        </p>
-                        {player.is_guest ? (
-                            <span
-                                className="rounded-full border border-[#747374] bg-[#c2c1ff]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c8c5d2] md:text-[12px]"
-                                title="Guest player"
-                            >
-                                Guest
-                            </span>
-                        ) : null}
-                    </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <p
+                        className="min-w-0 truncate text-sm font-semibold capitalize leading-tight text-[#e4e1e6] md:text-lg"
+                        title={displayName}
+                    >
+                        {displayName}
+                    </p>
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         {skillLabel ? (
                             <p className="inline-flex items-center gap-0.5" title="Skill level">
                                 <MaterialIcon name="star" className="text-[15px]! text-[#c2c1ff] md:text-xl!" />
@@ -161,21 +158,6 @@ function LineupDragCard({
                     </div>
                 </div>
             </div>
-            {onRemove ? (
-                <button
-                    type="button"
-                    disabled={disabled}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        onRemove(player.id);
-                    }}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-red-300/70 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label={`Remove ${player.name}`}
-                >
-                    <MaterialIcon name="close" className="text-[16px]! md:text-2xl!" />
-                </button>
-            ) : null}
         </div>
     );
 }
@@ -218,8 +200,12 @@ function SortableLineupCard({ player, disabled = false, onRemove = null, showSki
                 isDragging={isDragging}
                 onRemove={onRemove}
                 showSkillLevel={showSkillLevel}
-                handleRef={disabled ? null : setActivatorNodeRef}
-                handleProps={disabled ? {} : { ...attributes, ...listeners }}
+                dragRef={disabled ? null : setActivatorNodeRef}
+                dragProps={
+                    disabled
+                        ? {}
+                        : { ...attributes, ...listeners, 'aria-label': `Drag ${player.name?.trim() || 'player'}` }
+                }
             />
         </div>
     );
@@ -410,10 +396,10 @@ export function DraggableMatchLineup({
             {title ? (
                 <div className="mb-3 flex flex-col items-start justify-start md:flex-row md:justify-between">
                     <p className="text-2xl font-semibold text-[#e4e1e6]">{title}</p>
-                    <p className="text-sm text-[#bbbbbb]">Hold the handle, then drag to move players</p>
+                    <p className="text-sm text-[#bbbbbb]">Hold a card, then drag to move players</p>
                 </div>
             ) : (
-                <p className="mb-2 text-xs text-[#918f9c] md:text-sm">Hold the handle, then drag to move players</p>
+                <p className="mb-2 text-xs text-[#918f9c] md:text-sm">Hold a card, then drag to move players</p>
             )}
 
             <DndContext
