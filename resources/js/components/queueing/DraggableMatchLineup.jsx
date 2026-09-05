@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
     DndContext,
     DragOverlay,
     KeyboardSensor,
-    PointerSensor,
+    MouseSensor,
+    TouchSensor,
     closestCenter,
     useDroppable,
     useSensor,
@@ -18,6 +19,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
+import { useDragScrollLock } from '../../hooks/useDragScrollLock.js';
 import { maxPlayersPerTeam, moveLineupPlayer } from '../../lib/moveLineupPlayer.js';
 
 /**
@@ -74,7 +76,8 @@ function PortaledDragOverlay({ children }) {
 /**
  * @param {{
  *   player: LineupPlayerView,
- *   dragProps?: Record<string, unknown>,
+ *   handleProps?: Record<string, unknown>,
+ *   handleRef?: ((node: HTMLElement | null) => void) | null,
  *   isDragging?: boolean,
  *   disabled?: boolean,
  *   onRemove?: ((id: number) => void) | null,
@@ -83,33 +86,43 @@ function PortaledDragOverlay({ children }) {
  */
 function LineupDragCard({
     player,
-    dragProps = {},
+    handleProps = {},
+    handleRef = null,
     isDragging = false,
     disabled = false,
     onRemove = null,
     showSkillLevel = true,
 }) {
     const skillLabel = showSkillLevel ? lineupSkillLevelLabel(player.skill_level) : null;
-    const canDrag = !disabled && Object.keys(dragProps).length > 0;
+    const canDrag = !disabled && Object.keys(handleProps).length > 0;
 
     return (
         <div
             className={[
-                'flex items-start justify-between gap-2 rounded-lg border border-[#c2c1ff]/30 bg-[#131316] p-3 shadow-sm',
-                canDrag ? 'cursor-grab select-none active:cursor-grabbing' : '',
+                'flex items-start justify-between gap-1.5 rounded-lg border border-[#c2c1ff]/30 bg-[#131316] p-2 shadow-sm select-none md:gap-2 md:p-3',
                 isDragging ? 'opacity-60 ring-2 ring-[#c2c1ff]/50' : '',
             ]
                 .filter(Boolean)
                 .join(' ')}
-            {...(canDrag ? dragProps : {})}
         >
-            <div className="flex min-w-0 flex-1 items-start gap-1.5">
-                <span
-                    className="mt-0.5 shrink-0 text-[#918f9c] pointer-events-none"
-                    aria-hidden
-                >
-                    <MaterialIcon name="drag_indicator" className="text-[20px]! md:text-2xl!" />
-                </span>
+            <div className="flex min-w-0 flex-1 items-start gap-0.5 md:gap-1.5">
+                {canDrag ? (
+                    <button
+                        type="button"
+                        ref={handleRef}
+                        className="rt-lineup-drag-handle"
+                        aria-label={`Drag ${player.name}`}
+                        draggable={false}
+                        {...handleProps}
+                        onContextMenu={(event) => event.preventDefault()}
+                    >
+                        <MaterialIcon name="drag_indicator" className="text-[20px]! md:text-2xl!" />
+                    </button>
+                ) : (
+                    <span className="rt-lineup-drag-handle rt-lineup-drag-handle--static" aria-hidden>
+                        <MaterialIcon name="drag_indicator" className="text-[20px]! md:text-2xl!" />
+                    </span>
+                )}
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <p className="mb-1 truncate text-sm font-semibold capitalize text-[#e4e1e6] md:text-lg">
@@ -157,7 +170,7 @@ function LineupDragCard({
                         event.stopPropagation();
                         onRemove(player.id);
                     }}
-                    className="inline-flex shrink-0 items-center justify-center text-red-300/70 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-red-300/70 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={`Remove ${player.name}`}
                 >
                     <MaterialIcon name="close" className="text-[16px]! md:text-2xl!" />
@@ -176,7 +189,15 @@ function LineupDragCard({
  * }} props
  */
 function SortableLineupCard({ player, disabled = false, onRemove = null, showSkillLevel = true }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        setActivatorNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({
         id: String(player.id),
         disabled,
         data: { type: 'player', playerId: player.id },
@@ -197,7 +218,8 @@ function SortableLineupCard({ player, disabled = false, onRemove = null, showSki
                 isDragging={isDragging}
                 onRemove={onRemove}
                 showSkillLevel={showSkillLevel}
-                dragProps={disabled ? {} : { ...attributes, ...listeners, 'aria-label': `Drag ${player.name}` }}
+                handleRef={disabled ? null : setActivatorNodeRef}
+                handleProps={disabled ? {} : { ...attributes, ...listeners }}
             />
         </div>
     );
@@ -238,13 +260,13 @@ function TeamColumn({
 
     return (
         <div className="min-w-0">
-            <p className={`mb-1.5 text-[12px] font-bold uppercase tracking-wide md:text-[18px] ${accent}`}>
+            <p className={`mb-1.5 truncate text-[11px] font-bold uppercase tracking-wide md:text-[18px] ${accent}`}>
                 {label} ({players.length}/{maxPerTeam})
             </p>
             <div
                 ref={setNodeRef}
                 className={[
-                    'min-h-[88px] space-y-2 rounded-xl border border-dashed border-[#45454a] bg-[#131316]/60 p-2 transition-[box-shadow,border-color] duration-200 ease-out',
+                    'min-h-22 space-y-2 rounded-xl border border-dashed border-[#45454a] bg-[#131316]/60 p-1.5 transition-[box-shadow,border-color] duration-200 ease-out md:p-2',
                     ringClass,
                 ]
                     .filter(Boolean)
@@ -295,10 +317,14 @@ export function DraggableMatchLineup({
 }) {
     const maxPerTeam = maxPlayersPerTeam(matchType);
     const teamLabel = matchType === 'doubles' ? 'Team' : 'Player';
+    const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
     const [activeId, setActiveId] = useState(/** @type {string | null} */ (null));
 
+    useDragScrollLock(activeId != null, rootRef);
+
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
     );
 
@@ -374,18 +400,21 @@ export function DraggableMatchLineup({
 
     return (
         <div
+            ref={rootRef}
             className={
                 framed
-                    ? 'rounded-xl border border-[#c2c1ff]/50 bg-[#1b1b1e] p-4 shadow-lg'
+                    ? 'rounded-xl border border-[#c2c1ff]/50 bg-[#1b1b1e] p-3 shadow-lg md:p-4'
                     : undefined
             }
         >
             {title ? (
-                <div className="flex md:flex-row flex-col items-start justify-start md:justify-between mb-3">
+                <div className="mb-3 flex flex-col items-start justify-start md:flex-row md:justify-between">
                     <p className="text-2xl font-semibold text-[#e4e1e6]">{title}</p>
-                    <p className="text-sm text-[#bbbbbb]">Drag and drop players to reorder</p>
+                    <p className="text-sm text-[#bbbbbb]">Hold the handle, then drag to move players</p>
                 </div>
-            ) : null}
+            ) : (
+                <p className="mb-2 text-xs text-[#918f9c] md:text-sm">Hold the handle, then drag to move players</p>
+            )}
 
             <DndContext
                 sensors={sensors}
@@ -397,7 +426,7 @@ export function DraggableMatchLineup({
                 onDragCancel={() => setActiveId(null)}
                 onDragEnd={handleDragEnd}
             >
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2">
+                <div className="grid grid-cols-2 gap-2 md:gap-3">
                     <TeamColumn
                         team={1}
                         label={`${teamLabel} 1`}

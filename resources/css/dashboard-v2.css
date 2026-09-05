@@ -1688,7 +1688,8 @@
     .rt-match-fab-callout,
     .rt-match-fab-callout-item,
     .rt-toggle-track,
-    .rt-toggle-thumb {
+    .rt-toggle-thumb,
+    .rt-lineup-drag-handle {
         animation: none !important;
         transition: none !important;
     }
@@ -2661,6 +2662,59 @@
     align-items: center;
     gap: 0.5rem;
     padding: 10px 0;
+}
+
+/* Match lineup DnD: handle-only drag so the rest of the card can still scroll */
+.rt-lineup-drag-handle {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: -0.35rem -0.5rem -0.35rem -0.65rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: #918f9c;
+    cursor: grab;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: color 150ms ease-out;
+}
+
+.rt-lineup-drag-handle:hover {
+    color: #c8c5d2;
+}
+
+.rt-lineup-drag-handle:focus-visible {
+    outline: 2px solid rgb(194 193 255 / 0.7);
+    outline-offset: 2px;
+}
+
+.rt-lineup-drag-handle:active {
+    cursor: grabbing;
+    color: #c2c1ff;
+}
+
+.rt-lineup-drag-handle--static {
+    pointer-events: none;
+    cursor: default;
+}
+
+html.rt-lineup-dnd-locked,
+html.rt-lineup-dnd-locked body,
+.rt-lineup-dnd-scroll-parent {
+    overscroll-behavior: none;
+}
+
+html.rt-lineup-dnd-locked {
+    touch-action: none;
 }
 
 .rt-match-team {
