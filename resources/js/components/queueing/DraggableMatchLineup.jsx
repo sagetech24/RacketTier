@@ -127,7 +127,7 @@ function LineupDragCard({
                         <MaterialIcon name="close" className="text-[16px]! md:text-2xl!" />
                     </button>
                 ) : null}
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 p-2">
                     <p
                         className="min-w-0 truncate text-sm font-semibold capitalize leading-tight text-[#e4e1e6] md:text-lg"
                         title={displayName}
