@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#000000">
-    <meta name="description" content="Turn your passion into a competitive edge">
+    <meta name="description" content="Match . Play . Compete &amp; Level up">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
-    <title>{{ config('app.name') }} | Turn your passion into a competitive edge</title>
+    <title>{{ config('app.name') }} | Match . Play . Compete &amp; Level up</title>
     <link rel="icon" href="{{ asset('images/rt-logo.png') }}" type="image/png">
     <link rel="apple-touch-icon" href="{{ asset('images/pwa/apple-touch-icon.png') }}">
     @if (file_exists(public_path('build/manifest.webmanifest')))
