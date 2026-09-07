@@ -101,16 +101,8 @@ export const PRODUCT_TOUR_RUN_SESSION_STEPS = [
         id: 'run-add-players',
         route: (sessionId) => `/queueing-session/${sessionId}/players`,
         target: 'session-fab-add-players',
-        title: 'Add members',
-        body: 'Search registered members and add them to the queue. They earn ELO and session points.',
-        fabMenu: true,
-    },
-    {
-        id: 'run-add-guest',
-        route: (sessionId) => `/queueing-session/${sessionId}/players`,
-        target: 'session-fab-add-guest',
-        title: 'Add guests',
-        body: 'Quick-add drop-in players by name. Guests stay in-session only — no ELO or wallet updates.',
+        title: 'Add players',
+        body: 'Add drop-in guests by name, or search members. Members earn ELO and session points; guests stay in-session only.',
         fabMenu: true,
     },
     {

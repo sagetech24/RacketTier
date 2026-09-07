@@ -31,6 +31,7 @@ const labelClassName = 'mb-1 block text-[10px] font-black uppercase tracking-wid
  *   optionalGuestSkill?: boolean,
  *   optionalGuestGender?: boolean,
  *   busy?: boolean,
+ *   embedded?: boolean,
  *   onCancel: () => void,
  *   onConfirm: (payload: { guest_name?: string, pronoun?: string | null, skill_level: number | null }) => void | Promise<void>,
  * }} props
@@ -44,6 +45,7 @@ export function AddQueueingSessionPlayerModal({
     optionalGuestSkill = true,
     optionalGuestGender = true,
     busy = false,
+    embedded = false,
     onCancel,
     onConfirm,
 }) {
@@ -136,77 +138,79 @@ export function AddQueueingSessionPlayerModal({
         }
     }
 
-    return (
-        <ModalPortal open={open}>
-            <div className={MODAL_OVERLAY_CLASS}>
-                <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl">
-                    {successMessage ? (
-                        <div
-                            role="alert"
-                            className="mb-4 rounded-lg border border-[#4ce081]/40 bg-[#4ce081]/10 px-3 py-2 text-sm font-medium text-[#4ce081]"
-                        >
-                            {successMessage}
-                        </div>
-                    ) : null}
-                    <h3 className="text-lg font-bold text-[#e4e1e6]">{title}</h3>
-                {!isGuest && member ? (
-                    <p className="mt-2 text-sm text-[#918f9c]">
-                        {isEdit ? 'Editing' : 'Adding'}{' '}
-                        <span className="font-semibold text-[#e4e1e6]">{member.name}</span>
-                        {member.pronoun ? (
-                            <>
-                                {' '}
-                                (<span className="text-[#c2c1ff]">{member.pronoun}</span>)
-                            </>
-                        ) : null}
-                    </p>
-                ) : null}
+    const skillFieldId = isGuest ? 'rt-add-player-skill-level-guest' : 'rt-add-player-skill-level-member';
 
-                <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-                    {isGuest ? (
+    const body = (
+        <>
+            {successMessage ? (
+                <div
+                    role="alert"
+                    className="mb-4 rounded-lg border border-[#4ce081]/40 bg-[#4ce081]/10 px-3 py-2 text-sm font-medium text-[#4ce081]"
+                >
+                    {successMessage}
+                </div>
+            ) : null}
+            {embedded ? null : <h3 className="text-lg font-bold text-[#e4e1e6]">{title}</h3>}
+            {!isGuest && member ? (
+                <p className={`${embedded ? 'mb-4' : 'mt-2'} text-sm text-[#918f9c]`}>
+                    {isEdit ? 'Editing' : 'Adding'}{' '}
+                    <span className="font-semibold text-[#e4e1e6]">{member.name}</span>
+                    {member.pronoun ? (
                         <>
-                            <div>
-                                <label htmlFor="rt-add-player-guest-name" className={labelClassName}>
-                                    Guest Name
-                                </label>
-                                <input
-                                    id="rt-add-player-guest-name"
-                                    value={guestName}
-                                    onChange={(e) => setGuestName(e.target.value)}
-                                    placeholder="Guest player name"
-                                    disabled={busy}
-                                    className={inputClassName}
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="rt-add-player-pronoun" className={labelClassName}>
-                                    Gender{requireGender ? '' : ' (optional)'}
-                                </label>
-                                <select
-                                    id="rt-add-player-pronoun"
-                                    value={pronoun}
-                                    onChange={(e) => setPronoun(e.target.value)}
-                                    disabled={busy}
-                                    required={requireGender}
-                                    className={inputClassName}
-                                >
-                                    {PRONOUN_OPTIONS.map((option) => (
-                                        <option key={option.value || 'empty'} value={option.value} className="bg-[#131316]">
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            {' '}
+                            (<span className="text-[#c2c1ff]">{member.pronoun}</span>)
                         </>
                     ) : null}
+                </p>
+            ) : null}
 
-                    {collectSkillLevel ? (
+            <form className={embedded ? 'space-y-4' : 'mt-4 space-y-4'} onSubmit={handleSubmit}>
+                {isGuest ? (
+                    <>
+                        <div>
+                            <label htmlFor="rt-add-player-guest-name" className={labelClassName}>
+                                Guest Name
+                            </label>
+                            <input
+                                id="rt-add-player-guest-name"
+                                value={guestName}
+                                onChange={(e) => setGuestName(e.target.value)}
+                                placeholder="Guest player name"
+                                disabled={busy}
+                                autoComplete="name"
+                                autoFocus={false}
+                                className={inputClassName}
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="rt-add-player-pronoun" className={labelClassName}>
+                                Gender{requireGender ? '' : ' (optional)'}
+                            </label>
+                            <select
+                                id="rt-add-player-pronoun"
+                                value={pronoun}
+                                onChange={(e) => setPronoun(e.target.value)}
+                                disabled={busy}
+                                required={requireGender}
+                                className={inputClassName}
+                            >
+                                {PRONOUN_OPTIONS.map((option) => (
+                                    <option key={option.value || 'empty'} value={option.value} className="bg-[#131316]">
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </>
+                ) : null}
+
+                {collectSkillLevel ? (
                     <div>
-                        <label htmlFor="rt-add-player-skill-level" className={labelClassName}>
+                        <label htmlFor={skillFieldId} className={labelClassName}>
                             Tier Level{isGuest && !requireSkill ? ' (optional)' : ''}
                         </label>
                         <select
-                            id="rt-add-player-skill-level"
+                            id={skillFieldId}
                             value={skillLevel}
                             onChange={(e) => setSkillLevel(e.target.value)}
                             disabled={busy}
@@ -229,28 +233,42 @@ export function AddQueueingSessionPlayerModal({
                             </p>
                         ) : null}
                     </div>
-                    ) : null}
+                ) : null}
 
-                    <div className="flex gap-2 pt-1">
+                <div className={`flex gap-2 pt-1 ${embedded ? 'mt-2' : ''}`}>
+                    {embedded && isGuest ? null : (
                         <button
                             type="button"
                             disabled={busy}
                             onClick={onCancel}
-                            className="flex-1 rounded-lg border border-white/50 py-2 text-sm font-bold text-white/70 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="flex-1 min-h-11 rounded-lg border border-white/50 py-2.5 text-sm font-bold text-white/70 transition-transform duration-150 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            Cancel
+                            {embedded ? 'Back' : 'Cancel'}
                         </button>
-                        <button
-                            type="submit"
-                            disabled={busy || !canSubmit}
-                            className="flex-1 rounded-lg bg-[#4ce081] py-2 text-sm font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {submitLabel}
-                        </button>
-                    </div>
-                </form>
+                    )}
+                    <button
+                        type="submit"
+                        disabled={busy || !canSubmit}
+                        className={`${embedded && isGuest ? 'w-full min-h-11' : 'flex-1 min-h-11'} rounded-lg bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919] transition-transform duration-150 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                        {submitLabel}
+                    </button>
+                </div>
+            </form>
+        </>
+    );
+
+    if (embedded) {
+        return body;
+    }
+
+    return (
+        <ModalPortal open={open}>
+            <div className={MODAL_OVERLAY_CLASS}>
+                <div className="rt-end-match-modal-sheet w-full max-w-md rounded-2xl border border-[#2a2a2d] bg-[#1b1b1e] p-5 shadow-xl">
+                    {body}
+                </div>
             </div>
-        </div>
         </ModalPortal>
     );
 }

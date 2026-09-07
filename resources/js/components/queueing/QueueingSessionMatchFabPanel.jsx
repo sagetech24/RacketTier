@@ -17,7 +17,7 @@ import { AutoMatchCriteriaModal } from './AutoMatchCriteriaModal.jsx';
 import { AutoMatchProposalsModal } from './AutoMatchProposalsModal.jsx';
 import { ConfirmActionModal } from './ConfirmActionModal.jsx';
 import { parseAutoMatchCriteria } from './QueueingSessionAutoMatchCriteriaField.jsx';
-import { QueueingSessionAddMemberPickerModal } from './QueueingSessionAddMemberPickerModal.jsx';
+import { QueueingSessionAddPlayersModal } from './QueueingSessionAddPlayersModal.jsx';
 import { QueueingSessionSettingsModal } from './QueueingSessionSettingsModal.jsx';
 import { QueueingSessionEndLoadingOverlay } from './QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionMatchLineupModal } from './QueueingSessionMatchLineupModal.jsx';
@@ -54,7 +54,7 @@ export function QueueingSessionMatchFabPanel({
     const [autoMatchCriteriaOpen, setAutoMatchCriteriaOpen] = useState(false);
     const [autoMatchProposalsOpen, setAutoMatchProposalsOpen] = useState(false);
     const [criteriaReturnToProposals, setCriteriaReturnToProposals] = useState(false);
-    const [addMemberPickerOpen, setAddMemberPickerOpen] = useState(false);
+    const [addPlayersOpen, setAddPlayersOpen] = useState(false);
     const [addPlayerModal, setAddPlayerModal] = useState(
         /** @type {{
          *   mode: 'guest' | 'member',
@@ -253,21 +253,7 @@ export function QueueingSessionMatchFabPanel({
         setBusy(true);
         try {
             await refreshSessionForPlayerActions();
-            setAddMemberPickerOpen(true);
-        } catch (e) {
-            reportError(e instanceof Error ? e.message : 'Could not load session data.');
-        } finally {
-            setBusy(false);
-        }
-    }
-
-    async function handleOpenAddGuestPlayer() {
-        closeMenu();
-        onActionError?.('');
-        setBusy(true);
-        try {
-            await refreshSessionForPlayerActions();
-            setAddPlayerModal({ mode: 'guest', intent: 'add' });
+            setAddPlayersOpen(true);
         } catch (e) {
             reportError(e instanceof Error ? e.message : 'Could not load session data.');
         } finally {
@@ -279,30 +265,12 @@ export function QueueingSessionMatchFabPanel({
      * @param {{ id: number, name: string, pronoun?: string | null, skill_level?: number | null }} member
      */
     async function handleSelectMember(member) {
-        setAddMemberPickerOpen(false);
-
         if (sessionId == null) {
             return;
         }
 
         setBusy(true);
         try {
-            const currentSession = await refreshSessionForPlayerActions();
-
-            if (sessionRequiresSkillLevel(currentSession)) {
-                setAddPlayerModal({
-                    mode: 'member',
-                    intent: 'add',
-                    member: {
-                        id: member.id,
-                        name: member.name,
-                        pronoun: member.pronoun ?? null,
-                        skill_level: member.skill_level ?? null,
-                    },
-                });
-                return;
-            }
-
             await postAddQueueingSessionPlayer(sessionId, {
                 user_id: member.id,
                 skill_level: member.skill_level ?? null,
@@ -314,6 +282,7 @@ export function QueueingSessionMatchFabPanel({
             }
         } catch (e) {
             reportError(e instanceof Error ? e.message : 'Could not add player.');
+            throw e;
         } finally {
             setBusy(false);
         }
@@ -341,6 +310,31 @@ export function QueueingSessionMatchFabPanel({
             if (addPlayerModal.mode === 'member') {
                 setAddPlayerModal(null);
             }
+            if (onReload) {
+                await onReload();
+            } else {
+                await refreshMatchData();
+            }
+        } catch (e) {
+            reportError(e instanceof Error ? e.message : 'Could not add player.');
+            throw e;
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * @param {{ guest_name?: string, pronoun?: string | null, skill_level?: number | null }} payload
+     */
+    async function handleConfirmAddGuest(payload) {
+        if (sessionId == null) return;
+        setBusy(true);
+        try {
+            await postAddQueueingSessionPlayer(sessionId, {
+                guest_name: payload.guest_name,
+                pronoun: payload.pronoun ?? null,
+                skill_level: payload.skill_level ?? null,
+            });
             if (onReload) {
                 await onReload();
             } else {
@@ -497,27 +491,7 @@ export function QueueingSessionMatchFabPanel({
                                                       Add players
                                                   </span>
                                                   <span className="block text-[10px] leading-snug text-[#918f9c]">
-                                                      Search and add members to the roster
-                                                  </span>
-                                              </span>
-                                          </button>
-                                          <button
-                                              type="button"
-                                              role="menuitem"
-                                              disabled={busy || endingSession}
-                                              onClick={handleOpenAddGuestPlayer}
-                                              data-tour="session-fab-add-guest"
-                                              className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
-                                          >
-                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15 text-[#c2c1ff]">
-                                                  <MaterialIcon name="person_add" className="text-xl!" />
-                                              </span>
-                                              <span className="min-w-0">
-                                                  <span className="block text-sm font-bold text-[#e4e1e6]">
-                                                      Add guest players
-                                                  </span>
-                                                  <span className="block text-[10px] leading-snug text-[#918f9c]">
-                                                      Quick-add a guest to the roster
+                                                      Add guests or members to the roster
                                                   </span>
                                               </span>
                                           </button>
@@ -651,17 +625,20 @@ export function QueueingSessionMatchFabPanel({
                 queueName={localSession?.queue_name ?? localSession?.sport?.name}
             />
 
-            <QueueingSessionAddMemberPickerModal
-                open={addMemberPickerOpen}
+            <QueueingSessionAddPlayersModal
+                open={addPlayersOpen}
                 sportId={localSession?.sport?.id ?? null}
                 sportName={localSession?.sport?.name ?? null}
                 rosterUserIds={rosterUserIds}
                 busy={busy}
                 showSkillLevel={showSkillLevel}
+                optionalGuestSkill={localSession?.optional_guest_skill !== false}
+                optionalGuestGender={localSession?.optional_guest_gender !== false}
                 onClose={() => {
-                    if (!busy) setAddMemberPickerOpen(false);
+                    if (!busy) setAddPlayersOpen(false);
                 }}
                 onSelectMember={handleSelectMember}
+                onAddGuest={(payload) => handleConfirmAddGuest(payload)}
             />
 
             <QueueingSessionSettingsModal
