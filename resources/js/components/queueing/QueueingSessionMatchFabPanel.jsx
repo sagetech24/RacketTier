@@ -524,7 +524,7 @@ export function QueueingSessionMatchFabPanel({
                                                       Queue settings
                                                   </span>
                                                   <span className="block text-[10px] leading-snug text-[#918f9c]">
-                                                      Points, guests, and auto-match rules
+                                                      Name, game type, points, and match rules
                                                   </span>
                                               </span>
                                           </button>

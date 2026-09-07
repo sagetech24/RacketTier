@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Data\AutoMatchCriteria;
+use App\Services\QueueingSessionDraftStore;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -127,6 +128,25 @@ class GameSession extends Model
     public function isDraft(): bool
     {
         return $this->isQueueing() && ($this->persistence_state ?? 'persisted') === 'draft';
+    }
+
+    public function canEditMatchType(): bool
+    {
+        if (! $this->isQueueing()) {
+            return false;
+        }
+
+        if (array_key_exists('queueing_matches_count', $this->getAttributes())) {
+            return (int) $this->getAttribute('queueing_matches_count') === 0;
+        }
+
+        if ($this->isDraft()) {
+            $draft = app(QueueingSessionDraftStore::class)->load((int) $this->id);
+
+            return $draft->matches === [];
+        }
+
+        return ! $this->queueingMatches()->exists();
     }
 
     public function userCanView(User $user): bool

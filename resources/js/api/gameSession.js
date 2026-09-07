@@ -116,6 +116,7 @@ export function postCreateGameSession(payload) {
  *   facility?: { id: number, name: string, address: string | null },
  *   sport: { id?: number, slug: string, name: string, code: string, icon?: string },
  *   match_type: string,
+ *   can_edit_match_type?: boolean,
  *   game_type: string,
  *   court_preference: string | null,
  *   is_active: boolean,

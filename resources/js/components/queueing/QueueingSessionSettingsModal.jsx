@@ -10,6 +10,7 @@ import {
     normalizeAutoMatchCriteria,
     parseAutoMatchCriteria,
 } from './QueueingSessionAutoMatchCriteriaField.jsx';
+import { QueueingSessionMatchTypeField } from './QueueingSessionMatchTypeField.jsx';
 import { QueueingSessionSkipScoresField } from './QueueingSessionSkipScoresField.jsx';
 
 /**
@@ -23,6 +24,7 @@ import { QueueingSessionSkipScoresField } from './QueueingSessionSkipScoresField
 export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }) {
     const queryClient = useQueryClient();
     const [queueName, setQueueName] = useState('');
+    const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
     const [winPoints, setWinPoints] = useState('30');
     const [lossPoints, setLossPoints] = useState('8');
     const [skipScores, setSkipScores] = useState(false);
@@ -38,6 +40,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
         if (!open || !session) return;
 
         setQueueName(session.queue_name?.trim() ?? '');
+        setMatchType(session.match_type === 'doubles' ? 'doubles' : 'singles');
         setWinPoints(String(session.win_points ?? 30));
         setLossPoints(String(session.loss_points ?? 8));
         setSkipScores(Boolean(session.skip_scores));
@@ -71,6 +74,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
         setError('');
 
         try {
+            const canEditMatchType = Boolean(session.can_edit_match_type);
             const normalizedCriteria = normalizeAutoMatchCriteria(autoMatchCriteria);
             const updated = await patchUpdateQueueingSession(session.id, {
                 queue_name: name,
@@ -79,6 +83,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
                 skip_scores: skipScores,
                 optional_guest_skill: optionalGuestSkill,
                 optional_guest_gender: optionalGuestGender,
+                ...(canEditMatchType ? { match_type: matchType } : {}),
                 ...normalizedCriteria,
             });
 
@@ -106,7 +111,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
                 >
                     <div className="shrink-0 border-b border-white/5 px-5 pb-3 pt-5">
                         <h2 id="edit-queue-title" className="text-lg font-bold tracking-tight text-[#e4e1e6]">
-                            Queue settings
+                            Edit queue session
                         </h2>
                         <p className="mt-1 text-xs text-[#918f9c]">
                             Update settings for {session.queue_name?.trim() || `session #${session.id}`}.
@@ -132,6 +137,14 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
                                     className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6] disabled:opacity-60"
                                 />
                             </div>
+                            {session.can_edit_match_type ? (
+                                <QueueingSessionMatchTypeField
+                                    value={matchType}
+                                    onChange={setMatchType}
+                                    disabled={submitting}
+                                    hint="Change this if the wrong format was set before the first match."
+                                />
+                            ) : null}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">

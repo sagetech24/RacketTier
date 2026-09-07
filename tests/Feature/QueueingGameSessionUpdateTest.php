@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\GameSession;
+use App\Models\QueueingSessionMatch;
 use App\Models\Sport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,6 +46,7 @@ class QueueingGameSessionUpdateTest extends TestCase
         $response->assertJsonPath('data.win_points', 40);
         $response->assertJsonPath('data.loss_points', 10);
         $response->assertJsonPath('data.skip_scores', true);
+        $response->assertJsonPath('data.can_edit_match_type', true);
 
         $session->refresh();
         $this->assertSame('Updated Queue', $session->queue_name);
@@ -209,5 +211,122 @@ class QueueingGameSessionUpdateTest extends TestCase
         $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
         $show->assertJsonPath('data.auto_match_criteria.skill_level', true);
         $this->assertCount(1, $show->json('data.players'));
+    }
+
+    public function test_queue_master_can_change_match_type_before_first_match(): void
+    {
+        $host = User::factory()->create();
+
+        $create = $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Wrong Format',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ])->assertCreated();
+
+        $sessionId = (int) $create->json('data.id');
+        $create->assertJsonPath('data.can_edit_match_type', true);
+
+        $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$sessionId, [
+            'queue_name' => 'Wrong Format',
+            'match_type' => 'doubles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.match_type', 'doubles');
+        $response->assertJsonPath('data.can_edit_match_type', true);
+
+        $this->assertSame('doubles', GameSession::query()->findOrFail($sessionId)->match_type);
+    }
+
+    public function test_queue_master_cannot_change_match_type_after_a_match_exists(): void
+    {
+        $host = User::factory()->create();
+        $opponent = User::factory()->create();
+
+        $create = $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Locked Format',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ])->assertCreated();
+
+        $sessionId = (int) $create->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $host->id,
+        ])->assertOk();
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $opponent->id,
+        ])->assertOk();
+
+        $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
+        $players = collect($show->json('data.players'));
+        $hostPlayerId = (int) $players->firstWhere('user.id', $host->id)['id'];
+        $opponentPlayerId = (int) $players->firstWhere('user.id', $opponent->id)['id'];
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches', [
+            'lineup' => [
+                ['id' => $hostPlayerId, 'team' => 1],
+                ['id' => $opponentPlayerId, 'team' => 2],
+            ],
+        ])->assertCreated();
+
+        $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)
+            ->assertOk()
+            ->assertJsonPath('data.can_edit_match_type', false);
+
+        $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$sessionId, [
+            'queue_name' => 'Locked Format',
+            'match_type' => 'doubles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['match_type']);
+
+        $this->assertSame('singles', GameSession::query()->findOrFail($sessionId)->match_type);
+    }
+
+    public function test_queue_master_can_update_other_settings_after_a_match_exists(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'session_context' => 'queueing',
+            'queue_name' => 'Has Match',
+            'sport_id' => $sport->id,
+            'match_type' => 'singles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        QueueingSessionMatch::query()->create([
+            'game_session_id' => $session->id,
+            'match_no' => 1,
+            'status' => 'queueing',
+            'lineup' => [],
+        ]);
+
+        $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$session->id, [
+            'queue_name' => 'Renamed After Match',
+            'win_points' => 40,
+            'loss_points' => 10,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.queue_name', 'Renamed After Match');
+        $response->assertJsonPath('data.match_type', 'singles');
+        $response->assertJsonPath('data.can_edit_match_type', false);
     }
 }

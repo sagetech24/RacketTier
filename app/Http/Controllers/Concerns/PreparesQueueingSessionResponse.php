@@ -47,6 +47,9 @@ trait PreparesQueueingSessionResponse
                 'players.user:id,name,email',
             ]);
             $session->loadCount('players');
+            if ($session->isQueueing()) {
+                $session->loadCount('queueingMatches');
+            }
         }
 
         if (! $session->relationLoaded('sport')) {

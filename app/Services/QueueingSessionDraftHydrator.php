@@ -34,6 +34,7 @@ class QueueingSessionDraftHydrator
                 ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false))
                 ->count();
             $session->setAttribute('players_count', $activeCount);
+            $session->setAttribute('queueing_matches_count', count($draft->matches));
             $session->completed_matches_count = (int) ($draft->sessionMeta['completed_matches_count'] ?? 0);
         }
     }
@@ -110,6 +111,7 @@ class QueueingSessionDraftHydrator
             'players_count',
             $players->filter(fn (GameSessionPlayer $p): bool => ! (bool) $p->getAttribute('is_removed'))->count(),
         );
+        $envelope->setAttribute('queueing_matches_count', count($draft->matches));
 
         return $envelope;
     }

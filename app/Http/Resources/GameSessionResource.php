@@ -87,6 +87,10 @@ class GameSessionResource extends JsonResource
                 'icon' => $this->sport?->icon,
             ],
             'match_type' => $this->match_type,
+            'can_edit_match_type' => $this->when(
+                $this->isQueueing(),
+                fn (): bool => $this->canEditMatchType(),
+            ),
             'game_type' => $this->game_type,
             'court_preference' => $this->court_preference,
             'is_active' => $this->is_active,

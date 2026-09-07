@@ -44,6 +44,10 @@ class GameSessionIndexController extends Controller
             )
             ->with(['sport', 'facility', 'creator:id,name,email'])
             ->withCount('players')
+            ->when(
+                ($validated['session_context'] ?? null) === 'queueing',
+                fn ($q) => $q->withCount('queueingMatches'),
+            )
             ->orderByDesc('updated_at')
             ->limit($isAdminQueueingBrowse ? 100 : 25);
 
@@ -69,6 +73,7 @@ class GameSessionIndexController extends Controller
                 ->whereBetween('ended_at', [$startOfToday, $endOfToday])
                 ->with(['sport', 'facility', 'creator:id,name,email'])
                 ->withCount('players')
+                ->withCount('queueingMatches')
                 ->orderByDesc('ended_at')
                 ->orderByDesc('updated_at')
                 ->limit($user->isAdmin() ? 100 : 25)

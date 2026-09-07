@@ -19,6 +19,7 @@ class UpdateQueueingGameSession
         bool $optionalGuestSkill = true,
         bool $optionalGuestGender = true,
         ?AutoMatchCriteria $autoMatchCriteria = null,
+        ?string $matchType = null,
     ): GameSession {
         if (! $session->isQueueing()) {
             abort(422, 'This action only applies to queueing sessions.');
@@ -32,7 +33,11 @@ class UpdateQueueingGameSession
             abort(422, 'This session is no longer active.');
         }
 
-        return DB::transaction(function () use ($session, $queueName, $winPoints, $lossPoints, $skipScores, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria): GameSession {
+        if ($matchType !== null && $matchType !== (string) $session->match_type && ! $session->canEditMatchType()) {
+            abort(422, 'Game type can only be changed before the first match is created.');
+        }
+
+        return DB::transaction(function () use ($session, $queueName, $winPoints, $lossPoints, $skipScores, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria, $matchType): GameSession {
             $updates = [
                 'queue_name' => $queueName,
                 'win_points' => $winPoints,
@@ -41,6 +46,10 @@ class UpdateQueueingGameSession
                 'optional_guest_skill' => $optionalGuestSkill,
                 'optional_guest_gender' => $optionalGuestGender,
             ];
+
+            if ($matchType !== null && $session->canEditMatchType()) {
+                $updates['match_type'] = $matchType;
+            }
 
             if ($autoMatchCriteria !== null) {
                 $updates['auto_match_criteria'] = $autoMatchCriteria->toStoredArray();

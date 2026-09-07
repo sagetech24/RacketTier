@@ -1,5 +1,9 @@
+import { useState } from 'react';
 import { SportIcon } from '../dashboard/SportIcon.jsx';
+import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
+import { queueSessionCardActionClass } from '../../lib/queueingSessionNav.js';
 import { QueueingSessionNav } from './QueueingSessionNav.jsx';
+import { QueueingSessionSettingsModal } from './QueueingSessionSettingsModal.jsx';
 
 /**
  * @param {{
@@ -13,6 +17,8 @@ export function QueueingSessionHeader({
     className = 'mb-8',
     tabSuffix = '',
 }) {
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const canEditQueue = Boolean(session.can_manage) && Boolean(session.is_active);
     const checkInWaitingCount = Array.isArray(session.players)
         ? session.players.filter((p) => {
               if (p.is_removed || p.is_playing || !p.is_waiting) return false;
@@ -25,7 +31,7 @@ export function QueueingSessionHeader({
         <article className={className}>
             <div className="mb-4 flex flex-col gap-2">
                 <div className="flex items-start gap-2 justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                         <SportIcon icon={session.sport?.icon} className="text-[#4ce081]" />
                         <h1 className="mr-2 text-3xl font-extrabold leading-none tracking-tighter md:text-4xl capitalize">
                             {session.queue_name?.trim() ? (
@@ -38,21 +44,36 @@ export function QueueingSessionHeader({
                             )}
                         </h1>
                     </div>
-                    {session.is_active ? (
-                        <span className="rt-queue-status--active capitalize rounded-full border border-[#4ce081] bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]">
-                            {session.status}
-                        </span>
-                    ) : (
-                        <span className="capitalize rounded-full bg-[#4ce081] px-2 py-0.5 text-sm font-bold text-[#1f753d]">
-                            Finished
-                        </span>
-                    )}
+                    <div className="flex shrink-0 items-center gap-2">
+                        {canEditQueue ? (
+                            <button
+                                type="button"
+                                onClick={() => setSettingsOpen(true)}
+                                className={`${queueSessionCardActionClass('edit')} rt-qs-header-edit px-2.5`}
+                                aria-haspopup="dialog"
+                                aria-expanded={settingsOpen}
+                            >
+                                <MaterialIcon name="edit" className="rt-queue-card-btn__icon" />
+                                <span>Edit</span>
+                            </button>
+                        ) : null}
+                        {session.is_active ? (
+                            <span className="rt-queue-status--active capitalize rounded-full border border-[#4ce081] bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]">
+                                {session.status}
+                            </span>
+                        ) : (
+                            <span className="capitalize rounded-full bg-[#4ce081] px-2 py-0.5 text-sm font-bold text-[#1f753d]">
+                                Finished
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
             <div className="mt-4 mb-10 flex flex-col gap-2 md:gap-4 lg:gap-6 md:flex-row">
-                <div className="space-y-1">
+                <div className="min-w-0 flex-1 space-y-1">
                     <p className="text-sm text-[#c8c5d2]/90 capitalize">
-                        <span className="font-bold">Game Type:</span> {session.match_type}</p>
+                        <span className="font-bold">Game Type:</span> {session.match_type}
+                    </p>
                     <p className="text-sm text-[#c8c5d2]/90 capitalize">
                         <span className="font-bold">Queue Master:</span> {session.created_by?.name ?? 'Unknown'}
                     </p>
@@ -86,6 +107,14 @@ export function QueueingSessionHeader({
             </div>
 
             <QueueingSessionNav sessionId={session.id} tabSuffix={tabSuffix} />
+
+            {canEditQueue ? (
+                <QueueingSessionSettingsModal
+                    open={settingsOpen}
+                    session={session}
+                    onClose={() => setSettingsOpen(false)}
+                />
+            ) : null}
         </article>
     );
 }

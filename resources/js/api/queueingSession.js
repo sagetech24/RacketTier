@@ -3,6 +3,7 @@ import { deleteJson, patchJson, postJson } from '../lib/http.js';
 /**
  * @param {{
  *   queue_name: string,
+ *   match_type?: 'singles' | 'doubles',
  *   win_points: number,
  *   loss_points: number,
  *   skip_scores?: boolean,

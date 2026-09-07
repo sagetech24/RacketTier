@@ -34,6 +34,7 @@ class QueueingGameSessionUpdateController extends Controller
                 ? (bool) $request->boolean('optional_guest_gender')
                 : (bool) ($gameSession->optional_guest_gender ?? true),
             $request->hasAnyAutoMatchCriteriaInput() ? $request->autoMatchCriteria() : null,
+            is_string($request->validated('match_type')) ? (string) $request->validated('match_type') : null,
         );
 
         return $this->queueingSessionJson($session);

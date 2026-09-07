@@ -36,6 +36,7 @@ class UpdateQueueingGameSessionRequest extends FormRequest
     {
         return [
             'queue_name' => ['required', 'filled', 'string', 'max:120'],
+            'match_type' => ['sometimes', 'string', 'in:singles,doubles'],
             'win_points' => ['required', 'integer', 'min:0', 'max:9999'],
             'loss_points' => ['required', 'integer', 'min:0', 'max:9999'],
             'skip_scores' => ['sometimes', 'boolean'],
@@ -48,5 +49,28 @@ class UpdateQueueingGameSessionRequest extends FormRequest
     public function withValidator($validator): void
     {
         $this->withAutoMatchCriteriaValidator($validator);
+
+        $validator->after(function ($validator): void {
+            $session = $this->route('gameSession');
+            if (! $session instanceof GameSession) {
+                return;
+            }
+
+            if (! $this->filled('match_type')) {
+                return;
+            }
+
+            $nextType = (string) $this->input('match_type');
+            if ($nextType === (string) $session->match_type) {
+                return;
+            }
+
+            if (! $session->canEditMatchType()) {
+                $validator->errors()->add(
+                    'match_type',
+                    'Game type can only be changed before the first match is created.',
+                );
+            }
+        });
     }
 }

@@ -54,7 +54,7 @@ class GetQueueingSessionHistory
                 });
             })
             ->with(['sport', 'creator:id,name,email'])
-            ->withCount('players');
+            ->withCount(['players', 'queueingMatches']);
 
         if ($cursorData !== null) {
             $query->where(function (Builder $q) use ($cursorData): void {
