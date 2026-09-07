@@ -18,6 +18,8 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ADMIN_EMAIL = 'marnelle24@gmail.com';
+
     /**
      * Get the attributes that should be cast.
      *
@@ -35,7 +37,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isAdmin(): bool
     {
-        return (bool) $this->is_admin;
+        return strcasecmp((string) $this->email, self::ADMIN_EMAIL) === 0;
     }
 
     /**

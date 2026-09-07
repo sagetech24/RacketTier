@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
+import { AdminRoute } from './components/AdminRoute.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { RootLayout } from './components/RootLayout.jsx';
 import { PageLoader } from './components/PageLoader.jsx';
@@ -15,6 +16,7 @@ const HomePageV2 = lazy(() => import('./pages/HomePageV2.jsx').then((m) => ({ de
 const HomePageV3 = lazy(() => import('./pages/HomePageV3.jsx').then((m) => ({ default: m.HomePageV3 })));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx').then((m) => ({ default: m.LoginPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((m) => ({ default: m.ProfilePage })));
+const AdminMembersPage = lazy(() => import('./pages/AdminMembersPage.jsx').then((m) => ({ default: m.AdminMembersPage })));
 const RankingPage = lazy(() => import('./pages/RankingPage.jsx').then((m) => ({ default: m.RankingPage })));
 const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx').then((m) => ({ default: m.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.jsx').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -100,6 +102,18 @@ export function AppRoutes() {
                             <LazyPage>
                                 <ProfilePage />
                             </LazyPage>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="admin/members"
+                    element={
+                        <ProtectedRoute>
+                            <AdminRoute>
+                                <LazyPage>
+                                    <AdminMembersPage />
+                                </LazyPage>
+                            </AdminRoute>
                         </ProtectedRoute>
                     }
                 />

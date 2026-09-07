@@ -3,20 +3,20 @@
 namespace App\Actions;
 
 use App\Models\GameSession;
-use App\Support\RatingDisplay;
 use App\Models\GameSessionPlayer;
 use App\Models\MemberPointWallet;
 use App\Models\Ranking;
 use App\Models\Sport;
 use App\Models\TierRank;
 use App\Models\User;
+use App\Support\RatingDisplay;
 use Illuminate\Support\Facades\DB;
 
 class GetDashboardSummary
 {
     /**
      * @return array{
-     *   user: array{id: int, name: string, email: string, age: int|null, pronoun: string|null, member_since: string|null, member_since_human: string|null},
+     *   user: array{id: int, name: string, email: string, age: int|null, pronoun: string|null, member_since: string|null, member_since_human: string|null, is_admin: bool, email_verified: bool, email_verified_at: string|null},
      *   stats: array{
      *     rating: int|null,
      *     matches_played: int,
@@ -136,6 +136,7 @@ class GetDashboardSummary
                 'pronoun' => $user->pronoun,
                 'member_since' => $user->created_at?->toIso8601String(),
                 'member_since_human' => $user->created_at?->diffForHumans(),
+                'is_admin' => $user->isAdmin(),
                 'email_verified' => $user->hasVerifiedEmail(),
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],

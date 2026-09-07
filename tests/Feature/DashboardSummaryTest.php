@@ -141,4 +141,15 @@ class DashboardSummaryTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('stats.sessions_active', 0);
     }
+
+    public function test_dashboard_summary_marks_admin_from_email(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->getJson(route('auth.dashboard-summary'));
+
+        $response->assertOk();
+        $response->assertJsonPath('user.is_admin', true);
+        $response->assertJsonPath('user.email', User::ADMIN_EMAIL);
+    }
 }

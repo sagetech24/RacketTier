@@ -7,6 +7,7 @@ const V2_SHELL_PATHS = new Set([
     '/facilities',
     '/ranking',
     '/profile',
+    '/admin/members',
     '/activity',
 ]);
 

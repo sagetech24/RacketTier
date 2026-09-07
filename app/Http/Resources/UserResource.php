@@ -24,7 +24,7 @@ class UserResource extends JsonResource
             'pronoun' => $this->pronoun,
             'member_since' => $this->created_at?->toIso8601String(),
             'member_since_human' => $this->created_at?->diffForHumans(),
-            'is_admin' => (bool) $this->is_admin,
+            'is_admin' => $this->isAdmin(),
             'email_verified' => $this->hasVerifiedEmail(),
             'email_verified_at' => $this->email_verified_at?->toIso8601String(),
         ];

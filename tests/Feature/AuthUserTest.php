@@ -29,5 +29,31 @@ class AuthUserTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('user.is_admin', true);
+        $response->assertJsonPath('user.email', User::ADMIN_EMAIL);
+    }
+
+    public function test_auth_user_is_admin_when_email_matches_regardless_of_flag(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'Marnelle24@gmail.com',
+            'is_admin' => false,
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/auth/user');
+
+        $response->assertOk();
+        $response->assertJsonPath('user.is_admin', true);
+    }
+
+    public function test_auth_user_is_not_admin_when_flag_true_but_email_differs(): void
+    {
+        $user = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/auth/user');
+
+        $response->assertOk();
+        $response->assertJsonPath('user.is_admin', false);
     }
 }

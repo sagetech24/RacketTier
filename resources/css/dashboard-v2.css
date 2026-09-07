@@ -234,6 +234,12 @@
     outline-offset: 2px;
 }
 
+.rt-btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+    transform: none;
+}
+
 .rt-alert-error {
     border-radius: 0.75rem;
     border: 1px solid rgb(127 29 29 / 0.5);
@@ -1774,6 +1780,7 @@
 @media (prefers-reduced-motion: reduce) {
     .rt-interactive-card,
     .rt-btn-secondary,
+    .rt-admin-members-row,
     .rt-skeleton::after,
     .rt-dashboard-loading,
     .rt-end-match-modal-overlay,
@@ -3097,6 +3104,14 @@ html.rt-lineup-dnd-locked {
 
 .rt-finished-match-row:hover {
     background-color: rgb(255 255 255 / 0.02);
+}
+
+.rt-admin-members-row {
+    transition: background-color 0.15s ease-out;
+}
+
+.rt-admin-members-row:hover {
+    background-color: rgb(255 255 255 / 0.03);
 }
 
 .rt-finished-match-row--validated {

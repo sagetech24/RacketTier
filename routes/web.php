@@ -1,10 +1,11 @@
 <?php
 
+use App\Http\Controllers\AdminMembersIndexController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\UserPasswordUpdateController;
 use App\Http\Controllers\Auth\UserProfileUpdateController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\RankingIndexController;
 use App\Http\Controllers\SportsListController;
 use App\Http\Controllers\UserActivityIndexController;
 use App\Http\Resources\UserResource;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,7 +62,7 @@ Route::view('/v3', 'app')->name('home.v3');
 
 Route::get('/public/stats', [PublicStatsController::class, 'show'])->name('public.stats');
 
-Route::get('/auth/user', function (\Illuminate\Http\Request $request) {
+Route::get('/auth/user', function (Request $request) {
     $user = auth()->user();
 
     return response()->json([
@@ -105,6 +107,7 @@ Route::middleware('auth')->group(function () {
     Route::view('/ranking', 'app');
     Route::view('/activity', 'app');
     Route::view('/profile', 'app');
+    Route::view('/admin/members', 'app');
     Route::view('/facility/{facility}/game-room', 'app')->whereNumber('facility');
     Route::view('/facility/{facility}/create-match', 'app')->whereNumber('facility');
     Route::view('/queueing-session', 'app');
@@ -114,6 +117,8 @@ Route::middleware('auth')->group(function () {
     Route::view('/queueing-session/{id}/matches', 'app')->whereNumber('id');
     Route::view('/queueing-session/{id}/players', 'app')->whereNumber('id');
 
+    Route::get('/auth/admin/members', [AdminMembersIndexController::class, 'index'])
+        ->name('auth.admin.members.index');
     Route::get('/auth/sports', [SportsListController::class, 'index'])->name('auth.sports');
     Route::get('/auth/rankings', [RankingIndexController::class, 'index'])->name('auth.rankings');
     Route::get('/auth/facilities', [FacilityIndexController::class, 'index'])->name('auth.facilities.index');

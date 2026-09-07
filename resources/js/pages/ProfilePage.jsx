@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { fetchDashboardSummary } from '../api/dashboard.js';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { PageHeader } from '../components/app/PageHeader.jsx';
@@ -10,6 +10,7 @@ import { EditProfileModal } from '../components/profile/EditProfileModal.jsx';
 import { EmailVerificationCard } from '../components/profile/EmailVerificationCard.jsx';
 import { formatRating } from '../components/ranking/rankingUtils.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { userIsAdmin } from '../lib/userRoles.js';
 
 export function ProfilePage() {
     const { user: authUser, setUser, refreshUser } = useAuth();
@@ -74,6 +75,14 @@ export function ProfilePage() {
             ) : null}
 
             <div className="flex flex-col gap-4 md:gap-6">
+                {userIsAdmin(authUser) || userIsAdmin(user) ? (
+                    <Link
+                        to="/admin/members"
+                        className="rt-facility-btn rt-facility-btn-lavender inline-flex min-h-11 w-full justify-center px-5 sm:w-auto"
+                    >
+                        Member Management
+                    </Link>
+                ) : null}
                 <div className="rt-surface-card p-5 md:p-6">
                     <div className="flex items-start justify-between gap-3 md:gap-4">
                         <div className="min-w-0">
