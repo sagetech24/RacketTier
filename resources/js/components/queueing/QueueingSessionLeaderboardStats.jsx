@@ -57,7 +57,7 @@ export function QueueingSessionLeaderboardStats({
                 </span>
             ) : null}
             <span>
-                <span className="font-bold text-[#e4e1e6] text-xs! sm:text-sm! md:text-md!">{winPct} Win%</span>
+                <span className="font-bold text-[#e4e1e6] text-[0.5rem]! sm:text-[0.7rem]! md:text-[0.8rem]!">{winPct} Win Rate</span>
             </span>
             {!compact ? (
                 <span className="hidden sm:inline">
