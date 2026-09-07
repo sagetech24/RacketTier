@@ -36,15 +36,11 @@ class QueueingGameSessionUpdateTest extends TestCase
 
         $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$session->id, [
             'queue_name' => 'Updated Queue',
-            'win_points' => 40,
-            'loss_points' => 10,
             'skip_scores' => true,
         ]);
 
         $response->assertOk();
         $response->assertJsonPath('data.queue_name', 'Updated Queue');
-        $response->assertJsonPath('data.win_points', 40);
-        $response->assertJsonPath('data.loss_points', 10);
         $response->assertJsonPath('data.skip_scores', true);
         $response->assertJsonPath('data.can_edit_match_type', true);
 
@@ -82,8 +78,6 @@ class QueueingGameSessionUpdateTest extends TestCase
 
         $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$session->id, [
             'queue_name' => 'Criteria Queue',
-            'win_points' => 30,
-            'loss_points' => 8,
             'skill_level' => true,
             'skill_match_mode' => 'same_level',
             'wl_statistics' => false,
@@ -123,8 +117,6 @@ class QueueingGameSessionUpdateTest extends TestCase
 
         $response = $this->actingAs($admin)->patchJson('/auth/queueing-sessions/'.$session->id, [
             'queue_name' => 'Admin Updated',
-            'win_points' => 50,
-            'loss_points' => 12,
         ]);
 
         $response->assertOk();
@@ -156,8 +148,6 @@ class QueueingGameSessionUpdateTest extends TestCase
 
         $this->actingAs($other)->patchJson('/auth/queueing-sessions/'.$session->id, [
             'queue_name' => 'Hijacked',
-            'win_points' => 1,
-            'loss_points' => 1,
         ])->assertForbidden();
     }
 
@@ -187,8 +177,6 @@ class QueueingGameSessionUpdateTest extends TestCase
 
         $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$sessionId, [
             'queue_name' => 'Updated Draft Queue',
-            'win_points' => 40,
-            'loss_points' => 12,
             'skip_scores' => true,
             'optional_guest_skill' => false,
             'optional_guest_gender' => true,
@@ -201,7 +189,6 @@ class QueueingGameSessionUpdateTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.queue_name', 'Updated Draft Queue');
-        $response->assertJsonPath('data.win_points', 40);
         $response->assertJsonPath('data.auto_match_criteria.skill_level', true);
         $response->assertJsonPath('data.optional_guest_skill', false);
         $players = collect($response->json('data.players'));
@@ -320,8 +307,6 @@ class QueueingGameSessionUpdateTest extends TestCase
 
         $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$session->id, [
             'queue_name' => 'Renamed After Match',
-            'win_points' => 40,
-            'loss_points' => 10,
         ]);
 
         $response->assertOk();

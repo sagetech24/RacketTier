@@ -48,7 +48,7 @@ const STEPS = [
     {
         step: '01',
         title: 'Create a Session',
-        description: 'Pick a sport, choose singles or doubles, and set your win/loss point rewards.',
+        description: 'Pick a sport, choose singles or doubles, and start queuing. Points and ELO are awarded automatically.',
     },
     {
         step: '02',

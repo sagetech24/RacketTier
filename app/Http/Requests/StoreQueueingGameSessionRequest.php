@@ -30,8 +30,6 @@ class StoreQueueingGameSessionRequest extends FormRequest
             'queue_name' => ['required', 'filled', 'string', 'max:120'],
             'sport_slug' => ['required', 'string', 'max:64', 'exists:sports,slug'],
             'match_type' => ['required', 'string', 'in:singles,doubles'],
-            'win_points' => ['required', 'integer', 'min:0', 'max:9999'],
-            'loss_points' => ['required', 'integer', 'min:0', 'max:9999'],
             'skip_scores' => ['sometimes', 'boolean'],
             'optional_guest_skill' => ['sometimes', 'boolean'],
             'optional_guest_gender' => ['sometimes', 'boolean'],

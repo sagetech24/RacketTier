@@ -108,6 +108,7 @@ export function postCreateGameSession(payload) {
  *   queue_name?: string | null,
  *   win_points?: number | null,
  *   loss_points?: number | null,
+ *   point_rules?: { win_base: number, win_margin_cap: number, loss: number },
  *   skip_scores?: boolean,
  *   optional_guest_skill?: boolean,
  *   optional_guest_gender?: boolean,

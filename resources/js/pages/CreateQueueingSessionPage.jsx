@@ -17,6 +17,7 @@ import {
 } from '../components/queueing/QueueingSessionAutoMatchCriteriaField.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { queryKeys } from '../lib/queryClient.js';
+import { matchPointFormulaLabel } from '../lib/matchPointFormula.js';
 
 export function CreateQueueingSessionPage() {
     const navigate = useNavigate();
@@ -28,8 +29,6 @@ export function CreateQueueingSessionPage() {
     const [queueName, setQueueName] = useState('');
     const [sportSlug, setSportSlug] = useState('');
     const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
-    const [winPoints, setWinPoints] = useState('30');
-    const [lossPoints, setLossPoints] = useState('8');
     const [skipScores, setSkipScores] = useState(true);
     const [optionalGuestSkill, setOptionalGuestSkill] = useState(true);
     const [optionalGuestGender, setOptionalGuestGender] = useState(true);
@@ -65,12 +64,6 @@ export function CreateQueueingSessionPage() {
     async function handleSubmit(e) {
         e.preventDefault();
         setSubmitError('');
-        const w = Number.parseInt(winPoints, 10);
-        const l = Number.parseInt(lossPoints, 10);
-        if (!Number.isFinite(w) || w < 0 || !Number.isFinite(l) || l < 0) {
-            setSubmitError('Enter valid point numbers.');
-            return;
-        }
         const name = queueName.trim();
         if (!name) {
             setSubmitError('Enter a name for this queue.');
@@ -87,8 +80,6 @@ export function CreateQueueingSessionPage() {
                 queue_name: name,
                 sport_slug: sportSlug,
                 match_type: matchType,
-                win_points: w,
-                loss_points: l,
                 skip_scores: skipScores,
                 optional_guest_skill: optionalGuestSkill,
                 optional_guest_gender: optionalGuestGender,
@@ -193,29 +184,10 @@ export function CreateQueueingSessionPage() {
                                             ))}
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Win points</label>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            max={30}
-                                            value={winPoints}
-                                            onChange={(e) => setWinPoints(e.target.value)}
-                                            className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-base md:text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Loss points</label>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            max={15}
-                                            value={lossPoints}
-                                            onChange={(e) => setLossPoints(e.target.value)}
-                                            className="w-full rounded-lg border border-[#484848] bg-[#131316] px-3 py-2.5 text-base md:text-sm"
-                                        />
-                                    </div>
                                 </div>
+                                <p className="text-sm text-[#c8c5d2]/80">
+                                    <span className="font-bold text-[#e4e1e6]">Points:</span> {matchPointFormulaLabel()}. ratings and ranks update only when both sides have registered members.
+                                </p>
                                 <QueueingSessionSkipScoresField checked={skipScores} onChange={setSkipScores} disabled={submitting} />
                                 <QueueingSessionGuestOptionalFields
                                     optionalGuestSkill={optionalGuestSkill}

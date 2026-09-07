@@ -162,15 +162,11 @@ class QueueingGameSessionAdminTest extends TestCase
 
         $this->actingAs($admin)->patchJson('/auth/queueing-sessions/'.$session->id, [
             'queue_name' => 'Admin Fixed Name',
-            'win_points' => 25,
-            'loss_points' => 5,
         ])->assertOk()
             ->assertJsonPath('data.queue_name', 'Admin Fixed Name');
 
         $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$session->id, [
             'queue_name' => 'Host Attempt',
-            'win_points' => 1,
-            'loss_points' => 1,
         ])->assertStatus(422);
     }
 

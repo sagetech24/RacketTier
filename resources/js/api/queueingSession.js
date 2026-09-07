@@ -4,8 +4,6 @@ import { deleteJson, patchJson, postJson } from '../lib/http.js';
  * @param {{
  *   queue_name: string,
  *   match_type?: 'singles' | 'doubles',
- *   win_points: number,
- *   loss_points: number,
  *   skip_scores?: boolean,
  *   optional_guest_skill?: boolean,
  *   optional_guest_gender?: boolean,
@@ -66,8 +64,6 @@ export async function deleteQueueingSession(sessionId) {
  *   queue_name: string,
  *   sport_slug: string,
  *   match_type: 'singles' | 'doubles',
- *   win_points: number,
- *   loss_points: number,
  *   skip_scores?: boolean,
  *   optional_guest_skill?: boolean,
  *   optional_guest_gender?: boolean,

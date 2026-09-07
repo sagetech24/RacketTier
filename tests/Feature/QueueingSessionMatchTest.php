@@ -6,6 +6,7 @@ use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\MemberPointWallet;
 use App\Models\QueueingSessionMatch;
+use App\Models\Ranking;
 use App\Models\RatingHistory;
 use App\Models\Sport;
 use App\Models\User;
@@ -620,7 +621,7 @@ class QueueingSessionMatchTest extends TestCase
         $hostPlayer->refresh();
         $guestPlayer->refresh();
 
-        $this->assertSame(30, (int) $hostPlayer->session_points);
+        $this->assertSame(31, (int) $hostPlayer->session_points);
         $this->assertSame(8, (int) $guestPlayer->session_points);
         $this->assertSame(1, (int) $hostPlayer->wins_count);
         $this->assertSame(1, (int) $guestPlayer->losses_count);
@@ -629,13 +630,11 @@ class QueueingSessionMatchTest extends TestCase
         $this->assertSame($matchId, (int) $hostPlayer->last_match_id);
         $this->assertSame($matchId, (int) $guestPlayer->last_match_id);
 
-        $this->assertSame(30, (int) MemberPointWallet::query()
-            ->where('user_id', $host->id)
-            ->where('sport_id', $sport->id)
-            ->value('balance'));
-        $this->assertDatabaseCount('member_point_wallets', 1);
+        $this->assertSame(0, MemberPointWallet::query()->where('user_id', $host->id)->count());
+        $this->assertDatabaseCount('member_point_wallets', 0);
 
-        $this->assertSame(1, RatingHistory::query()->where('game_session_id', $session->id)->count());
+        $this->assertSame(0, RatingHistory::query()->where('game_session_id', $session->id)->count());
+        $this->assertSame(0, Ranking::query()->where('user_id', $host->id)->where('sport_id', $sport->id)->count());
 
         $match = QueueingSessionMatch::query()->findOrFail($matchId);
         $breakdown = is_array($match->result_breakdown) ? $match->result_breakdown : [];
@@ -714,6 +713,11 @@ class QueueingSessionMatchTest extends TestCase
 
         $p1->refresh();
         $this->assertSame(1, (int) $p1->wins_count);
-        $this->assertSame(30, (int) $p1->session_points);
+        $this->assertSame(25, (int) $p1->session_points);
+        $this->assertSame(25, (int) MemberPointWallet::query()
+            ->where('user_id', $host->id)
+            ->where('sport_id', $sport->id)
+            ->value('balance'));
+        $this->assertSame(2, RatingHistory::query()->where('game_session_id', $session->id)->count());
     }
 }

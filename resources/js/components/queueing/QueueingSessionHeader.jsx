@@ -4,6 +4,7 @@ import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { queueSessionCardActionClass } from '../../lib/queueingSessionNav.js';
 import { QueueingSessionNav } from './QueueingSessionNav.jsx';
 import { QueueingSessionSettingsModal } from './QueueingSessionSettingsModal.jsx';
+import { matchPointFormulaLabel } from '../../lib/matchPointFormula.js';
 
 /**
  * @param {{
@@ -44,21 +45,9 @@ export function QueueingSessionHeader({
                             )}
                         </h1>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        {canEditQueue ? (
-                            <button
-                                type="button"
-                                onClick={() => setSettingsOpen(true)}
-                                className={`${queueSessionCardActionClass('edit')} rt-qs-header-edit px-2.5`}
-                                aria-haspopup="dialog"
-                                aria-expanded={settingsOpen}
-                            >
-                                <MaterialIcon name="edit" className="rt-queue-card-btn__icon" />
-                                <span>Edit</span>
-                            </button>
-                        ) : null}
+                    <div className="flex sm:flex-row md:flex-row flex-col shrink-0 items-center gap-2">
                         {session.is_active ? (
-                            <span className="rt-queue-status--active capitalize rounded-full border border-[#4ce081] bg-[#4ce081]/20 px-2 py-0.5 text-xs font-bold text-[#4ce081]">
+                            <span className="rt-queue-status--active capitalize rounded-full bg-[#4ce081] text-green-800 border border-[#4ce081] px-2 py-0.5 text-sm font-bold">
                                 {session.status}
                             </span>
                         ) : (
@@ -66,6 +55,18 @@ export function QueueingSessionHeader({
                                 Finished
                             </span>
                         )}
+                        {canEditQueue ? (
+                            <button
+                                type="button"
+                                onClick={() => setSettingsOpen(true)}
+                                className={`${queueSessionCardActionClass('edit')} rt-qs-header-edit px-3 py-1 rounded-full`}
+                                aria-haspopup="dialog"
+                                aria-expanded={settingsOpen}
+                            >
+                                <MaterialIcon name="edit" className="rt-queue-card-btn__icon" />
+                                <span>Edit</span>
+                            </button>
+                        ) : null}
                     </div>
                 </div>
             </div>
@@ -77,11 +78,12 @@ export function QueueingSessionHeader({
                     <p className="text-sm text-[#c8c5d2]/90 capitalize">
                         <span className="font-bold">Queue Master:</span> {session.created_by?.name ?? 'Unknown'}
                     </p>
-                    {session.win_points != null || session.loss_points != null ? (
-                        <p className="text-sm text-[#c8c5d2]/90">
-                            <span className="font-bold">Points:</span> +{session.win_points ?? 0} win / +{session.loss_points ?? 0} loss
-                        </p>
-                    ) : null}
+                    <p className="text-sm text-[#c8c5d2]/90">
+                        <span className="font-bold">Points:</span> {matchPointFormulaLabel()}
+                    </p>
+                    {/* <p className="text-sm text-[#c8c5d2]/90">
+                        <span className="font-bold">ELO &amp; rank:</span> members vs members only
+                    </p> */}
                 </div>
                 <div className="space-y-1 flex-1">
                     <p className="text-sm text-[#c8c5d2]/90">

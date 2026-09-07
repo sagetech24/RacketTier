@@ -12,6 +12,7 @@ import {
 } from './QueueingSessionAutoMatchCriteriaField.jsx';
 import { QueueingSessionMatchTypeField } from './QueueingSessionMatchTypeField.jsx';
 import { QueueingSessionSkipScoresField } from './QueueingSessionSkipScoresField.jsx';
+import { matchPointFormulaLabel } from '../../lib/matchPointFormula.js';
 
 /**
  * @param {{
@@ -25,8 +26,6 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
     const queryClient = useQueryClient();
     const [queueName, setQueueName] = useState('');
     const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
-    const [winPoints, setWinPoints] = useState('30');
-    const [lossPoints, setLossPoints] = useState('8');
     const [skipScores, setSkipScores] = useState(false);
     const [optionalGuestSkill, setOptionalGuestSkill] = useState(true);
     const [optionalGuestGender, setOptionalGuestGender] = useState(true);
@@ -41,8 +40,6 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
 
         setQueueName(session.queue_name?.trim() ?? '');
         setMatchType(session.match_type === 'doubles' ? 'doubles' : 'singles');
-        setWinPoints(String(session.win_points ?? 30));
-        setLossPoints(String(session.loss_points ?? 8));
         setSkipScores(Boolean(session.skip_scores));
         setOptionalGuestSkill(session.optional_guest_skill !== false);
         setOptionalGuestGender(session.optional_guest_gender !== false);
@@ -53,16 +50,10 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
     async function handleSave() {
         if (!session) return;
 
-        const w = Number.parseInt(winPoints, 10);
-        const l = Number.parseInt(lossPoints, 10);
         const name = queueName.trim();
 
         if (!name) {
             setError('Enter a name for this queue.');
-            return;
-        }
-        if (!Number.isFinite(w) || w < 0 || !Number.isFinite(l) || l < 0) {
-            setError('Enter valid point numbers.');
             return;
         }
         if (!autoMatchCriteriaHasAny(autoMatchCriteria)) {
@@ -78,8 +69,6 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
             const normalizedCriteria = normalizeAutoMatchCriteria(autoMatchCriteria);
             const updated = await patchUpdateQueueingSession(session.id, {
                 queue_name: name,
-                win_points: w,
-                loss_points: l,
                 skip_scores: skipScores,
                 optional_guest_skill: optionalGuestSkill,
                 optional_guest_gender: optionalGuestGender,
@@ -145,36 +134,9 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
                                     hint="Change this if the wrong format was set before the first match."
                                 />
                             ) : null}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                        Win points
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={9999}
-                                        value={winPoints}
-                                        onChange={(e) => setWinPoints(e.target.value)}
-                                        disabled={submitting}
-                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6] disabled:opacity-60"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                        Loss points
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={9999}
-                                        value={lossPoints}
-                                        onChange={(e) => setLossPoints(e.target.value)}
-                                        disabled={submitting}
-                                        className="w-full rounded-lg border border-[#2a2a2d] bg-[#131316] px-3 py-2.5 text-sm text-[#e4e1e6] disabled:opacity-60"
-                                    />
-                                </div>
-                            </div>
+                            <p className="text-sm text-[#c8c5d2]/80">
+                                <span className="font-bold text-[#e4e1e6]">Points:</span> {matchPointFormulaLabel()}. Ratings and ranks update only when both sides have registered members.
+                            </p>
                             <QueueingSessionSkipScoresField
                                 checked={skipScores}
                                 onChange={setSkipScores}

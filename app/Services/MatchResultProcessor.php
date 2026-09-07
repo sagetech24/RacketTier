@@ -49,9 +49,12 @@ class MatchResultProcessor
                 ->all();
         }
 
-        $deltas = $session->match_type === 'doubles'
-            ? $this->computeDoublesDeltas($playing, $teamMap, $winningTeam, $ratingsBefore)
-            : $this->computeSinglesDeltas($playing, $teamMap, $winningTeam, $ratingsBefore);
+        $countsForRanking = $this->matchCountsForGlobalEffects($playing, $teamMap);
+        $deltas = $countsForRanking
+            ? ($session->match_type === 'doubles'
+                ? $this->computeDoublesDeltas($playing, $teamMap, $winningTeam, $ratingsBefore)
+                : $this->computeSinglesDeltas($playing, $teamMap, $winningTeam, $ratingsBefore))
+            : [];
 
         $rows = [];
         foreach ($playing as $player) {
@@ -82,17 +85,19 @@ class MatchResultProcessor
                     'rating_after' => null,
                     'rating_change' => null,
                     'session_points_earned' => $sessionPointsEarned,
+                    'counts_for_ranking' => false,
                 ];
 
                 continue;
             }
 
             $uid = (int) $player->user_id;
-            $delta = $deltas[$uid] ?? 0;
+            $delta = $countsForRanking ? ($deltas[$uid] ?? 0) : 0;
             $before = $ratingsBefore[$uid] ?? 1000;
             $after = $before + $delta;
+            $applyRanking = $persistGlobalEffects && $countsForRanking;
 
-            if ($persistGlobalEffects) {
+            if ($applyRanking) {
                 Ranking::query()->updateOrCreate(
                     ['user_id' => $uid, 'sport_id' => $sportId],
                     ['rating' => $after],
@@ -107,24 +112,24 @@ class MatchResultProcessor
                     'rating_change' => $after - $before,
                 ]);
 
-                if ($persistSessionPlayerStats) {
-                    GameSessionPlayer::query()->whereKey($pk)->increment('session_points', $sessionPointsEarned);
-                    if ($won) {
-                        GameSessionPlayer::query()->whereKey($pk)->increment('wins_count');
-                    } else {
-                        GameSessionPlayer::query()->whereKey($pk)->increment('losses_count');
-                    }
-                }
-
                 $this->creditMemberPointWallet->execute(
                     $uid,
                     $sportId,
                     $sessionPointsEarned,
                     (int) $session->id,
                 );
+
+                $ratingsBefore[$uid] = $after;
             }
 
-            $ratingsBefore[$uid] = $after;
+            if ($persistGlobalEffects && $persistSessionPlayerStats) {
+                GameSessionPlayer::query()->whereKey($pk)->increment('session_points', $sessionPointsEarned);
+                if ($won) {
+                    GameSessionPlayer::query()->whereKey($pk)->increment('wins_count');
+                } else {
+                    GameSessionPlayer::query()->whereKey($pk)->increment('losses_count');
+                }
+            }
 
             $rows[] = [
                 'game_session_player_id' => $pk,
@@ -132,14 +137,15 @@ class MatchResultProcessor
                 'name' => $player->user?->name ?? 'Player',
                 'team' => $playerTeam,
                 'won' => $won,
-                'rating_before' => $before,
-                'rating_after' => $after,
-                'rating_change' => $after - $before,
+                'rating_before' => $countsForRanking ? $before : null,
+                'rating_after' => $countsForRanking ? $after : null,
+                'rating_change' => $countsForRanking ? $after - $before : null,
                 'session_points_earned' => $sessionPointsEarned,
+                'counts_for_ranking' => $countsForRanking,
             ];
         }
 
-        if ($persistGlobalEffects) {
+        if ($persistGlobalEffects && $countsForRanking) {
             GetSportRankings::bumpSportVersion($sportId);
         }
 
@@ -147,6 +153,7 @@ class MatchResultProcessor
             'winning_team' => $winningTeam,
             'team1_score' => $team1Score,
             'team2_score' => $team2Score,
+            'counts_for_ranking' => $countsForRanking,
             'players' => $rows,
         ];
     }
@@ -202,16 +209,31 @@ class MatchResultProcessor
 
     public function resolveSessionPointsEarned(GameSession $session, bool $won, int $margin): int
     {
-        if ($session->isQueueing()) {
-            $w = (int) ($session->win_points ?? 30);
-            $l = (int) ($session->loss_points ?? 8);
+        return MatchPointFormula::earned($won, $margin);
+    }
 
-            return $won ? $w : $l;
+    /**
+     * Global ELO and wallet credit require a registered member on both sides.
+     *
+     * @param  Collection<int, GameSessionPlayer>  $playing
+     * @param  array<int, int>  $teamMap
+     */
+    public function matchCountsForGlobalEffects(Collection $playing, array $teamMap): bool
+    {
+        $membersOnTeam = [1 => false, 2 => false];
+
+        foreach ($playing as $player) {
+            if ($player->user_id === null) {
+                continue;
+            }
+
+            $team = $teamMap[$player->id] ?? null;
+            if ($team === 1 || $team === 2) {
+                $membersOnTeam[$team] = true;
+            }
         }
 
-        return $won
-            ? 25 + min(10, $margin)
-            : 8;
+        return $membersOnTeam[1] && $membersOnTeam[2];
     }
 
     /**

@@ -8,7 +8,6 @@ use App\Models\MemberPointWallet;
 use App\Models\QueueingSessionMatch;
 use App\Models\Ranking;
 use App\Models\RatingHistory;
-use App\Models\Sport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -114,7 +113,7 @@ class QueueingSessionDraftTest extends TestCase
             ->where('sport_id', $session->sport_id)
             ->first();
         $this->assertNotNull($hostWallet);
-        $this->assertSame(30, (int) $hostWallet->balance);
+        $this->assertSame(35, (int) $hostWallet->balance);
 
         $hostRanking = Ranking::query()
             ->where('user_id', $host->id)
@@ -212,7 +211,7 @@ class QueueingSessionDraftTest extends TestCase
         $memberRow = collect($after->json('data.players'))->firstWhere('user.id', $member->id);
         $guestRow = collect($after->json('data.players'))->firstWhere('is_guest', true);
 
-        $this->assertSame(30, (int) $memberRow['session_points']);
+        $this->assertSame(35, (int) $memberRow['session_points']);
         $this->assertSame(1, (int) $memberRow['wins_count']);
         $this->assertSame(8, (int) $guestRow['session_points']);
         $this->assertSame(1, (int) $guestRow['losses_count']);
@@ -283,7 +282,7 @@ class QueueingSessionDraftTest extends TestCase
 
         $this->assertNotNull($memberRow);
         $this->assertNotNull($guestRow);
-        $this->assertSame(30, (int) $guestRow['session_points']);
+        $this->assertSame(35, (int) $guestRow['session_points']);
         $this->assertSame(1, (int) $guestRow['wins_count']);
         $this->assertSame(8, (int) $memberRow['session_points']);
         $this->assertSame(1, (int) $memberRow['losses_count']);

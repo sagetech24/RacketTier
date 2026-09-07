@@ -105,8 +105,8 @@ class DuplicateQueueingSessionTest extends TestCase
 
         $response->assertJsonPath('data.queue_name', 'Friday Smash');
         $response->assertJsonPath('data.match_type', 'doubles');
-        $response->assertJsonPath('data.win_points', 30);
-        $response->assertJsonPath('data.loss_points', 8);
+        $this->assertNull($response->json('data.win_points'));
+        $this->assertNull($response->json('data.loss_points'));
         $response->assertJsonPath('data.skip_scores', true);
         $response->assertJsonPath('data.optional_guest_skill', false);
         $response->assertJsonPath('data.optional_guest_gender', true);

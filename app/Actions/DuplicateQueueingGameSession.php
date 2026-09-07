@@ -63,8 +63,6 @@ class DuplicateQueueingGameSession
                 (string) ($source->queue_name ?? ''),
                 $sportSlug,
                 (string) $source->match_type,
-                (int) ($source->win_points ?? 0),
-                (int) ($source->loss_points ?? 0),
                 (bool) ($source->skip_scores ?? false),
                 (bool) ($source->optional_guest_skill ?? true),
                 (bool) ($source->optional_guest_gender ?? true),

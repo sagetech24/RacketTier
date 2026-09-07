@@ -7,6 +7,7 @@ use App\Models\GameSessionPlayer;
 use App\Models\MemberPointWallet;
 use App\Models\Ranking;
 use App\Models\TierRank;
+use App\Services\MatchPointFormula;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -61,6 +62,7 @@ class GameSessionResource extends JsonResource
             'queue_name' => $this->queue_name,
             'win_points' => $this->win_points !== null ? (int) $this->win_points : null,
             'loss_points' => $this->loss_points !== null ? (int) $this->loss_points : null,
+            'point_rules' => MatchPointFormula::rules(),
             'skip_scores' => (bool) ($this->skip_scores ?? false),
             'optional_guest_skill' => (bool) ($this->optional_guest_skill ?? true),
             'optional_guest_gender' => (bool) ($this->optional_guest_gender ?? true),

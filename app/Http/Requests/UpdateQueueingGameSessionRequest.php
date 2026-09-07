@@ -37,8 +37,6 @@ class UpdateQueueingGameSessionRequest extends FormRequest
         return [
             'queue_name' => ['required', 'filled', 'string', 'max:120'],
             'match_type' => ['sometimes', 'string', 'in:singles,doubles'],
-            'win_points' => ['required', 'integer', 'min:0', 'max:9999'],
-            'loss_points' => ['required', 'integer', 'min:0', 'max:9999'],
             'skip_scores' => ['sometimes', 'boolean'],
             'optional_guest_skill' => ['sometimes', 'boolean'],
             'optional_guest_gender' => ['sometimes', 'boolean'],

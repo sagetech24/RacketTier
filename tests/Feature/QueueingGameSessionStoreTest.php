@@ -27,8 +27,10 @@ class QueueingGameSessionStoreTest extends TestCase
         $response->assertJsonPath('data.session_context', 'queueing');
         $response->assertJsonPath('data.status', 'queueing');
         $response->assertJsonPath('data.queue_name', 'Friday Night Smash');
-        $response->assertJsonPath('data.win_points', 30);
-        $response->assertJsonPath('data.loss_points', 8);
+        $response->assertJsonPath('data.point_rules.win_base', 25);
+        $response->assertJsonPath('data.point_rules.loss', 8);
+        $this->assertNull($response->json('data.win_points'));
+        $this->assertNull($response->json('data.loss_points'));
 
         $id = $response->json('data.id');
         $this->assertNotNull($id);

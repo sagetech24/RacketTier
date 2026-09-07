@@ -48,7 +48,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-    { title: 'Create a Session', body: 'Pick a sport, singles or doubles, and set win/loss point rewards.' },
+    { title: 'Create a Session', body: 'Pick a sport, singles or doubles, and start queuing. Points and ELO are awarded automatically.' },
     { title: 'Build the Queue', body: 'Invite members or drop in guests. FIFO keeps court time fair.' },
     { title: 'Play & Record', body: 'Auto-generate from the top of the queue, then submit results.' },
     { title: 'Climb the Ranks', body: 'Ratings updates, points credit, and your tier label evolves.' },
