@@ -143,6 +143,7 @@ export function postCreateGameSession(payload) {
  *     pronoun?: string | null,
  *     skill_level?: number | null,
  *     checked_in_at?: string | null,
+ *     in_lobby?: boolean,
  *     user: { id: number, name: string, email: string } | null,
  *     tier?: { id: number, tier_no: number, name: string } | null,
  *   }>,

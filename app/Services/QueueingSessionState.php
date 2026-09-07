@@ -77,10 +77,26 @@ class QueueingSessionState
 
     public function recompactQueuePositions(int $gameSessionId): void
     {
+        // Check-in lobby (0 games) keeps queue_position = 0 and is ordered by check-in time.
+        // Only rotation waiters (played at least once) get sequential 1..n FIFO positions.
+        $lobbyIds = GameSessionPlayer::query()
+            ->where('game_session_id', $gameSessionId)
+            ->where('is_waiting', true)
+            ->where('is_playing', false)
+            ->whereRaw('(COALESCE(wins_count, 0) + COALESCE(losses_count, 0)) = 0')
+            ->pluck('id');
+
+        if ($lobbyIds->isNotEmpty()) {
+            GameSessionPlayer::query()
+                ->whereIn('id', $lobbyIds->all())
+                ->update(['queue_position' => 0]);
+        }
+
         $ids = GameSessionPlayer::query()
             ->where('game_session_id', $gameSessionId)
             ->where('is_waiting', true)
             ->where('is_playing', false)
+            ->whereRaw('(COALESCE(wins_count, 0) + COALESCE(losses_count, 0)) > 0')
             ->orderBy('queue_position')
             ->pluck('id');
 

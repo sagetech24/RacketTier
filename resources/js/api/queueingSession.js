@@ -304,6 +304,7 @@ export async function fetchQueueingSessionMatches(sessionId) {
  *   proposal_id: string,
  *   match_type: 'singles' | 'doubles',
  *   bracket_label: string | null,
+ *   from_lobby?: boolean,
  *   players: AutoProposalPlayer[],
  *   lineup: Array<{ id: number, team: 1 | 2 }>,
  * }} AutoMatchProposal

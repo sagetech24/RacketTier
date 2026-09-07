@@ -62,6 +62,26 @@ class GameSessionPlayer extends Model
         return $this->user_id === null;
     }
 
+    public function matchesPlayed(): int
+    {
+        return (int) ($this->wins_count ?? 0) + (int) ($this->losses_count ?? 0);
+    }
+
+    /**
+     * Never-played waiting players sit in the check-in lobby until their first
+     * finished match graduates them into the rotation queue.
+     */
+    public function isInLobby(): bool
+    {
+        if ((bool) ($this->getAttribute('is_removed') ?? false)) {
+            return false;
+        }
+
+        return (bool) $this->is_waiting
+            && ! (bool) $this->is_playing
+            && $this->matchesPlayed() === 0;
+    }
+
     public function displayName(): string
     {
         if ($this->isGuest()) {

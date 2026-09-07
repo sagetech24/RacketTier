@@ -44,6 +44,7 @@ class AutoGenerateQueueingSessionMatches
      *     proposal_id: string,
      *     match_type: 'singles'|'doubles',
      *     bracket_label: ?string,
+     *     from_lobby: bool,
      *     players: list<array<string, mixed>>,
      *     lineup: list<array{id: int, team: int}>,
      *   }>,
@@ -122,13 +123,45 @@ class AutoGenerateQueueingSessionMatches
             ];
         }
 
-        /** @var Collection<int, GameSessionPlayer> $pool */
-        $pool = $eligible->values();
+        /** @var Collection<int, GameSessionPlayer> $lobby */
+        $lobby = $eligible
+            ->filter(fn (GameSessionPlayer $p): bool => $this->matchesPlayed($p) === 0)
+            ->sort(function (GameSessionPlayer $a, GameSessionPlayer $b): int {
+                $aAt = $a->created_at?->getTimestamp() ?? 0;
+                $bAt = $b->created_at?->getTimestamp() ?? 0;
+                if ($aAt !== $bAt) {
+                    return $aAt <=> $bAt;
+                }
+
+                return ((int) $a->id) <=> ((int) $b->id);
+            })
+            ->values();
+
+        /** @var Collection<int, GameSessionPlayer> $rotation */
+        $rotation = $eligible
+            ->filter(fn (GameSessionPlayer $p): bool => $this->matchesPlayed($p) > 0)
+            ->values();
+
         $proposals = [];
         $proposalIndex = 0;
 
-        while ($pool->count() >= $required) {
-            $selected = $this->selectPlayersForMatch($pool, $required, $matchType, $criteria, $hasStats);
+        while (true) {
+            $fromLobby = false;
+            $selected = collect();
+
+            if ($lobby->isNotEmpty()) {
+                $selected = $this->selectLobbyAnchoredMatch(
+                    $lobby,
+                    $rotation,
+                    $required,
+                    $matchType,
+                    $criteria,
+                    $hasStats,
+                );
+                $fromLobby = $selected->isNotEmpty();
+            } elseif ($rotation->count() >= $required) {
+                $selected = $this->selectPlayersForMatch($rotation, $required, $matchType, $criteria, $hasStats);
+            }
 
             if ($selected->count() < $required) {
                 break;
@@ -151,16 +184,21 @@ class AutoGenerateQueueingSessionMatches
 
             $proposalIndex++;
             $seedSuffix = $criteria->refreshSeed ?? 0;
+            $bracketLabel = $fromLobby
+                ? 'Check-in'
+                : $this->bracketLabelForChunk($matchPlayers, $hasStats, $criteria);
             $proposals[] = [
                 'proposal_id' => 'auto-'.$seedSuffix.'-'.$proposalIndex,
                 'match_type' => $matchType,
-                'bracket_label' => $this->bracketLabelForChunk($matchPlayers, $hasStats, $criteria),
+                'bracket_label' => $bracketLabel,
+                'from_lobby' => $fromLobby,
                 'players' => $playersOut,
                 'lineup' => $lineupOut,
             ];
 
             $selectedIds = $selected->pluck('id')->all();
-            $pool = $pool->reject(fn (GameSessionPlayer $p): bool => in_array($p->id, $selectedIds, true))->values();
+            $lobby = $lobby->reject(fn (GameSessionPlayer $p): bool => in_array($p->id, $selectedIds, true))->values();
+            $rotation = $rotation->reject(fn (GameSessionPlayer $p): bool => in_array($p->id, $selectedIds, true))->values();
         }
 
         return [
@@ -210,6 +248,247 @@ class AutoGenerateQueueingSessionMatches
             'waiting_available' => $waitingAvailable,
             'not_in_queue' => $notInQueue,
         ];
+    }
+
+    /**
+     * Drain check-in lobby first: FIFO-anchor oldest lobby player, fill with skill-aware
+     * lobby mates when possible, otherwise mix remaining lobby seeds with rotation.
+     *
+     * @param  Collection<int, GameSessionPlayer>  $lobby
+     * @param  Collection<int, GameSessionPlayer>  $rotation
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function selectLobbyAnchoredMatch(
+        Collection $lobby,
+        Collection $rotation,
+        int $required,
+        string $matchType,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): Collection {
+        if ($lobby->isEmpty()) {
+            return collect();
+        }
+
+        if ($lobby->count() >= $required) {
+            $lobbyOnly = $this->selectFromLobbyOnly($lobby, $required, $matchType, $criteria, $hasStats);
+            if ($lobbyOnly->count() >= $required) {
+                return $lobbyOnly->take($required)->values();
+            }
+            // Skill balance safety valve: fall through to mix with rotation.
+        }
+
+        $seedCount = min($lobby->count(), $required);
+        $seeds = $lobby->take($seedCount)->values();
+        $need = $required - $seeds->count();
+
+        if ($need <= 0) {
+            return $seeds->take($required)->values();
+        }
+
+        if ($rotation->count() < $need) {
+            // Not enough rotation fill — try remaining lobby FIFO if still short of a full match.
+            if ($lobby->count() >= $required) {
+                return $lobby->take($required)->values();
+            }
+
+            return collect();
+        }
+
+        $fill = $this->selectRotationFillForSeeds($rotation, $seeds, $need, $matchType, $criteria, $hasStats);
+        if ($fill->count() < $need) {
+            return collect();
+        }
+
+        return $seeds->concat($fill)->values();
+    }
+
+    /**
+     * @param  Collection<int, GameSessionPlayer>  $lobby
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function selectFromLobbyOnly(
+        Collection $lobby,
+        int $required,
+        string $matchType,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): Collection {
+        $anchor = $lobby->first();
+        if ($anchor === null) {
+            return collect();
+        }
+
+        if (! $criteria->usesSkillMatching()) {
+            return $lobby->take($required)->values();
+        }
+
+        $rest = $lobby->slice(1)->values();
+
+        if ($criteria->isBalancedSkillMode()) {
+            return $this->fillLobbyBalancedAroundAnchor($anchor, $rest, $required, $matchType, $criteria, $hasStats);
+        }
+
+        return $this->fillLobbySameLevelAroundAnchor($anchor, $rest, $required, $criteria);
+    }
+
+    /**
+     * Same-level lobby fill. Returns empty collection when only ±2+ skill mates remain
+     * (caller should mix with rotation instead).
+     *
+     * @param  Collection<int, GameSessionPlayer>  $rest
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function fillLobbySameLevelAroundAnchor(
+        GameSessionPlayer $anchor,
+        Collection $rest,
+        int $required,
+        AutoMatchCriteria $criteria,
+    ): Collection {
+        $anchorLevel = $this->normalizedSkillLevel($anchor);
+        $selected = collect([$anchor]);
+
+        foreach ([0, 1] as $maxDiff) {
+            $candidates = $rest
+                ->filter(fn (GameSessionPlayer $p): bool => abs($this->normalizedSkillLevel($p) - $anchorLevel) <= $maxDiff)
+                ->sort(function (GameSessionPlayer $a, GameSessionPlayer $b) use ($anchorLevel): int {
+                    $aDiff = abs($this->normalizedSkillLevel($a) - $anchorLevel);
+                    $bDiff = abs($this->normalizedSkillLevel($b) - $anchorLevel);
+                    if ($aDiff !== $bDiff) {
+                        return $aDiff <=> $bDiff;
+                    }
+                    $aAt = $a->created_at?->getTimestamp() ?? 0;
+                    $bAt = $b->created_at?->getTimestamp() ?? 0;
+
+                    return $aAt <=> $bAt;
+                })
+                ->values();
+
+            foreach ($candidates as $candidate) {
+                if ($selected->contains('id', $candidate->id)) {
+                    continue;
+                }
+                $selected->push($candidate);
+                if ($selected->count() >= $required) {
+                    return $selected->take($required)->values();
+                }
+            }
+        }
+
+        // Remaining lobby mates are all ±2+ from the anchor — refuse lobby-only set.
+        if ($selected->count() < $required) {
+            return collect();
+        }
+
+        return $selected->take($required)->values();
+    }
+
+    /**
+     * @param  Collection<int, GameSessionPlayer>  $rest
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function fillLobbyBalancedAroundAnchor(
+        GameSessionPlayer $anchor,
+        Collection $rest,
+        int $required,
+        string $matchType,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): Collection {
+        if ($matchType === 'singles') {
+            $anchorLevel = $this->normalizedSkillLevel($anchor);
+            $candidates = $rest->values();
+            $different = $candidates->filter(
+                fn (GameSessionPlayer $p): bool => $this->normalizedSkillLevel($p) !== $anchorLevel,
+            );
+            $opponentPool = $different->isNotEmpty() ? $different : $candidates;
+            $opponent = $this->pickSinglesOpponent($opponentPool, $anchor, $criteria, $hasStats);
+
+            return collect([$anchor, $opponent])->filter()->values();
+        }
+
+        // Doubles: keep anchor, pick high/low complements from lobby FIFO-aware pool.
+        $selected = collect([$anchor]);
+        $remaining = $rest->values();
+
+        while ($selected->count() < $required && $remaining->isNotEmpty()) {
+            $next = null;
+            if ($selected->count() === 1 || $selected->count() === 3) {
+                $next = $this->pickLowestDifferentSkill($remaining, $anchor, $criteria, $hasStats)
+                    ?? $remaining->sortBy(fn (GameSessionPlayer $p): int => $this->normalizedSkillLevel($p))->first();
+            } else {
+                $next = $this->bestBySkillWlSequence($remaining, $criteria, $hasStats)
+                    ?? $remaining->first();
+            }
+
+            if ($next === null) {
+                break;
+            }
+
+            $selected->push($next);
+            $remaining = $remaining->reject(fn (GameSessionPlayer $p): bool => $p->id === $next->id)->values();
+        }
+
+        if ($selected->count() < $required) {
+            return collect();
+        }
+
+        return $selected->take($required)->values();
+    }
+
+    /**
+     * Fill remaining slots from rotation with lobby seeds locked in.
+     *
+     * @param  Collection<int, GameSessionPlayer>  $rotation
+     * @param  Collection<int, GameSessionPlayer>  $seeds
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function selectRotationFillForSeeds(
+        Collection $rotation,
+        Collection $seeds,
+        int $need,
+        string $matchType,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): Collection {
+        if ($need <= 0) {
+            return collect();
+        }
+
+        // Prefer skill-compatible rotation players relative to the oldest seed.
+        $anchor = $seeds->first();
+        $pool = $rotation->values();
+
+        if ($criteria->usesSkillMatching() && $anchor !== null) {
+            $anchorLevel = $this->normalizedSkillLevel($anchor);
+
+            if ($criteria->isBalancedSkillMode()) {
+                $different = $pool->filter(
+                    fn (GameSessionPlayer $p): bool => $this->normalizedSkillLevel($p) !== $anchorLevel,
+                );
+                if ($different->count() >= $need) {
+                    $pool = $different->values();
+                }
+            } else {
+                $same = $pool->filter(
+                    fn (GameSessionPlayer $p): bool => $this->normalizedSkillLevel($p) === $anchorLevel,
+                );
+                $near = $pool->filter(
+                    fn (GameSessionPlayer $p): bool => abs($this->normalizedSkillLevel($p) - $anchorLevel) <= 1,
+                );
+                if ($same->count() >= $need) {
+                    $pool = $same->values();
+                } elseif ($near->count() >= $need) {
+                    $pool = $near->values();
+                }
+            }
+        }
+
+        // W/L applies only among rotation fill-ins; seeds have no form yet.
+        $rotationHasStats = $pool->contains(fn (GameSessionPlayer $p): bool => $this->matchesPlayed($p) > 0);
+        $picked = $this->selectPlayersForMatch($pool, $need, $matchType, $criteria, $rotationHasStats);
+
+        return $picked->take($need)->values();
     }
 
     /**

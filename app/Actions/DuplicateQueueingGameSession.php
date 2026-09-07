@@ -109,7 +109,7 @@ class DuplicateQueueingGameSession
                     'guest_name' => null,
                     'pronoun' => $player->pronoun,
                     'skill_level' => $player->skill_level !== null ? (int) $player->skill_level : null,
-                    'queue_position' => $position,
+                    'queue_position' => 0,
                     'is_waiting' => true,
                     'is_playing' => false,
                     'team' => null,
@@ -139,7 +139,7 @@ class DuplicateQueueingGameSession
                     ? trim((string) $player->pronoun)
                     : null,
                 'skill_level' => $player->skill_level !== null ? (int) $player->skill_level : null,
-                'queue_position' => $position,
+                'queue_position' => 0,
                 'is_waiting' => true,
                 'is_playing' => false,
                 'team' => null,

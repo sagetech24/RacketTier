@@ -68,6 +68,15 @@ export function QueueingSessionMatchFabPanel({
     /** @type {import('../../api/queueingSession.js').AutoMatchCriteria | null} */
     const [autoMatchCriteria, setAutoMatchCriteria] = useState(null);
 
+    const checkInWaitingCount = useMemo(() => {
+        const rows = Array.isArray(localSession?.players) ? localSession.players : [];
+        return rows.filter((p) => {
+            if (p.is_removed || p.is_playing || !p.is_waiting) return false;
+            if (p.in_lobby != null) return Boolean(p.in_lobby);
+            return ((p.wins_count ?? 0) + (p.losses_count ?? 0)) === 0;
+        }).length;
+    }, [localSession?.players]);
+
     useEffect(() => {
         setLocalSession(session);
     }, [session]);
@@ -491,7 +500,9 @@ export function QueueingSessionMatchFabPanel({
                                                       Add players
                                                   </span>
                                                   <span className="block text-[10px] leading-snug text-[#918f9c]">
-                                                      Add guests or members to the roster
+                                                      {checkInWaitingCount > 0
+                                                          ? `${checkInWaitingCount} check-in waiting · add guests or members`
+                                                          : 'Add guests or members to the roster'}
                                                   </span>
                                               </span>
                                           </button>

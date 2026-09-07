@@ -2203,6 +2203,10 @@
     background: linear-gradient(to bottom, #fbbf24, rgb(251 191 36 / 0.35));
 }
 
+.rt-roster-player-card--check-in::before {
+    background: linear-gradient(to bottom, #38bdf8, rgb(56 189 248 / 0.35));
+}
+
 .rt-roster-player-card--playing::before {
     background: linear-gradient(to bottom, #4ce081, rgb(76 224 129 / 0.35));
 }
@@ -2312,6 +2316,16 @@
 
 .rt-roster-status--queueing .rt-roster-status-dot {
     background-color: #fbbf24;
+}
+
+.rt-roster-status--check-in {
+    border-color: rgb(56 189 248 / 0.35);
+    background-color: rgb(56 189 248 / 0.12);
+    color: #38bdf8;
+}
+
+.rt-roster-status--check-in .rt-roster-status-dot {
+    background-color: #38bdf8;
 }
 
 .rt-roster-status--waiting {

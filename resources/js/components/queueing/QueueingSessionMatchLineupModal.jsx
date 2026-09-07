@@ -154,11 +154,44 @@ export function QueueingSessionMatchLineupModal({
         });
     }, [assignableSessionPlayers, matchLineupSearch, matchLineupTeams.team1, matchLineupTeams.team2]);
 
-    const visibleSearchResults = useMemo(
-        () => matchLineupSearchResults.slice(0, visiblePlayerCount),
-        [matchLineupSearchResults, visiblePlayerCount],
+    const checkInSearchResults = useMemo(() => {
+        return matchLineupSearchResults
+            .filter((p) => {
+                if (p.in_lobby != null) return Boolean(p.in_lobby);
+                return ((p.wins_count ?? 0) + (p.losses_count ?? 0)) === 0;
+            })
+            .sort((a, b) => {
+                const aTime = a.checked_in_at ? Date.parse(a.checked_in_at) : Number.POSITIVE_INFINITY;
+                const bTime = b.checked_in_at ? Date.parse(b.checked_in_at) : Number.POSITIVE_INFINITY;
+                if (aTime !== bTime) return aTime - bTime;
+                return a.id - b.id;
+            });
+    }, [matchLineupSearchResults]);
+
+    const rotationSearchResults = useMemo(() => {
+        const checkInIds = new Set(checkInSearchResults.map((p) => p.id));
+        return matchLineupSearchResults.filter((p) => !checkInIds.has(p.id));
+    }, [matchLineupSearchResults, checkInSearchResults]);
+
+    const groupedSearchResults = useMemo(
+        () => [...checkInSearchResults, ...rotationSearchResults],
+        [checkInSearchResults, rotationSearchResults],
     );
-    const hasMorePlayers = visiblePlayerCount < matchLineupSearchResults.length;
+
+    const visibleSearchResults = useMemo(
+        () => groupedSearchResults.slice(0, visiblePlayerCount),
+        [groupedSearchResults, visiblePlayerCount],
+    );
+    const hasMorePlayers = visiblePlayerCount < groupedSearchResults.length;
+
+    const visibleCheckInResults = useMemo(
+        () => visibleSearchResults.filter((p) => checkInSearchResults.some((c) => c.id === p.id)),
+        [visibleSearchResults, checkInSearchResults],
+    );
+    const visibleRotationResults = useMemo(
+        () => visibleSearchResults.filter((p) => !checkInSearchResults.some((c) => c.id === p.id)),
+        [visibleSearchResults, checkInSearchResults],
+    );
 
     const matchType = session.match_type === 'doubles' ? 'doubles' : 'singles';
     const matchLineupMaxPerTeam = matchType === 'doubles' ? 2 : 1;
@@ -332,42 +365,138 @@ export function QueueingSessionMatchLineupModal({
                                     </div>
                                 ) : (
                                     <>
-                                        <ul className="space-y-2">
-                                            {visibleSearchResults.map((p) => {
-                                                const t1Full = matchLineupTeams.team1.length >= matchLineupMaxPerTeam;
-                                                const t2Full = matchLineupTeams.team2.length >= matchLineupMaxPerTeam;
-                                                return (
-                                                    <li key={p.id}>
-                                                        <LineupPlayerCard
-                                                            p={p}
-                                                            showSkillLevel={showSkillLevel}
-                                                            trailing={
-                                                                <div className="flex flex-col gap-2">
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={busy || t1Full}
-                                                                        onClick={() => addPlayerToMatchLineupTeam(1, p.id)}
-                                                                        className="inline-flex items-center justify-center gap-1 rounded-full border border-[#4ce081]/50 bg-[#4ce081]/15 px-2.5 py-1 text-xs font-bold text-[#4ce081] disabled:cursor-not-allowed disabled:opacity-40"
-                                                                    >
-                                                                        <MaterialIcon name="group_add" className="text-[16px]! md:text-lg!" />
-                                                                        Assign to {teamLabel} 1
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={busy || t2Full}
-                                                                        onClick={() => addPlayerToMatchLineupTeam(2, p.id)}
-                                                                        className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c2c1ff]/50 bg-[#c2c1ff]/15 px-2.5 py-1 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-40"
-                                                                    >
-                                                                        <MaterialIcon name="group_add" className="text-[16px]! md:text-lg!" />
-                                                                        Assign to {teamLabel} 2
-                                                                    </button>
-                                                                </div>
-                                                            }
+                                        {visibleCheckInResults.length > 0 ? (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <MaterialIcon
+                                                        name="login"
+                                                        className="text-[16px]! text-[#fbbf24] md:text-lg!"
+                                                    />
+                                                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#fbbf24] md:text-xs">
+                                                        Check-in
+                                                        <span className="ml-1.5 font-semibold text-[#918f9c]">
+                                                            ({checkInSearchResults.length})
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                                <ul className="space-y-2">
+                                                    {visibleCheckInResults.map((p) => {
+                                                        const t1Full =
+                                                            matchLineupTeams.team1.length >= matchLineupMaxPerTeam;
+                                                        const t2Full =
+                                                            matchLineupTeams.team2.length >= matchLineupMaxPerTeam;
+                                                        return (
+                                                            <li key={p.id}>
+                                                                <LineupPlayerCard
+                                                                    p={p}
+                                                                    showSkillLevel={showSkillLevel}
+                                                                    trailing={
+                                                                        <div className="flex flex-col gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled={busy || t1Full}
+                                                                                onClick={() =>
+                                                                                    addPlayerToMatchLineupTeam(1, p.id)
+                                                                                }
+                                                                                className="inline-flex items-center justify-center gap-1 rounded-full border border-[#4ce081]/50 bg-[#4ce081]/15 px-2.5 py-1 text-xs font-bold text-[#4ce081] disabled:cursor-not-allowed disabled:opacity-40"
+                                                                            >
+                                                                                <MaterialIcon
+                                                                                    name="group_add"
+                                                                                    className="text-[16px]! md:text-lg!"
+                                                                                />
+                                                                                Assign to {teamLabel} 1
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled={busy || t2Full}
+                                                                                onClick={() =>
+                                                                                    addPlayerToMatchLineupTeam(2, p.id)
+                                                                                }
+                                                                                className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c2c1ff]/50 bg-[#c2c1ff]/15 px-2.5 py-1 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-40"
+                                                                            >
+                                                                                <MaterialIcon
+                                                                                    name="group_add"
+                                                                                    className="text-[16px]! md:text-lg!"
+                                                                                />
+                                                                                Assign to {teamLabel} 2
+                                                                            </button>
+                                                                        </div>
+                                                                    }
+                                                                />
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            </div>
+                                        ) : null}
+
+                                        {visibleRotationResults.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {checkInSearchResults.length > 0 ? (
+                                                    <div className="flex items-center gap-2 pt-1">
+                                                        <MaterialIcon
+                                                            name="reorder"
+                                                            className="text-[16px]! text-[#c2c1ff] md:text-lg!"
                                                         />
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
+                                                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#c2c1ff] md:text-xs">
+                                                            Rotation
+                                                            <span className="ml-1.5 font-semibold text-[#918f9c]">
+                                                                ({rotationSearchResults.length})
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                ) : null}
+                                                <ul className="space-y-2">
+                                                    {visibleRotationResults.map((p) => {
+                                                        const t1Full =
+                                                            matchLineupTeams.team1.length >= matchLineupMaxPerTeam;
+                                                        const t2Full =
+                                                            matchLineupTeams.team2.length >= matchLineupMaxPerTeam;
+                                                        return (
+                                                            <li key={p.id}>
+                                                                <LineupPlayerCard
+                                                                    p={p}
+                                                                    showSkillLevel={showSkillLevel}
+                                                                    trailing={
+                                                                        <div className="flex flex-col gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled={busy || t1Full}
+                                                                                onClick={() =>
+                                                                                    addPlayerToMatchLineupTeam(1, p.id)
+                                                                                }
+                                                                                className="inline-flex items-center justify-center gap-1 rounded-full border border-[#4ce081]/50 bg-[#4ce081]/15 px-2.5 py-1 text-xs font-bold text-[#4ce081] disabled:cursor-not-allowed disabled:opacity-40"
+                                                                            >
+                                                                                <MaterialIcon
+                                                                                    name="group_add"
+                                                                                    className="text-[16px]! md:text-lg!"
+                                                                                />
+                                                                                Assign to {teamLabel} 1
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled={busy || t2Full}
+                                                                                onClick={() =>
+                                                                                    addPlayerToMatchLineupTeam(2, p.id)
+                                                                                }
+                                                                                className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c2c1ff]/50 bg-[#c2c1ff]/15 px-2.5 py-1 text-xs font-bold text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-40"
+                                                                            >
+                                                                                <MaterialIcon
+                                                                                    name="group_add"
+                                                                                    className="text-[16px]! md:text-lg!"
+                                                                                />
+                                                                                Assign to {teamLabel} 2
+                                                                            </button>
+                                                                        </div>
+                                                                    }
+                                                                />
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            </div>
+                                        ) : null}
+
                                         {hasMorePlayers ? (
                                             <div className="flex justify-center pt-1">
                                                 <button
@@ -376,7 +505,7 @@ export function QueueingSessionMatchLineupModal({
                                                         setVisiblePlayerCount((prev) =>
                                                             Math.min(
                                                                 prev + PLAYER_LIST_PAGE_SIZE,
-                                                                matchLineupSearchResults.length,
+                                                                groupedSearchResults.length,
                                                             ),
                                                         )
                                                     }
@@ -385,7 +514,7 @@ export function QueueingSessionMatchLineupModal({
                                                     <MaterialIcon name="expand_more" className="text-lg!" />
                                                     Show more
                                                     <span className="font-semibold text-[#918f9c]">
-                                                        ({matchLineupSearchResults.length - visiblePlayerCount} left)
+                                                        ({groupedSearchResults.length - visiblePlayerCount} left)
                                                     </span>
                                                 </button>
                                             </div>

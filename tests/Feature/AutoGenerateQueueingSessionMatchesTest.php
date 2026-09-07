@@ -67,15 +67,19 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $host = User::factory()->create();
         $session = $this->seedSinglesSession($host);
 
-        $lowFirst = $this->addPlayer($session, 1, 1);
-        $highSecond = $this->addPlayer($session, 2, 5);
-        $lowThird = $this->addPlayer($session, 3, 1);
-        $highFourth = $this->addPlayer($session, 4, 5);
+        // Rotation pool (played before) — skill grouping, not lobby FIFO.
+        $lowFirst = $this->addPlayer($session, 1, 1, wins: 1, losses: 0);
+        $highSecond = $this->addPlayer($session, 2, 5, wins: 1, losses: 0);
+        $lowThird = $this->addPlayer($session, 3, 1, wins: 1, losses: 0);
+        $highFourth = $this->addPlayer($session, 4, 5, wins: 1, losses: 0);
 
-        $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_SAME_LEVEL);
+        $criteria = new AutoMatchCriteria(
+            skillMatchMode: AutoMatchCriteria::SKILL_MODE_SAME_LEVEL,
+            wlStatistics: false,
+        );
         $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
 
-        $this->assertFalse($result['has_stats']);
+        $this->assertTrue($result['has_stats']);
         $this->assertCount(2, $result['proposals']);
 
         $firstIds = collect($result['proposals'][0]['lineup'])->pluck('id')->sort()->values()->all();
@@ -85,6 +89,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $this->assertSame([$lowFirst->id, $lowThird->id], $secondIds);
         $this->assertSame('Level 5 — Pro Elite', $result['proposals'][0]['bracket_label']);
         $this->assertSame('Level 1 — Starter', $result['proposals'][1]['bracket_label']);
+        $this->assertFalse($result['proposals'][0]['from_lobby']);
     }
 
     public function test_balanced_mode_pairs_high_with_low_in_singles(): void
@@ -92,10 +97,10 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $host = User::factory()->create();
         $session = $this->seedSinglesSession($host);
 
-        $lowFirst = $this->addPlayer($session, 1, 1);
-        $highSecond = $this->addPlayer($session, 2, 5);
-        $lowThird = $this->addPlayer($session, 3, 1);
-        $highFourth = $this->addPlayer($session, 4, 5);
+        $lowFirst = $this->addPlayer($session, 1, 1, wins: 1, losses: 0);
+        $highSecond = $this->addPlayer($session, 2, 5, wins: 1, losses: 0);
+        $lowThird = $this->addPlayer($session, 3, 1, wins: 1, losses: 0);
+        $highFourth = $this->addPlayer($session, 4, 5, wins: 1, losses: 0);
 
         $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
         $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
@@ -106,6 +111,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
             $levels = collect($proposal['players'])->pluck('skill_level')->unique()->values()->all();
             $this->assertCount(2, $levels);
             $this->assertSame('Balanced skill', $proposal['bracket_label']);
+            $this->assertFalse($proposal['from_lobby']);
         }
 
         $allPairs = collect($result['proposals'])
@@ -164,10 +170,10 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
             'started_at' => now(),
         ]);
 
-        $p5 = $this->addPlayer($session, 1, 5);
-        $p4 = $this->addPlayer($session, 2, 4);
-        $p2 = $this->addPlayer($session, 3, 2);
-        $p1 = $this->addPlayer($session, 4, 1);
+        $p5 = $this->addPlayer($session, 1, 5, wins: 1, losses: 0);
+        $p4 = $this->addPlayer($session, 2, 4, wins: 1, losses: 0);
+        $p2 = $this->addPlayer($session, 3, 2, wins: 1, losses: 0);
+        $p1 = $this->addPlayer($session, 4, 1, wins: 1, losses: 0);
 
         $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
         $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
@@ -180,6 +186,7 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $this->assertSame(2, $lineup[$p4->id]['team']);
         $this->assertSame(2, $lineup[$p2->id]['team']);
         $this->assertSame('Balanced skill', $result['proposals'][0]['bracket_label']);
+        $this->assertFalse($result['proposals'][0]['from_lobby']);
     }
 
     public function test_same_level_doubles_groups_same_tier_on_opposing_teams(): void
@@ -202,12 +209,15 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
             'started_at' => now(),
         ]);
 
-        $p5a = $this->addPlayer($session, 1, 5);
-        $p5b = $this->addPlayer($session, 2, 5);
-        $p5c = $this->addPlayer($session, 3, 5);
-        $p5d = $this->addPlayer($session, 4, 5);
+        $p5a = $this->addPlayer($session, 1, 5, wins: 1, losses: 0);
+        $p5b = $this->addPlayer($session, 2, 5, wins: 1, losses: 0);
+        $p5c = $this->addPlayer($session, 3, 5, wins: 1, losses: 0);
+        $p5d = $this->addPlayer($session, 4, 5, wins: 1, losses: 0);
 
-        $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_SAME_LEVEL);
+        $criteria = new AutoMatchCriteria(
+            skillMatchMode: AutoMatchCriteria::SKILL_MODE_SAME_LEVEL,
+            wlStatistics: false,
+        );
         $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
 
         $this->assertCount(1, $result['proposals']);
@@ -300,7 +310,8 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $response->assertJsonPath('data.criteria.genderless_mixed', true);
         $response->assertJsonPath('data.has_stats', false);
         $response->assertJsonPath('data.proposals.0.players.0.skill_level', 4);
-        $response->assertJsonPath('data.proposals.0.bracket_label', 'Balanced skill');
+        $response->assertJsonPath('data.proposals.0.bracket_label', 'Check-in');
+        $response->assertJsonPath('data.proposals.0.from_lobby', true);
     }
 
     public function test_auto_proposals_endpoint_accepts_same_level_mode(): void
@@ -316,7 +327,8 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.criteria.skill_match_mode', 'same_level');
-        $response->assertJsonPath('data.proposals.0.bracket_label', 'Level 4 — Advance');
+        $response->assertJsonPath('data.proposals.0.bracket_label', 'Check-in');
+        $response->assertJsonPath('data.proposals.0.from_lobby', true);
     }
 
     public function test_refresh_seed_can_change_balanced_singles_pairings(): void
@@ -324,10 +336,10 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $host = User::factory()->create();
         $session = $this->seedSinglesSession($host);
 
-        $this->addPlayer($session, 1, 1);
-        $this->addPlayer($session, 2, 5);
-        $this->addPlayer($session, 3, 1);
-        $this->addPlayer($session, 4, 5);
+        $this->addPlayer($session, 1, 1, wins: 1, losses: 0);
+        $this->addPlayer($session, 2, 5, wins: 1, losses: 0);
+        $this->addPlayer($session, 3, 1, wins: 1, losses: 0);
+        $this->addPlayer($session, 4, 5, wins: 1, losses: 0);
 
         $baseCriteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_BALANCED);
         $initial = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $baseCriteria);
@@ -373,7 +385,8 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.criteria.skill_match_mode', 'same_level');
         $response->assertJsonPath('data.criteria.wl_statistics', false);
-        $response->assertJsonPath('data.proposals.0.bracket_label', 'Level 4 — Advance');
+        $response->assertJsonPath('data.proposals.0.bracket_label', 'Check-in');
+        $response->assertJsonPath('data.proposals.0.from_lobby', true);
     }
 
     public function test_auto_proposals_endpoint_accepts_refresh_seed(): void
@@ -713,5 +726,153 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $response->assertJsonPath('data.eligibility_breakdown.queued_in_matches', 4);
         $response->assertJsonPath('data.eligibility_breakdown.waiting_available', 2);
         $response->assertJsonPath('data.eligibility_breakdown.not_in_queue', 0);
+    }
+
+    public function test_lobby_drains_doubles_fifo_before_rotation(): void
+    {
+        $host = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Lobby Drain Doubles',
+            'match_type' => 'doubles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+
+        $lobby = [];
+        for ($i = 1; $i <= 8; $i++) {
+            $lobby[] = $this->addPlayer($session, 0, 3);
+            // Ensure strict FIFO by check-in time.
+            GameSessionPlayer::query()->whereKey($lobby[$i - 1]->id)->update([
+                'created_at' => now()->subMinutes(20 - $i),
+            ]);
+        }
+
+        $criteria = new AutoMatchCriteria(
+            skillLevel: false,
+            wlStatistics: false,
+            sequence: true,
+            genderlessMixed: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertCount(2, $result['proposals']);
+        $this->assertTrue($result['proposals'][0]['from_lobby']);
+        $this->assertTrue($result['proposals'][1]['from_lobby']);
+        $this->assertSame('Check-in', $result['proposals'][0]['bracket_label']);
+
+        $firstIds = collect($result['proposals'][0]['lineup'])->pluck('id')->sort()->values()->all();
+        $secondIds = collect($result['proposals'][1]['lineup'])->pluck('id')->sort()->values()->all();
+
+        $this->assertSame(
+            collect([$lobby[0]->id, $lobby[1]->id, $lobby[2]->id, $lobby[3]->id])->sort()->values()->all(),
+            $firstIds,
+        );
+        $this->assertSame(
+            collect([$lobby[4]->id, $lobby[5]->id, $lobby[6]->id, $lobby[7]->id])->sort()->values()->all(),
+            $secondIds,
+        );
+    }
+
+    public function test_latecomer_lobby_player_is_seeded_into_first_proposal_with_rotation(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $rotationA = $this->addPlayer($session, 1, 3, wins: 1, losses: 0);
+        $rotationB = $this->addPlayer($session, 2, 3, wins: 1, losses: 0);
+        $rotationC = $this->addPlayer($session, 3, 3, wins: 1, losses: 0);
+        $latecomer = $this->addPlayer($session, 0, 3, wins: 0, losses: 0);
+        GameSessionPlayer::query()->whereKey($latecomer->id)->update([
+            'created_at' => now()->addMinute(),
+        ]);
+
+        $criteria = new AutoMatchCriteria(
+            skillLevel: false,
+            wlStatistics: false,
+            sequence: true,
+            genderlessMixed: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertNotEmpty($result['proposals']);
+        $this->assertTrue($result['proposals'][0]['from_lobby']);
+        $firstIds = collect($result['proposals'][0]['lineup'])->pluck('id')->all();
+        $this->assertContains($latecomer->id, $firstIds);
+        $this->assertCount(1, array_intersect($firstIds, [
+            $rotationA->id,
+            $rotationB->id,
+            $rotationC->id,
+        ]));
+    }
+
+    public function test_same_level_lobby_pairs_anchor_with_closest_skill_not_distant(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $anchor = $this->addPlayer($session, 0, 2);
+        $near = $this->addPlayer($session, 0, 2);
+        $far = $this->addPlayer($session, 0, 5);
+        $alsoFar = $this->addPlayer($session, 0, 5);
+
+        GameSessionPlayer::query()->whereKey($anchor->id)->update(['created_at' => now()->subMinutes(4)]);
+        GameSessionPlayer::query()->whereKey($far->id)->update(['created_at' => now()->subMinutes(3)]);
+        GameSessionPlayer::query()->whereKey($near->id)->update(['created_at' => now()->subMinutes(2)]);
+        GameSessionPlayer::query()->whereKey($alsoFar->id)->update(['created_at' => now()->subMinutes(1)]);
+
+        $criteria = new AutoMatchCriteria(
+            skillMatchMode: AutoMatchCriteria::SKILL_MODE_SAME_LEVEL,
+            wlStatistics: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertCount(2, $result['proposals']);
+        $firstIds = collect($result['proposals'][0]['lineup'])->pluck('id')->sort()->values()->all();
+        $this->assertSame(
+            collect([$anchor->id, $near->id])->sort()->values()->all(),
+            $firstIds,
+        );
+        $this->assertTrue($result['proposals'][0]['from_lobby']);
+    }
+
+    public function test_added_player_lands_in_lobby_without_reordering_rotation(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+        $session->update(['persistence_state' => 'persisted']);
+
+        $rotation = $this->addPlayer($session, 1, 3, wins: 1, losses: 0);
+        $rotation->update(['queue_position' => 1]);
+
+        $response = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/players',
+            ['guest_name' => 'Lobby Guest', 'skill_level' => 3],
+        );
+
+        $response->assertOk();
+        $guest = GameSessionPlayer::query()
+            ->where('game_session_id', $session->id)
+            ->where('guest_name', 'Lobby Guest')
+            ->firstOrFail();
+
+        $this->assertSame(0, (int) $guest->queue_position);
+        $this->assertTrue($guest->isInLobby());
+        $this->assertSame(1, (int) $rotation->fresh()->queue_position);
+
+        $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$session->id);
+        $show->assertOk();
+        $players = collect($show->json('data.players'));
+        $this->assertTrue((bool) $players->firstWhere('id', $guest->id)['in_lobby']);
+        $this->assertFalse((bool) $players->firstWhere('id', $rotation->id)['in_lobby']);
     }
 }

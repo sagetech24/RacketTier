@@ -20,6 +20,19 @@ export function rosterPlayerName(p) {
 
 /**
  * @param {NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number]} p
+ */
+export function playerIsInLobby(p) {
+    if (p.in_lobby != null) {
+        return Boolean(p.in_lobby);
+    }
+    if (p.is_removed || p.is_playing || !p.is_waiting) {
+        return false;
+    }
+    return ((p.wins_count ?? 0) + (p.losses_count ?? 0)) === 0;
+}
+
+/**
+ * @param {NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number]} p
  * @param {Set<number>} reservedPlayerIds
  * @param {boolean} sessionActive
  */
@@ -32,6 +45,9 @@ export function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
     }
     if (reservedPlayerIds.has(p.id)) {
         return { key: 'queueing', label: 'Queueing', className: 'rt-roster-status--queueing' };
+    }
+    if (playerIsInLobby(p)) {
+        return { key: 'check_in', label: 'Check-in', className: 'rt-roster-status--check-in' };
     }
     return { key: 'waiting', label: 'Waiting', className: 'rt-roster-status--waiting' };
 }
@@ -85,6 +101,7 @@ export function QueueingSessionPlayerCard({
         'rt-roster-player-card',
         isPlaying ? 'rt-roster-player-card--playing' : '',
         status?.key === 'queueing' ? 'rt-roster-player-card--queueing' : '',
+        status?.key === 'check_in' ? 'rt-roster-player-card--check-in' : '',
         isYou ? 'rt-roster-player-card--you' : '',
         canEdit ? 'rt-roster-player-card--editable' : '',
     ]

@@ -8,10 +8,25 @@ class QueueingSessionDraftState
 {
     public function recompactQueuePositions(QueueingSessionDraft $draft): void
     {
+        // Lobby (0 games) stays at queue_position 0; only rotation waiters get 1..n.
+        foreach ($draft->players as $i => $player) {
+            if (($player['is_removed'] ?? false)
+                || ! ($player['is_waiting'] ?? false)
+                || ($player['is_playing'] ?? false)) {
+                continue;
+            }
+
+            $played = ((int) ($player['wins_count'] ?? 0) + (int) ($player['losses_count'] ?? 0)) > 0;
+            if (! $played) {
+                $draft->players[$i]['queue_position'] = 0;
+            }
+        }
+
         $waiting = collect($draft->players)
             ->filter(fn (array $p): bool => ($p['is_waiting'] ?? false)
                 && ! ($p['is_playing'] ?? false)
-                && ! ($p['is_removed'] ?? false))
+                && ! ($p['is_removed'] ?? false)
+                && (((int) ($p['wins_count'] ?? 0) + (int) ($p['losses_count'] ?? 0)) > 0))
             ->sortBy('queue_position')
             ->values();
 
@@ -149,16 +164,25 @@ class QueueingSessionDraftState
                 continue;
             }
 
-            $next = (int) (collect($draft->players)
-                ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false))
-                ->max('queue_position') ?? 0) + 1;
+            $played = ((int) ($player['wins_count'] ?? 0) + (int) ($player['losses_count'] ?? 0)) > 0
+                || (int) ($player['session_points'] ?? 0) > 0;
+
+            // Restored players who already played rejoin rotation at the end;
+            // never-played restorations re-enter the check-in lobby.
+            $queuePosition = 0;
+            if ($played) {
+                $queuePosition = (int) (collect($draft->players)
+                    ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false)
+                        && (((int) ($p['wins_count'] ?? 0) + (int) ($p['losses_count'] ?? 0)) > 0))
+                    ->max('queue_position') ?? 0) + 1;
+            }
 
             $draft->players[$i] = array_merge($player, $changes, [
                 'is_removed' => false,
                 'is_waiting' => true,
                 'is_playing' => false,
                 'team' => null,
-                'queue_position' => $next,
+                'queue_position' => $queuePosition,
                 'checked_in_at' => ! empty($player['checked_in_at'])
                     ? $player['checked_in_at']
                     : now()->toIso8601String(),

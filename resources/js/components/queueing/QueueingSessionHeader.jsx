@@ -13,6 +13,14 @@ export function QueueingSessionHeader({
     className = 'mb-8',
     tabSuffix = '',
 }) {
+    const checkInWaitingCount = Array.isArray(session.players)
+        ? session.players.filter((p) => {
+              if (p.is_removed || p.is_playing || !p.is_waiting) return false;
+              if (p.in_lobby != null) return Boolean(p.in_lobby);
+              return ((p.wins_count ?? 0) + (p.losses_count ?? 0)) === 0;
+          }).length
+        : 0;
+
     return (
         <article className={className}>
             <div className="mb-4 flex flex-col gap-2">
@@ -66,6 +74,11 @@ export function QueueingSessionHeader({
                     <p className="text-sm text-[#c8c5d2]/90">
                         <span className="font-bold">Total Players:</span> {session.participant_count ?? 0}
                     </p>
+                    {session.is_active && checkInWaitingCount > 0 ? (
+                        <p className="text-sm text-[#38bdf8]">
+                            <span className="font-bold">Check-in waiting:</span> {checkInWaitingCount}
+                        </p>
+                    ) : null}
                     <p className="text-sm text-[#c8c5d2]/90">
                         <span className="font-bold">Matches Played:</span> {session.completed_matches_count ?? 0}
                     </p>

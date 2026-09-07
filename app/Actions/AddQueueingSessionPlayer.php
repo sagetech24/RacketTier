@@ -20,7 +20,7 @@ class AddQueueingSessionPlayer
     ) {}
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null, in_lobby: bool}
      */
     public function executeMember(GameSession $session, int $userId, ?int $skillLevel, ?string $pronoun = null): array
     {
@@ -51,17 +51,13 @@ class AddQueueingSessionPlayer
                 abort(422, 'That player is already on the roster.');
             }
 
-            $next = (int) (GameSessionPlayer::query()
-                ->where('game_session_id', $locked->id)
-                ->max('queue_position') ?? 0) + 1;
-
             $row = GameSessionPlayer::query()->create([
                 'game_session_id' => $locked->id,
                 'user_id' => $userId,
                 'guest_name' => null,
                 'pronoun' => $resolvedPronoun,
                 'skill_level' => $skillLevel,
-                'queue_position' => $next,
+                'queue_position' => 0,
                 'is_waiting' => true,
                 'is_playing' => false,
                 'team' => null,
@@ -72,7 +68,7 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null, in_lobby: bool}
      */
     public function executeGuest(GameSession $session, string $guestName, ?string $pronoun, ?int $skillLevel): array
     {
@@ -106,17 +102,13 @@ class AddQueueingSessionPlayer
                 abort(422, 'A guest with that name is already on the roster.');
             }
 
-            $next = (int) (GameSessionPlayer::query()
-                ->where('game_session_id', $locked->id)
-                ->max('queue_position') ?? 0) + 1;
-
             $row = GameSessionPlayer::query()->create([
                 'game_session_id' => $locked->id,
                 'user_id' => null,
                 'guest_name' => $guestName,
                 'pronoun' => $resolvedPronoun,
                 'skill_level' => $skillLevel,
-                'queue_position' => $next,
+                'queue_position' => 0,
                 'is_waiting' => true,
                 'is_playing' => false,
                 'team' => null,
@@ -127,7 +119,7 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null, in_lobby: bool}
      */
     private function executeMemberDraft(GameSession $session, int $userId, ?int $skillLevel, ?string $pronoun): array
     {
@@ -153,9 +145,6 @@ class AddQueueingSessionPlayer
                 abort(422, 'That player is already on the roster.');
             }
 
-            $next = collect($draft->players)
-                ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false))
-                ->max('queue_position') ?? 0;
             $playerId = $draft->allocatePlayerId();
             $created = [
                 'id' => $playerId,
@@ -163,7 +152,7 @@ class AddQueueingSessionPlayer
                 'guest_name' => null,
                 'pronoun' => $resolvedPronoun,
                 'skill_level' => $skillLevel,
-                'queue_position' => (int) $next + 1,
+                'queue_position' => 0,
                 'is_waiting' => true,
                 'is_playing' => false,
                 'team' => null,
@@ -181,7 +170,7 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null, in_lobby: bool}
      */
     private function executeGuestDraft(GameSession $session, string $guestName, ?string $pronoun, ?int $skillLevel): array
     {
@@ -203,9 +192,6 @@ class AddQueueingSessionPlayer
                 abort(422, 'A guest with that name is already on the roster.');
             }
 
-            $next = collect($draft->players)
-                ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false))
-                ->max('queue_position') ?? 0;
             $playerId = $draft->allocatePlayerId();
             $created = [
                 'id' => $playerId,
@@ -213,7 +199,7 @@ class AddQueueingSessionPlayer
                 'guest_name' => $guestName,
                 'pronoun' => $pronoun,
                 'skill_level' => $skillLevel,
-                'queue_position' => (int) $next + 1,
+                'queue_position' => 0,
                 'is_waiting' => true,
                 'is_playing' => false,
                 'team' => null,
@@ -231,7 +217,7 @@ class AddQueueingSessionPlayer
     }
 
     /**
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null, in_lobby: bool}
      */
     private function payload(GameSessionPlayer $row): array
     {
@@ -246,16 +232,23 @@ class AddQueueingSessionPlayer
             'pronoun' => $row->pronoun,
             'skill_level' => $row->skill_level !== null ? (int) $row->skill_level : null,
             'checked_in_at' => $row->created_at?->toIso8601String(),
+            'in_lobby' => $row->isInLobby(),
         ];
     }
 
     /**
      * @param  array<string, mixed>  $row
-     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null}
+     * @return array{id: int, queue_position: int, is_waiting: bool, is_playing: bool, team: int|null, user_id: int|null, guest_name: string|null, pronoun: string|null, skill_level: int|null, checked_in_at: string|null, in_lobby: bool}
      */
     private function payloadFromArray(array $row): array
     {
         $checkedInAt = $row['checked_in_at'] ?? null;
+        $wins = (int) ($row['wins_count'] ?? 0);
+        $losses = (int) ($row['losses_count'] ?? 0);
+        $inLobby = (bool) ($row['is_waiting'] ?? false)
+            && ! (bool) ($row['is_playing'] ?? false)
+            && ! (bool) ($row['is_removed'] ?? false)
+            && ($wins + $losses) === 0;
 
         return [
             'id' => (int) $row['id'],
@@ -268,6 +261,7 @@ class AddQueueingSessionPlayer
             'pronoun' => $row['pronoun'],
             'skill_level' => $row['skill_level'] !== null ? (int) $row['skill_level'] : null,
             'checked_in_at' => is_string($checkedInAt) && $checkedInAt !== '' ? $checkedInAt : null,
+            'in_lobby' => $inLobby,
         ];
     }
 }

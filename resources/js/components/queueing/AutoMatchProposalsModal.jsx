@@ -218,9 +218,19 @@ function ProposalCard({
                 <p className="text-[10px] font-bold uppercase tracking-wide text-[#bab9c0]">Match Suggestion Type:</p>
                 {proposal.bracket_label ? (
                     <span
-                        className="shrink-0 rounded-full border border-[#c2c1ff]/40 bg-[#c2c1ff]/15 px-3 py-1 text-[10px] font-semibold capitalize tracking-wide text-[#c2c1ff] md:text-xs"
-                        title="Match grouping bracket"
-                    >{proposal.bracket_label}
+                        className={[
+                            'shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold capitalize tracking-wide md:text-xs',
+                            proposal.from_lobby || proposal.bracket_label === 'Check-in'
+                                ? 'border-[#38bdf8]/40 bg-[#38bdf8]/15 text-[#38bdf8]'
+                                : 'border-[#c2c1ff]/40 bg-[#c2c1ff]/15 text-[#c2c1ff]',
+                        ].join(' ')}
+                        title={
+                            proposal.from_lobby || proposal.bracket_label === 'Check-in'
+                                ? 'Check-in lobby match'
+                                : 'Match grouping bracket'
+                        }
+                    >
+                        {proposal.bracket_label}
                     </span>
                 ) : null}
             </div>

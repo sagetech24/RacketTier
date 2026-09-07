@@ -99,6 +99,7 @@ class StartQueueingSessionMatch
                 ->where('game_session_id', $locked->id)
                 ->where('is_waiting', true)
                 ->where('is_playing', false)
+                ->whereRaw('(COALESCE(wins_count, 0) + COALESCE(losses_count, 0)) > 0')
                 ->orderBy('queue_position')
                 ->get();
 
@@ -108,6 +109,13 @@ class StartQueueingSessionMatch
                     'queue_position' => $pos++,
                 ]);
             }
+
+            GameSessionPlayer::query()
+                ->where('game_session_id', $locked->id)
+                ->where('is_waiting', true)
+                ->where('is_playing', false)
+                ->whereRaw('(COALESCE(wins_count, 0) + COALESCE(losses_count, 0)) = 0')
+                ->update(['queue_position' => 0]);
 
             GameSession::query()->whereKey($locked->id)->update([
                 'status' => 'ongoing',
