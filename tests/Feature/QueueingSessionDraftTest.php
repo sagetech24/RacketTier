@@ -313,6 +313,44 @@ class QueueingSessionDraftTest extends TestCase
         $this->actingAs($member)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
     }
 
+    public function test_queue_master_can_remove_check_in_member_from_draft_session(): void
+    {
+        $host = User::factory()->create();
+        $member = User::factory()->create();
+
+        $sessionId = (int) $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Check-in Remove',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $member->id,
+            'skill_level' => 3,
+        ])->assertOk();
+
+        $player = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        )->firstWhere('user.id', $member->id);
+
+        $this->assertNotNull($player);
+        $this->assertFalse((bool) $player['is_guest']);
+        $this->assertTrue((bool) $player['in_lobby']);
+        $this->assertFalse((bool) $player['is_playing']);
+
+        $this->actingAs($host)
+            ->deleteJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$player['id'])
+            ->assertOk();
+
+        $after = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        );
+        $this->assertNull($after->firstWhere('id', $player['id']));
+        $this->assertNull($after->firstWhere('user.id', $member->id));
+    }
+
     public function test_removed_player_who_finished_matches_appears_on_ended_leaderboard(): void
     {
         $host = User::factory()->create();

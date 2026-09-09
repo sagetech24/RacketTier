@@ -2376,13 +2376,13 @@
 .rt-roster-player-actions {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
 }
 
 .rt-roster-player-action {
     display: inline-flex;
-    height: 2rem;
-    width: 2rem;
+    height: 2.75rem;
+    width: 2.75rem;
     align-items: center;
     justify-content: center;
     border-radius: 0.5rem;
@@ -2424,7 +2424,9 @@
 }
 
 .rt-roster-player-card--editable:hover .rt-roster-player-action--remove,
-.rt-roster-player-card--editable:focus-within .rt-roster-player-action--remove {
+.rt-roster-player-card--editable:focus-within .rt-roster-player-action--remove,
+.rt-roster-player-card--removable:hover .rt-roster-player-action--remove,
+.rt-roster-player-card--removable:focus-within .rt-roster-player-action--remove {
     background-color: rgb(248 113 113 / 0.1);
     border-color: rgb(248 113 113 / 0.2);
 }

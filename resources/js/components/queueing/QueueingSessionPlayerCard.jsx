@@ -52,6 +52,25 @@ export function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
     return { key: 'waiting', label: 'Waiting', className: 'rt-roster-status--waiting' };
 }
 
+/**
+ * Guests can be removed whenever they are not on court.
+ * Members can be removed only from the check-in lobby (waiting for first match).
+ *
+ * @param {NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number]} p
+ * @param {Set<number>} reservedPlayerIds
+ * @param {boolean} sessionActive
+ * @param {boolean} canManage
+ */
+export function playerCanBeRemovedFromRoster(p, reservedPlayerIds, sessionActive, canManage) {
+    if (!canManage || !sessionActive || p.is_playing) {
+        return false;
+    }
+    if (p.is_guest) {
+        return true;
+    }
+    return playerRosterStatus(p, reservedPlayerIds, sessionActive)?.key === 'check_in';
+}
+
 /** @param {{ status: { key: string, label: string, className: string } | null }} props */
 function PlayerStatusBadge({ status }) {
     if (!status) return null;
@@ -71,6 +90,7 @@ function PlayerStatusBadge({ status }) {
  *   sessionActive?: boolean;
  *   isYou?: boolean;
  *   canEdit?: boolean;
+ *   canRemove?: boolean;
  *   busy?: boolean;
  *   showSkillLevel?: boolean;
  *   style?: import('react').CSSProperties;
@@ -85,6 +105,7 @@ export function QueueingSessionPlayerCard({
     sessionActive = false,
     isYou = false,
     canEdit = false,
+    canRemove = false,
     busy = false,
     showSkillLevel = true,
     style,
@@ -96,6 +117,7 @@ export function QueueingSessionPlayerCard({
     const losses = p.losses_count ?? 0;
     const points = p.session_points ?? 0;
     const isPlaying = Boolean(sessionActive && p.is_playing);
+    const showActions = canEdit || canRemove;
 
     const cardClass = [
         'rt-roster-player-card',
@@ -104,6 +126,7 @@ export function QueueingSessionPlayerCard({
         status?.key === 'check_in' ? 'rt-roster-player-card--check-in' : '',
         isYou ? 'rt-roster-player-card--you' : '',
         canEdit ? 'rt-roster-player-card--editable' : '',
+        canRemove && !canEdit ? 'rt-roster-player-card--removable' : '',
     ]
         .filter(Boolean)
         .join(' ');
@@ -190,32 +213,36 @@ export function QueueingSessionPlayerCard({
                         </span>
                     </div>
 
-                    {canEdit ? (
+                    {showActions ? (
                         <div className="rt-roster-player-actions">
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEdit?.();
-                                }}
-                                className="rt-roster-player-action rt-roster-player-action--edit"
-                                aria-label={`Edit ${name}`}
-                            >
-                                <MaterialIcon name="edit" className="text-[17px]!" />
-                            </button>
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onRemove?.();
-                                }}
-                                className="rt-roster-player-action rt-roster-player-action--remove"
-                                aria-label={`Remove ${name}`}
-                            >
-                                <MaterialIcon name="person_remove" className="text-[17px]!" />
-                            </button>
+                            {canEdit ? (
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEdit?.();
+                                    }}
+                                    className="rt-roster-player-action rt-roster-player-action--edit"
+                                    aria-label={`Edit ${name}`}
+                                >
+                                    <MaterialIcon name="edit" className="text-[17px]!" />
+                                </button>
+                            ) : null}
+                            {canRemove ? (
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemove?.();
+                                    }}
+                                    className="rt-roster-player-action rt-roster-player-action--remove"
+                                    aria-label={`Remove ${name}`}
+                                >
+                                    <MaterialIcon name="person_remove" className="text-[17px]!" />
+                                </button>
+                            ) : null}
                         </div>
                     ) : null}
                 </div>

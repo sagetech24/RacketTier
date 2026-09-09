@@ -12,6 +12,7 @@ import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.js
 import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueueingSessionPlayerModal.jsx';
 import {
     QueueingSessionPlayerCard,
+    playerCanBeRemovedFromRoster,
     playerIsInLobby,
     playerRosterStatus,
     rosterPlayerName,
@@ -618,12 +619,18 @@ export function QueueingSessionPlayersPage() {
                                                           checkInRosterPlayers.some((c) => c.id === p.id),
                                                       )
                                                 ).map((p, index) => {
-                                                    const canEditPlayer =
-                                                        canManagePlayers && !p.is_playing && p.is_guest;
                                                     const status = playerRosterStatus(
                                                         p,
                                                         reservedPlayerIds,
                                                         sessionActive,
+                                                    );
+                                                    const canEditPlayer =
+                                                        canManagePlayers && !p.is_playing && p.is_guest;
+                                                    const canRemovePlayer = playerCanBeRemovedFromRoster(
+                                                        p,
+                                                        reservedPlayerIds,
+                                                        sessionActive,
+                                                        canManagePlayers,
                                                     );
 
                                                     return (
@@ -637,6 +644,7 @@ export function QueueingSessionPlayersPage() {
                                                                 user?.id != null && p.user?.id === user.id
                                                             }
                                                             canEdit={canEditPlayer}
+                                                            canRemove={canRemovePlayer}
                                                             busy={busy}
                                                             showSkillLevel={showSkillLevel}
                                                             style={{
@@ -690,12 +698,18 @@ export function QueueingSessionPlayersPage() {
                                                 ) : null}
                                                 <div className="rt-roster-player-cards-grid">
                                                     {rotationVisible.map((p, index) => {
-                                                        const canEditPlayer =
-                                                            canManagePlayers && !p.is_playing && p.is_guest;
                                                         const status = playerRosterStatus(
                                                             p,
                                                             reservedPlayerIds,
                                                             sessionActive,
+                                                        );
+                                                        const canEditPlayer =
+                                                            canManagePlayers && !p.is_playing && p.is_guest;
+                                                        const canRemovePlayer = playerCanBeRemovedFromRoster(
+                                                            p,
+                                                            reservedPlayerIds,
+                                                            sessionActive,
+                                                            canManagePlayers,
                                                         );
                                                         const positionOffset =
                                                             statusFilter === 'all' &&
@@ -719,6 +733,7 @@ export function QueueingSessionPlayersPage() {
                                                                     user?.id != null && p.user?.id === user.id
                                                                 }
                                                                 canEdit={canEditPlayer}
+                                                                canRemove={canRemovePlayer}
                                                                 busy={busy}
                                                                 showSkillLevel={showSkillLevel}
                                                                 style={{
