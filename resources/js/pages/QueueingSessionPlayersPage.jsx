@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import '../../css/dashboard-v2.css';
 import {
     deleteQueueingSessionPlayer,
+    patchQueueingSessionCheckInOrder,
     patchUpdateQueueingSessionPlayer,
 } from '../api/queueingSession.js';
 import { AppShell } from '../components/app/AppShell.jsx';
@@ -10,6 +11,7 @@ import { EmptyState } from '../components/app/EmptyState.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueueingSessionPlayerModal.jsx';
+import { DraggableCheckInRoster } from '../components/queueing/DraggableCheckInRoster.jsx';
 import {
     QueueingSessionPlayerCard,
     playerCanBeRemovedFromRoster,
@@ -301,21 +303,18 @@ export function QueueingSessionPlayersPage() {
         return sortedRosterPlayers;
     }, [reservedPlayerIds, sessionActive, sortedRosterPlayers, statusFilter]);
 
-    const displayRosterPlayers = useMemo(() => {
-        if (statusFilter === 'check_in') {
-            return checkInRosterPlayers;
-        }
-        if (statusFilter === 'all' && sessionActive && checkInRosterPlayers.length > 0) {
-            return [...checkInRosterPlayers, ...rotationRosterPlayers];
-        }
-        return rotationRosterPlayers;
-    }, [checkInRosterPlayers, rotationRosterPlayers, sessionActive, statusFilter]);
-
-    const visibleRosterPlayers = useMemo(
-        () => displayRosterPlayers.slice(0, visibleRosterCount),
-        [displayRosterPlayers, visibleRosterCount],
+    // Check-in is always fully listed (needed for FIFO reorder). Paginate rotation only.
+    const visibleRotationPlayers = useMemo(
+        () => rotationRosterPlayers.slice(0, visibleRosterCount),
+        [rotationRosterPlayers, visibleRosterCount],
     );
-    const hasMoreRoster = visibleRosterCount < displayRosterPlayers.length;
+    const hasMoreRoster = visibleRosterCount < rotationRosterPlayers.length;
+
+    const canReorderCheckIn =
+        canManagePlayers &&
+        sessionActive &&
+        checkInRosterPlayers.length >= 2 &&
+        playerSearch.trim() === '';
 
     useEffect(() => {
         setVisibleRosterCount(ROSTER_PAGE_SIZE);
@@ -325,10 +324,30 @@ export function QueueingSessionPlayersPage() {
         if (!hasMoreRoster || loadingMoreRoster) return;
         setLoadingMoreRoster(true);
         window.setTimeout(() => {
-            setVisibleRosterCount((prev) => Math.min(prev + ROSTER_PAGE_SIZE, displayRosterPlayers.length));
+            setVisibleRosterCount((prev) => Math.min(prev + ROSTER_PAGE_SIZE, rotationRosterPlayers.length));
             setLoadingMoreRoster(false);
         }, 200);
-    }, [displayRosterPlayers.length, hasMoreRoster, loadingMoreRoster]);
+    }, [hasMoreRoster, loadingMoreRoster, rotationRosterPlayers.length]);
+
+    /**
+     * @param {number[]} orderedIds
+     */
+    async function onCheckInReorder(orderedIds) {
+        if (sessionId == null || !canReorderCheckIn) return;
+        setActionError('');
+        setBusy(true);
+        try {
+            await patchQueueingSessionCheckInOrder(sessionId, orderedIds);
+            invalidateQueueingSession(sessionId);
+            await refetchSession();
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Could not reorder check-in players.';
+            setActionError(msg);
+            await refetchSession();
+        } finally {
+            setBusy(false);
+        }
+    }
 
     /**
      * @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p
@@ -405,8 +424,10 @@ export function QueueingSessionPlayersPage() {
 
     const showInitialSkeleton = loading && !session && !error;
     const showEmptyRoster = !showInitialSkeleton && rosterPlayers.length === 0;
+    const hasVisibleRoster =
+        checkInRosterPlayers.length > 0 || visibleRotationPlayers.length > 0;
     const showNoFilterResults =
-        !showInitialSkeleton && rosterPlayers.length > 0 && displayRosterPlayers.length === 0;
+        !showInitialSkeleton && rosterPlayers.length > 0 && !hasVisibleRoster;
 
     return (
         <AppShell user={user}>
@@ -585,77 +606,59 @@ export function QueueingSessionPlayersPage() {
                                 />
                             ) : null}
 
-                            {visibleRosterPlayers.length > 0 ? (
+                            {hasVisibleRoster ? (
                                 <div className="space-y-5">
                                     {(statusFilter === 'check_in' ||
                                         (statusFilter === 'all' &&
                                             sessionActive &&
                                             checkInRosterPlayers.length > 0)) &&
-                                    visibleRosterPlayers.some((p) =>
-                                        checkInRosterPlayers.some((c) => c.id === p.id),
-                                    ) ? (
+                                    checkInRosterPlayers.length > 0 ? (
                                         <div className="space-y-3">
-                                            {statusFilter !== 'check_in' || checkInRosterPlayers.length > 0 ? (
-                                                <div className="flex items-center gap-2 px-0.5">
-                                                    <MaterialIcon
-                                                        name="login"
-                                                        className="text-[18px]! text-[#38bdf8]"
-                                                    />
-                                                    <h3 className="text-xs font-bold uppercase tracking-wide text-[#38bdf8] md:text-sm">
-                                                        Check-in
-                                                    </h3>
-                                                    <span className="rounded-full bg-[#38bdf8]/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-[#38bdf8]">
-                                                        {checkInRosterPlayers.length}
-                                                    </span>
-                                                    <span className="text-[11px] text-[#918f9c] md:text-xs">
-                                                        Waiting for first match
-                                                    </span>
-                                                </div>
+                                            <div className="flex flex-wrap items-center gap-2 px-0.5">
+                                                <MaterialIcon
+                                                    name="login"
+                                                    className="text-[18px]! text-[#38bdf8]"
+                                                />
+                                                <h3 className="text-xs font-bold uppercase tracking-wide text-[#38bdf8] md:text-sm">
+                                                    Check-in
+                                                </h3>
+                                                <span className="rounded-full bg-[#38bdf8]/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-[#38bdf8]">
+                                                    {checkInRosterPlayers.length}
+                                                </span>
+                                                <span className="text-[11px] text-[#918f9c] md:text-xs">
+                                                    Waiting for first match
+                                                </span>
+                                            </div>
+                                            {canReorderCheckIn ? (
+                                                <p className="px-0.5 text-[11px] text-[#918f9c] md:text-xs">
+                                                    Drag to match who arrived first.
+                                                </p>
                                             ) : null}
-                                            <div className="rt-roster-player-cards-grid">
-                                                {(statusFilter === 'check_in'
-                                                    ? visibleRosterPlayers
-                                                    : visibleRosterPlayers.filter((p) =>
-                                                          checkInRosterPlayers.some((c) => c.id === p.id),
-                                                      )
-                                                ).map((p, index) => {
-                                                    const status = playerRosterStatus(
-                                                        p,
-                                                        reservedPlayerIds,
-                                                        sessionActive,
-                                                    );
-                                                    const canEditPlayer =
-                                                        canManagePlayers && !p.is_playing && p.is_guest;
-                                                    const canRemovePlayer = playerCanBeRemovedFromRoster(
+                                            <DraggableCheckInRoster
+                                                players={checkInRosterPlayers}
+                                                disabled={!canReorderCheckIn}
+                                                sessionActive={sessionActive}
+                                                currentUserId={user?.id ?? null}
+                                                busy={busy}
+                                                showSkillLevel={showSkillLevel}
+                                                playerStatus={(p) =>
+                                                    playerRosterStatus(p, reservedPlayerIds, sessionActive)
+                                                }
+                                                canEditPlayer={(p) =>
+                                                    canManagePlayers && !p.is_playing && Boolean(p.is_guest)
+                                                }
+                                                canRemovePlayer={(p) =>
+                                                    playerCanBeRemovedFromRoster(
                                                         p,
                                                         reservedPlayerIds,
                                                         sessionActive,
                                                         canManagePlayers,
-                                                    );
-
-                                                    return (
-                                                        <QueueingSessionPlayerCard
-                                                            key={p.id}
-                                                            player={p}
-                                                            status={status}
-                                                            position={index + 1}
-                                                            sessionActive={sessionActive}
-                                                            isYou={
-                                                                user?.id != null && p.user?.id === user.id
-                                                            }
-                                                            canEdit={canEditPlayer}
-                                                            canRemove={canRemovePlayer}
-                                                            busy={busy}
-                                                            showSkillLevel={showSkillLevel}
-                                                            style={{
-                                                                animationDelay: `${0.08 + (index % 10) * 0.04}s`,
-                                                            }}
-                                                            onEdit={() => onEditPlayerClick(p)}
-                                                            onRemove={() => onRemoveClick(p)}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
+                                                    )
+                                                }
+                                                onEdit={onEditPlayerClick}
+                                                onRemove={onRemoveClick}
+                                                onReorder={onCheckInReorder}
+                                            />
                                         </div>
                                     ) : null}
 
@@ -664,17 +667,7 @@ export function QueueingSessionPlayersPage() {
                                             return null;
                                         }
 
-                                        const rotationVisible =
-                                            statusFilter === 'all' &&
-                                            sessionActive &&
-                                            checkInRosterPlayers.length > 0
-                                                ? visibleRosterPlayers.filter(
-                                                      (p) =>
-                                                          !checkInRosterPlayers.some((c) => c.id === p.id),
-                                                  )
-                                                : visibleRosterPlayers;
-
-                                        if (rotationVisible.length === 0) {
+                                        if (visibleRotationPlayers.length === 0) {
                                             return null;
                                         }
 
@@ -697,7 +690,7 @@ export function QueueingSessionPlayersPage() {
                                                     </div>
                                                 ) : null}
                                                 <div className="rt-roster-player-cards-grid">
-                                                    {rotationVisible.map((p, index) => {
+                                                    {visibleRotationPlayers.map((p, index) => {
                                                         const status = playerRosterStatus(
                                                             p,
                                                             reservedPlayerIds,
@@ -711,23 +704,13 @@ export function QueueingSessionPlayersPage() {
                                                             sessionActive,
                                                             canManagePlayers,
                                                         );
-                                                        const positionOffset =
-                                                            statusFilter === 'all' &&
-                                                            sessionActive &&
-                                                            checkInRosterPlayers.length > 0
-                                                                ? checkInRosterPlayers.filter((c) =>
-                                                                      visibleRosterPlayers.some(
-                                                                          (v) => v.id === c.id,
-                                                                      ),
-                                                                  ).length
-                                                                : 0;
 
                                                         return (
                                                             <QueueingSessionPlayerCard
                                                                 key={p.id}
                                                                 player={p}
                                                                 status={status}
-                                                                position={positionOffset + index + 1}
+                                                                position={index + 1}
                                                                 sessionActive={sessionActive}
                                                                 isYou={
                                                                     user?.id != null && p.user?.id === user.id
@@ -771,7 +754,7 @@ export function QueueingSessionPlayersPage() {
                                             <>
                                                 View more
                                                 <span className="text-[#918f9c]">
-                                                    ({displayRosterPlayers.length - visibleRosterCount} left)
+                                                    ({rotationRosterPlayers.length - visibleRosterCount} left)
                                                 </span>
                                             </>
                                         )}

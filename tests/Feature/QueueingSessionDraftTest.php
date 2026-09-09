@@ -351,6 +351,150 @@ class QueueingSessionDraftTest extends TestCase
         $this->assertNull($after->firstWhere('user.id', $member->id));
     }
 
+    public function test_queue_master_can_reorder_check_in_waiters_and_auto_match_follows(): void
+    {
+        $host = User::factory()->create();
+        $first = User::factory()->create();
+        $second = User::factory()->create();
+        $third = User::factory()->create();
+        $rotationMember = User::factory()->create();
+
+        $sessionId = (int) $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Check-in Reorder',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'skill_level' => false,
+            'wl_statistics' => false,
+            'sequence' => true,
+            'genderless_mixed' => true,
+        ])->assertCreated()->json('data.id');
+
+        foreach ([$first, $second, $third, $rotationMember] as $user) {
+            $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+                'user_id' => $user->id,
+                'skill_level' => null,
+            ])->assertOk();
+        }
+
+        $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
+        $players = collect($show->json('data.players'));
+        $firstId = (int) $players->firstWhere('user.id', $first->id)['id'];
+        $secondId = (int) $players->firstWhere('user.id', $second->id)['id'];
+        $thirdId = (int) $players->firstWhere('user.id', $third->id)['id'];
+        $rotationId = (int) $players->firstWhere('user.id', $rotationMember->id)['id'];
+
+        // Graduate one player into rotation so check-in reorder leaves them alone.
+        $matchCreate = $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches', [
+            'lineup' => [
+                ['id' => $rotationId, 'team' => 1],
+                ['id' => $firstId, 'team' => 2],
+            ],
+        ])->assertCreated();
+        $matchId = (int) $matchCreate->json('data.id');
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches/'.$matchId.'/start')
+            ->assertOk();
+        $this->actingAs($host)->postJson('/auth/game-sessions/'.$sessionId.'/finish-match', [
+            'team1_score' => 21,
+            'team2_score' => 10,
+            'queueing_session_match_id' => $matchId,
+        ])->assertOk();
+
+        $afterMatch = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        );
+        $this->assertFalse((bool) $afterMatch->firstWhere('id', $firstId)['in_lobby']);
+        $this->assertTrue((bool) $afterMatch->firstWhere('id', $secondId)['in_lobby']);
+        $this->assertTrue((bool) $afterMatch->firstWhere('id', $thirdId)['in_lobby']);
+        $rotationBefore = (int) $afterMatch->firstWhere('id', $rotationId)['queue_position'];
+
+        // Put third ahead of second (duplicate-style same-time FIFO fix).
+        $this->actingAs($host)
+            ->patchJson('/auth/queueing-sessions/'.$sessionId.'/players/check-in-order', [
+                'player_ids' => [$thirdId, $secondId],
+            ])
+            ->assertOk();
+
+        $reordered = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        );
+        $lobby = $reordered
+            ->filter(fn (array $p): bool => (bool) ($p['in_lobby'] ?? false))
+            ->sortBy(fn (array $p): int => strtotime((string) ($p['checked_in_at'] ?? '')) ?: PHP_INT_MAX)
+            ->values();
+        $this->assertSame([$thirdId, $secondId], $lobby->pluck('id')->map(fn ($id): int => (int) $id)->all());
+        $this->assertSame(
+            $rotationBefore,
+            (int) $reordered->firstWhere('id', $rotationId)['queue_position'],
+        );
+
+        $proposals = $this->actingAs($host)
+            ->getJson('/auth/queueing-sessions/'.$sessionId.'/matches/auto-proposals')
+            ->assertOk()
+            ->json('data.proposals');
+        $this->assertNotEmpty($proposals);
+        $this->assertTrue((bool) ($proposals[0]['from_lobby'] ?? false));
+        $lineupIds = collect($proposals[0]['lineup'])->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $this->assertContains($thirdId, $lineupIds);
+    }
+
+    public function test_check_in_reorder_rejects_incomplete_or_playing_player_ids(): void
+    {
+        $host = User::factory()->create();
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        $sessionId = (int) $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Check-in Reorder Guard',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ])->assertCreated()->json('data.id');
+
+        foreach ([$a, $b] as $user) {
+            $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+                'user_id' => $user->id,
+                'skill_level' => 3,
+            ])->assertOk();
+        }
+
+        $players = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        );
+        $aId = (int) $players->firstWhere('user.id', $a->id)['id'];
+        $bId = (int) $players->firstWhere('user.id', $b->id)['id'];
+
+        $this->actingAs($host)
+            ->patchJson('/auth/queueing-sessions/'.$sessionId.'/players/check-in-order', [
+                'player_ids' => [$aId],
+            ])
+            ->assertUnprocessable();
+
+        $this->actingAs($host)
+            ->patchJson('/auth/queueing-sessions/'.$sessionId.'/players/check-in-order', [
+                'player_ids' => [$aId, $bId, 99999],
+            ])
+            ->assertUnprocessable();
+
+        $matchCreate = $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches', [
+            'lineup' => [
+                ['id' => $aId, 'team' => 1],
+                ['id' => $bId, 'team' => 2],
+            ],
+        ])->assertCreated();
+        $matchId = (int) $matchCreate->json('data.id');
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches/'.$matchId.'/start')
+            ->assertOk();
+
+        $this->actingAs($host)
+            ->patchJson('/auth/queueing-sessions/'.$sessionId.'/players/check-in-order', [
+                'player_ids' => [$aId, $bId],
+            ])
+            ->assertUnprocessable();
+    }
+
     public function test_removed_player_who_finished_matches_appears_on_ended_leaderboard(): void
     {
         $host = User::factory()->create();

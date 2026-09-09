@@ -29,6 +29,7 @@ use App\Http\Controllers\QueueingGameSessionStoreController;
 use App\Http\Controllers\QueueingGameSessionSummaryController;
 use App\Http\Controllers\QueueingGameSessionUpdateController;
 use App\Http\Controllers\QueueingSessionAutoProposalsController;
+use App\Http\Controllers\QueueingSessionCheckInOrderController;
 use App\Http\Controllers\QueueingSessionMatchDestroyController;
 use App\Http\Controllers\QueueingSessionMatchesIndexController;
 use App\Http\Controllers\QueueingSessionMatchesStoreController;
@@ -147,6 +148,8 @@ Route::middleware('auth')->group(function () {
         ->name('auth.queueing-sessions.destroy');
     Route::post('/auth/queueing-sessions/{gameSession}/players', [QueueingSessionPlayersStoreController::class, 'store'])
         ->name('auth.queueing-sessions.players.store');
+    Route::patch('/auth/queueing-sessions/{gameSession}/players/check-in-order', QueueingSessionCheckInOrderController::class)
+        ->name('auth.queueing-sessions.players.check-in-order');
     Route::patch('/auth/queueing-sessions/{gameSession}/players/{gameSessionPlayer}', QueueingSessionPlayersUpdateController::class)
         ->name('auth.queueing-sessions.players.update');
     Route::delete('/auth/queueing-sessions/{gameSession}/players/{gameSessionPlayer}', QueueingSessionPlayersDestroyController::class)

@@ -2194,6 +2194,37 @@
     gap: 0.75rem;
 }
 
+.rt-roster-player-cards-grid--check-in {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.rt-roster-player-cards-grid--check-in > *,
+.rt-roster-player-cards-grid--sortable > * {
+    min-width: 0;
+}
+
+.rt-roster-player-card--sortable {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    height: 100%;
+}
+
+.rt-roster-player-card--sortable:active {
+    cursor: grabbing;
+}
+
+.rt-roster-player-card--dragging {
+    box-shadow: 0 12px 28px -12px rgb(56 189 248 / 0.45);
+    border-color: rgb(56 189 248 / 0.35);
+}
+
+.rt-roster-check-in-dnd--dragging {
+    touch-action: none;
+}
+
 .rt-roster-player-card {
     position: relative;
     overflow: hidden;
@@ -2818,6 +2849,11 @@ html.rt-lineup-dnd-locked {
     touch-action: none;
 }
 
+html.rt-lineup-dnd-locked,
+html.rt-lineup-dnd-locked body {
+    overflow: hidden;
+}
+
 .rt-match-team {
     display: flex;
     position: relative;
@@ -3389,7 +3425,14 @@ html.rt-lineup-dnd-locked {
         gap: 1rem;
     }
 
-    .rt-roster-player-cards-grid > article {
+    .rt-roster-player-cards-grid--check-in {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .rt-roster-player-cards-grid > article,
+    .rt-roster-player-cards-grid--check-in > * {
         height: 100%;
     }
 

@@ -93,6 +93,10 @@ function PlayerStatusBadge({ status }) {
  *   canRemove?: boolean;
  *   busy?: boolean;
  *   showSkillLevel?: boolean;
+ *   sortable?: boolean;
+ *   isDragging?: boolean;
+ *   dragRef?: ((node: HTMLElement | null) => void) | null;
+ *   dragProps?: Record<string, unknown>;
  *   style?: import('react').CSSProperties;
  *   onEdit?: () => void;
  *   onRemove?: () => void;
@@ -108,6 +112,10 @@ export function QueueingSessionPlayerCard({
     canRemove = false,
     busy = false,
     showSkillLevel = true,
+    sortable = false,
+    isDragging = false,
+    dragRef = null,
+    dragProps = {},
     style,
     onEdit,
     onRemove,
@@ -118,6 +126,9 @@ export function QueueingSessionPlayerCard({
     const points = p.session_points ?? 0;
     const isPlaying = Boolean(sessionActive && p.is_playing);
     const showActions = canEdit || canRemove;
+    const canDrag = sortable && Object.keys(dragProps).length > 0;
+    // Avoid card click-to-edit fighting drag; use the pencil while sortable.
+    const cardClickEdit = canEdit && !sortable && !busy;
 
     const cardClass = [
         'rt-roster-player-card',
@@ -125,31 +136,44 @@ export function QueueingSessionPlayerCard({
         status?.key === 'queueing' ? 'rt-roster-player-card--queueing' : '',
         status?.key === 'check_in' ? 'rt-roster-player-card--check-in' : '',
         isYou ? 'rt-roster-player-card--you' : '',
-        canEdit ? 'rt-roster-player-card--editable' : '',
+        canEdit && !sortable ? 'rt-roster-player-card--editable' : '',
         canRemove && !canEdit ? 'rt-roster-player-card--removable' : '',
+        canDrag ? 'rt-roster-player-card--sortable' : '',
+        isDragging ? 'rt-roster-player-card--dragging' : '',
     ]
         .filter(Boolean)
         .join(' ');
 
     const handleCardActivate = () => {
-        if (canEdit && !busy && onEdit) onEdit();
+        if (cardClickEdit && onEdit) onEdit();
     };
 
     return (
         <article
+            ref={canDrag ? dragRef : undefined}
             className={cardClass}
             style={style}
-            role={canEdit ? 'button' : undefined}
-            tabIndex={canEdit && !busy ? 0 : undefined}
-            onClick={canEdit && !busy ? handleCardActivate : undefined}
+            role={cardClickEdit ? 'button' : undefined}
+            tabIndex={cardClickEdit ? 0 : undefined}
+            onClick={cardClickEdit ? handleCardActivate : undefined}
             onKeyDown={(e) => {
-                if (!canEdit || busy) return;
+                if (!cardClickEdit) return;
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     handleCardActivate();
                 }
             }}
-            aria-label={canEdit ? `Edit ${name}` : position != null ? `${position}. ${name}` : undefined}
+            onContextMenu={canDrag ? (e) => e.preventDefault() : undefined}
+            aria-label={
+                canDrag
+                    ? `Drag to reorder ${name}`
+                    : canEdit
+                      ? `Edit ${name}`
+                      : position != null
+                        ? `${position}. ${name}`
+                        : undefined
+            }
+            {...(canDrag ? dragProps : {})}
         >
             <div className="rt-roster-player-card-inner">
                 {position != null ? (
@@ -219,6 +243,7 @@ export function QueueingSessionPlayerCard({
                                 <button
                                     type="button"
                                     disabled={busy}
+                                    onPointerDown={(e) => e.stopPropagation()}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onEdit?.();
@@ -233,6 +258,7 @@ export function QueueingSessionPlayerCard({
                                 <button
                                     type="button"
                                     disabled={busy}
+                                    onPointerDown={(e) => e.stopPropagation()}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onRemove?.();

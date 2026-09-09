@@ -223,6 +223,27 @@ class QueueingSessionDraftState
         }
     }
 
+    /**
+     * Rewrite lobby FIFO order by assigning the provided ascending timestamps
+     * to player_ids in order (first id = oldest check-in / next auto-match anchor).
+     * Rotation queue_position is left untouched.
+     *
+     * @param  list<int>  $playerIds
+     * @param  list<\Illuminate\Support\Carbon>  $timestamps
+     */
+    public function reorderCheckInPlayers(QueueingSessionDraft $draft, array $playerIds, array $timestamps): void
+    {
+        if (count($playerIds) !== count($timestamps)) {
+            abort(422, 'Check-in order timestamps are invalid.');
+        }
+
+        foreach ($playerIds as $index => $playerId) {
+            $this->updatePlayerInDraft($draft, (int) $playerId, [
+                'checked_in_at' => $timestamps[$index]->toIso8601String(),
+            ]);
+        }
+    }
+
     public function updateMatchInDraft(QueueingSessionDraft $draft, int $matchId, array $changes): void
     {
         foreach ($draft->matches as $i => $match) {

@@ -540,6 +540,31 @@ export async function patchUpdateQueueingSessionPlayer(sessionId, playerRowId, b
 }
 
 /**
+ * Reorder check-in lobby FIFO (first id = oldest / next auto-match anchor).
+ *
+ * @param {number|string} sessionId
+ * @param {number[]} playerIds
+ */
+export async function patchQueueingSessionCheckInOrder(sessionId, playerIds) {
+    const res = await patchJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/players/check-in-order`,
+        { player_ids: playerIds },
+    );
+    if (!res.ok) {
+        let msg = 'Could not reorder check-in players.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
  * @param {number|string} sessionId
  * @param {number|string} playerRowId
  */
