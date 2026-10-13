@@ -122,6 +122,7 @@ export function postCreateGameSession(payload) {
  *   court_preference: string | null,
  *   is_active: boolean,
  *   status: 'queueing' | 'ongoing' | 'finished',
+ *   public_summary_path?: string,
  *   last_match?: GameSessionLastMatch,
  *   started_at: string | null,
  *   ended_at: string | null,

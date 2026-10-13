@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class GameSession extends Model
 {
@@ -123,6 +124,37 @@ class GameSession extends Model
     public function isQueueing(): bool
     {
         return $this->session_context === 'queueing';
+    }
+
+    /**
+     * Public summary URL key: `{id}-{slug}`. Null for sessions that are not queueing.
+     */
+    public function publicSummaryKey(): ?string
+    {
+        if (! $this->isQueueing()) {
+            return null;
+        }
+
+        $slug = Str::slug(trim((string) ($this->queue_name ?? '')));
+        if ($slug === '') {
+            $slug = 'session';
+        }
+
+        return $this->id.'-'.$slug;
+    }
+
+    public static function findFinishedByPublicSummaryKey(string $publicKey): ?self
+    {
+        if (! preg_match('/^(\d+)-([a-z0-9]+(?:-[a-z0-9]+)*)$/', $publicKey, $matches)) {
+            return null;
+        }
+
+        $session = static::query()->find((int) $matches[1]);
+        if (! $session instanceof self || $session->is_active) {
+            return null;
+        }
+
+        return $session->publicSummaryKey() === $publicKey ? $session : null;
     }
 
     public function isDraft(): bool

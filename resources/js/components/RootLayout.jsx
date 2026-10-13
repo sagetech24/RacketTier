@@ -23,7 +23,8 @@ function isV2DashboardShellPath(pathname) {
         pathname === '/queueing-session' ||
         pathname === '/queueing-session/new' ||
         pathname === '/queueing-session/history' ||
-        /^\/queueing-session\/\d+(\/(players|matches))?\/?$/.test(pathname)
+        /^\/queueing-session\/\d+(\/(players|matches))?\/?$/.test(pathname) ||
+        /^\/q\/\d+(?:-[a-z0-9]+)*\/?$/.test(pathname)
     ) {
         return true;
     }

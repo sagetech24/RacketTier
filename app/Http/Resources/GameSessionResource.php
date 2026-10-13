@@ -97,6 +97,10 @@ class GameSessionResource extends JsonResource
             'court_preference' => $this->court_preference,
             'is_active' => $this->is_active,
             'status' => $this->status,
+            'public_summary_path' => $this->when(
+                ! $this->is_active && $this->publicSummaryKey() !== null,
+                fn (): string => '/q/'.$this->publicSummaryKey(),
+            ),
             'last_match' => $this->when(
                 $this->last_winning_team !== null
                     || ($this->last_team1_score !== null && $this->last_team2_score !== null),

@@ -114,6 +114,7 @@ function HistoryCard({
     const paths = queueingSessionNavPaths(row.id);
     const showRemove = canDeleteQueueingSession(row, isAdmin);
     const showDuplicate = Boolean(row.can_manage) && Boolean(onDuplicate);
+    const publicSummaryPath = row.public_summary_path || '';
     const duration = formatDuration(row.started_at, row.ended_at);
     const title =
         row.queue_name?.trim() || `${row.sport?.name ?? 'Sport'} Queue`;
@@ -133,7 +134,7 @@ function HistoryCard({
                             </span>
                         </Link>
                     </h2>
-                    {showDuplicate || (showRemove && onRemove) ? (
+                    {publicSummaryPath || showDuplicate || (showRemove && onRemove) ? (
                         <div className="rt-queue-card-manage">
                             {showDuplicate ? (
                                 <button
@@ -145,6 +146,15 @@ function HistoryCard({
                                 >
                                     <MaterialIcon name="content_copy" className="rt-queue-card-btn__icon" />
                                 </button>
+                            ) : null}
+                            {publicSummaryPath ? (
+                                <Link
+                                    to={publicSummaryPath}
+                                    className={queueSessionCardActionClass('nav', { iconOnly: true })}
+                                    aria-label={`Open public summary for ${title}`}
+                                >
+                                    <MaterialIcon name="link" className="rt-queue-card-btn__icon" />
+                                </Link>
                             ) : null}
                             {showRemove && onRemove ? (
                                 <button

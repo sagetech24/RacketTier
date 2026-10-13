@@ -1486,6 +1486,14 @@
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
 
+button.rt-qs-session-nav__tab {
+    font-family: inherit;
+}
+
+button.rt-qs-session-nav__tab:not(.rt-qs-session-nav__tab--active) {
+    background-color: transparent;
+}
+
 .rt-qs-session-nav__tab {
     display: inline-flex;
     flex: 1 1 0;

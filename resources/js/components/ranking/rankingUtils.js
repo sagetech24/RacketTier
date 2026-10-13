@@ -32,7 +32,7 @@ export function formatRatingChange(change) {
 
 /** @param {string} name */
 export function playerInitials(name) {
-    const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+    const parts = name?.trim().split(/\s+/).filter((part) => part && !/^\*+$/.test(part)) ?? [];
     if (parts.length === 0) return '?';
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();

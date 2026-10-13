@@ -20,6 +20,7 @@ use App\Http\Controllers\GameSessionIndexController;
 use App\Http\Controllers\GameSessionShowController;
 use App\Http\Controllers\GameSessionStartMatchController;
 use App\Http\Controllers\GameSessionStoreController;
+use App\Http\Controllers\PublicQueueingSessionSummaryController;
 use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\QueueingGameSessionDestroyController;
 use App\Http\Controllers\QueueingGameSessionDuplicateController;
@@ -62,6 +63,14 @@ Route::view('/v2', 'app')->name('home.v2');
 Route::view('/v3', 'app')->name('home.v3');
 
 Route::get('/public/stats', [PublicStatsController::class, 'show'])->name('public.stats');
+
+Route::get('/public/queueing-sessions/{publicKey}', [PublicQueueingSessionSummaryController::class, 'show'])
+    ->where('publicKey', '[0-9]+(?:-[a-z0-9]+)*')
+    ->name('public.queueing-sessions.summary');
+
+Route::view('/q/{publicKey}', 'app')
+    ->where('publicKey', '[0-9]+(?:-[a-z0-9]+)*')
+    ->name('public.queueing-sessions.page');
 
 Route::get('/auth/user', function (Request $request) {
     $user = auth()->user();

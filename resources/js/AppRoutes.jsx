@@ -28,6 +28,7 @@ const QueueingSessionHistoryPage = lazy(() => import('./pages/QueueingSessionHis
 const QueueingSessionListPage = lazy(() => import('./pages/QueueingSessionListPage.jsx').then((m) => ({ default: m.QueueingSessionListPage })));
 const QueueingSessionMatchesPage = lazy(() => import('./pages/QueueingSessionMatchesPage.jsx').then((m) => ({ default: m.QueueingSessionMatchesPage })));
 const QueueingSessionPlayersPage = lazy(() => import('./pages/QueueingSessionPlayersPage.jsx').then((m) => ({ default: m.QueueingSessionPlayersPage })));
+const PublicQueueingSessionSummaryPage = lazy(() => import('./pages/PublicQueueingSessionSummaryPage.jsx').then((m) => ({ default: m.PublicQueueingSessionSummaryPage })));
 
 function LazyPage({ children }) {
     return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
@@ -45,6 +46,7 @@ export function AppRoutes() {
                 <Route path="register" element={<LazyPage><RegisterPage /></LazyPage>} />
                 <Route path="forgot-password" element={<LazyPage><ForgotPasswordPage /></LazyPage>} />
                 <Route path="password/reset/:token" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
+                <Route path="q/:publicKey" element={<LazyPage><PublicQueueingSessionSummaryPage /></LazyPage>} />
                 <Route
                     path="verify-email"
                     element={

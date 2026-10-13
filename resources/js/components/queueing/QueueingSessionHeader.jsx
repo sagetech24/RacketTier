@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SportIcon } from '../dashboard/SportIcon.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { queueSessionCardActionClass } from '../../lib/queueingSessionNav.js';
@@ -19,6 +19,8 @@ export function QueueingSessionHeader({
     tabSuffix = '',
 }) {
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
+    const [linkCopyError, setLinkCopyError] = useState('');
     const canEditQueue = Boolean(session.can_manage) && Boolean(session.is_active);
     const checkInWaitingCount = Array.isArray(session.players)
         ? session.players.filter((p) => {
@@ -27,6 +29,25 @@ export function QueueingSessionHeader({
               return ((p.wins_count ?? 0) + (p.losses_count ?? 0)) === 0;
           }).length
         : 0;
+
+    useEffect(() => {
+        if (!linkCopied) return undefined;
+        const timeoutId = window.setTimeout(() => setLinkCopied(false), 2000);
+        return () => window.clearTimeout(timeoutId);
+    }, [linkCopied]);
+
+    async function copyPublicSummaryLink() {
+        const path = session.public_summary_path;
+        if (!path) return;
+        setLinkCopyError('');
+        try {
+            await navigator.clipboard.writeText(`${window.location.origin}${path}`);
+            setLinkCopied(true);
+        } catch {
+            setLinkCopied(false);
+            setLinkCopyError('Could not copy the link.');
+        }
+    }
 
     return (
         <article className={className}>
@@ -55,6 +76,17 @@ export function QueueingSessionHeader({
                                 Finished
                             </span>
                         )}
+                        {session.public_summary_path ? (
+                            <button
+                                type="button"
+                                onClick={copyPublicSummaryLink}
+                                className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm font-bold text-[#e4e1e6] transition hover:border-white/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2c1ff]/60"
+                                aria-label={linkCopied ? 'Summary link copied' : 'Copy summary link'}
+                            >
+                                <MaterialIcon name={linkCopied ? 'check' : 'link'} className="text-[16px]!" />
+                                <span>{linkCopied ? 'Copied' : 'Copy link'}</span>
+                            </button>
+                        ) : null}
                         {canEditQueue ? (
                             <button
                                 type="button"
@@ -70,6 +102,14 @@ export function QueueingSessionHeader({
                     </div>
                 </div>
             </div>
+            {linkCopyError ? (
+                <p className="mb-4 text-sm text-red-200" role="alert">
+                    {linkCopyError}
+                </p>
+            ) : null}
+            <span className="sr-only" aria-live="polite">
+                {linkCopied ? 'Summary link copied.' : ''}
+            </span>
             <div className="mt-4 mb-10 flex flex-col gap-2 md:gap-4 lg:gap-6 md:flex-row">
                 <div className="min-w-0 flex-1 space-y-1">
                     <p className="text-sm text-[#c8c5d2]/90 capitalize">
