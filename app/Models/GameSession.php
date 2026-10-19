@@ -23,6 +23,7 @@ class GameSession extends Model
         'win_points',
         'loss_points',
         'skip_scores',
+        'zero_loss_points',
         'optional_guest_skill',
         'optional_guest_gender',
         'auto_match_criteria',
@@ -51,6 +52,7 @@ class GameSession extends Model
         return [
             'is_active' => 'boolean',
             'skip_scores' => 'boolean',
+            'zero_loss_points' => 'boolean',
             'optional_guest_skill' => 'boolean',
             'optional_guest_gender' => 'boolean',
             'auto_match_criteria' => 'array',

@@ -38,6 +38,7 @@ class UpdateQueueingGameSessionRequest extends FormRequest
             'queue_name' => ['required', 'filled', 'string', 'max:120'],
             'match_type' => ['sometimes', 'string', 'in:singles,doubles'],
             'skip_scores' => ['sometimes', 'boolean'],
+            'zero_loss_points' => ['sometimes', 'boolean'],
             'optional_guest_skill' => ['sometimes', 'boolean'],
             'optional_guest_gender' => ['sometimes', 'boolean'],
             ...$this->autoMatchCriteriaRules(),

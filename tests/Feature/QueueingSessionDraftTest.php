@@ -347,8 +347,11 @@ class QueueingSessionDraftTest extends TestCase
         $after = collect(
             $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
         );
-        $this->assertNull($after->firstWhere('id', $player['id']));
-        $this->assertNull($after->firstWhere('user.id', $member->id));
+        $removed = $after->firstWhere('id', $player['id']);
+        $this->assertNotNull($removed);
+        $this->assertTrue((bool) $removed['is_removed']);
+        $this->assertFalse((bool) $removed['is_waiting']);
+        $this->assertFalse((bool) $removed['in_lobby']);
     }
 
     public function test_queue_master_can_reorder_check_in_waiters_and_auto_match_follows(): void
@@ -552,14 +555,17 @@ class QueueingSessionDraftTest extends TestCase
         $this->assertSame(8, (int) $removedRow['session_points']);
         $this->assertFalse((bool) $removedRow['is_waiting']);
 
-        // Bench player with no matches is hard-deleted.
+        // Bench player with no matches is soft-removed (restorable) but omitted from end summary.
         $this->actingAs($host)
             ->deleteJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$benchPlayerId)
             ->assertOk();
         $afterBench = collect(
             $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
         );
-        $this->assertNull($afterBench->firstWhere('id', $benchPlayerId));
+        $benchRemoved = $afterBench->firstWhere('id', $benchPlayerId);
+        $this->assertNotNull($benchRemoved);
+        $this->assertTrue((bool) $benchRemoved['is_removed']);
+        $this->assertFalse((bool) $benchRemoved['is_waiting']);
 
         $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/end')->assertOk();
 
@@ -588,5 +594,138 @@ class QueueingSessionDraftTest extends TestCase
             ->first();
         $this->assertNotNull($opponentWallet);
         $this->assertSame(8, (int) $opponentWallet->balance);
+    }
+
+    public function test_never_played_removed_player_can_be_restored_to_check_in(): void
+    {
+        $host = User::factory()->create();
+        $bench = User::factory()->create();
+
+        $create = $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Restore Check-in',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+        ])->assertCreated();
+
+        $sessionId = (int) $create->json('data.id');
+
+        foreach ([$host, $bench] as $user) {
+            $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+                'user_id' => $user->id,
+                'skill_level' => 3,
+            ])->assertOk();
+        }
+
+        $players = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        );
+        $benchPlayerId = (int) $players->firstWhere('user.id', $bench->id)['id'];
+
+        $this->actingAs($host)
+            ->deleteJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$benchPlayerId)
+            ->assertOk();
+
+        $removed = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        )->firstWhere('id', $benchPlayerId);
+        $this->assertTrue((bool) $removed['is_removed']);
+
+        $this->actingAs($host)
+            ->postJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$benchPlayerId.'/restore')
+            ->assertOk();
+
+        $restored = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        )->firstWhere('id', $benchPlayerId);
+        $this->assertFalse((bool) $restored['is_removed']);
+        $this->assertTrue((bool) $restored['is_waiting']);
+        $this->assertFalse((bool) $restored['is_playing']);
+        $this->assertSame(0, (int) $restored['queue_position']);
+        $this->assertTrue((bool) $restored['in_lobby']);
+    }
+
+    public function test_played_removed_player_restores_to_rotation_end(): void
+    {
+        $host = User::factory()->create();
+        $opponent = User::factory()->create();
+        $extra = User::factory()->create();
+
+        $create = $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Restore Rotation',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+        ])->assertCreated();
+
+        $sessionId = (int) $create->json('data.id');
+
+        foreach ([$host, $opponent, $extra] as $user) {
+            $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+                'user_id' => $user->id,
+                'skill_level' => 3,
+            ])->assertOk();
+        }
+
+        $players = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        );
+        $hostPlayerId = (int) $players->firstWhere('user.id', $host->id)['id'];
+        $opponentPlayerId = (int) $players->firstWhere('user.id', $opponent->id)['id'];
+        $extraPlayerId = (int) $players->firstWhere('user.id', $extra->id)['id'];
+
+        $matchCreate = $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches', [
+            'lineup' => [
+                ['id' => $hostPlayerId, 'team' => 1],
+                ['id' => $opponentPlayerId, 'team' => 2],
+            ],
+        ])->assertCreated();
+        $matchId = (int) $matchCreate->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches/'.$matchId.'/start')
+            ->assertOk();
+        $this->actingAs($host)->postJson('/auth/game-sessions/'.$sessionId.'/finish-match', [
+            'team1_score' => 21,
+            'team2_score' => 10,
+            'queueing_session_match_id' => $matchId,
+        ])->assertOk();
+
+        // Second match so host stays in rotation ahead of a restored opponent.
+        $match2 = $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches', [
+            'lineup' => [
+                ['id' => $hostPlayerId, 'team' => 1],
+                ['id' => $extraPlayerId, 'team' => 2],
+            ],
+        ])->assertCreated();
+        $match2Id = (int) $match2->json('data.id');
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches/'.$match2Id.'/start')
+            ->assertOk();
+        $this->actingAs($host)->postJson('/auth/game-sessions/'.$sessionId.'/finish-match', [
+            'team1_score' => 21,
+            'team2_score' => 15,
+            'queueing_session_match_id' => $match2Id,
+        ])->assertOk();
+
+        $this->actingAs($host)
+            ->deleteJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$opponentPlayerId)
+            ->assertOk();
+
+        $this->actingAs($host)
+            ->postJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$opponentPlayerId.'/restore')
+            ->assertOk();
+
+        $after = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        );
+        $restored = $after->firstWhere('id', $opponentPlayerId);
+        $this->assertFalse((bool) $restored['is_removed']);
+        $this->assertTrue((bool) $restored['is_waiting']);
+        $this->assertFalse((bool) $restored['in_lobby']);
+
+        $rotationMax = $after
+            ->filter(fn (array $p): bool => ! ($p['is_removed'] ?? false)
+                && (bool) ($p['is_waiting'] ?? false)
+                && ! (bool) ($p['is_playing'] ?? false)
+                && ! (bool) ($p['in_lobby'] ?? false))
+            ->max('queue_position');
+        $this->assertSame((int) $rotationMax, (int) $restored['queue_position']);
     }
 }

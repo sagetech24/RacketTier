@@ -64,6 +64,7 @@ class DuplicateQueueingGameSession
                 $sportSlug,
                 (string) $source->match_type,
                 (bool) ($source->skip_scores ?? false),
+                (bool) ($source->zero_loss_points ?? false),
                 (bool) ($source->optional_guest_skill ?? true),
                 (bool) ($source->optional_guest_gender ?? true),
                 $source->resolveAutoMatchCriteria(),

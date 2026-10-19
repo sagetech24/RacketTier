@@ -555,6 +555,93 @@ class QueueingSessionMatchTest extends TestCase
         $response->assertUnprocessable();
     }
 
+    public function test_zero_loss_points_awards_winners_only(): void
+    {
+        $host = User::factory()->create();
+        $opponent = User::factory()->create();
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        $session = GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Zero Loss Queue',
+            'match_type' => 'singles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => null,
+            'loss_points' => null,
+            'zero_loss_points' => true,
+            'persistence_state' => 'persisted',
+            'started_at' => now(),
+        ]);
+
+        $hostPlayer = GameSessionPlayer::query()->create([
+            'game_session_id' => $session->id,
+            'user_id' => $host->id,
+            'queue_position' => 1,
+            'is_waiting' => true,
+            'is_playing' => false,
+        ]);
+
+        $opponentPlayer = GameSessionPlayer::query()->create([
+            'game_session_id' => $session->id,
+            'user_id' => $opponent->id,
+            'queue_position' => 2,
+            'is_waiting' => true,
+            'is_playing' => false,
+        ]);
+
+        $create = $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches',
+            [
+                'lineup' => [
+                    ['id' => $hostPlayer->id, 'team' => 1],
+                    ['id' => $opponentPlayer->id, 'team' => 2],
+                ],
+            ],
+        )->assertCreated();
+
+        $matchId = (int) $create->json('data.id');
+
+        $this->actingAs($host)->postJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/'.$matchId.'/start',
+        )->assertOk();
+
+        $this->actingAs($host)->postJson('/auth/game-sessions/'.$session->id.'/finish-match', [
+            'team1_score' => 21,
+            'team2_score' => 15,
+            'queueing_session_match_id' => $matchId,
+        ])->assertOk();
+
+        $hostPlayer->refresh();
+        $opponentPlayer->refresh();
+
+        $this->assertSame(31, (int) $hostPlayer->session_points);
+        $this->assertSame(0, (int) $opponentPlayer->session_points);
+
+        $hostWallet = MemberPointWallet::query()
+            ->where('user_id', $host->id)
+            ->where('sport_id', $sport->id)
+            ->first();
+        $this->assertNotNull($hostWallet);
+        $this->assertSame(31, (int) $hostWallet->balance);
+
+        $this->assertSame(
+            0,
+            MemberPointWallet::query()->where('user_id', $opponent->id)->where('sport_id', $sport->id)->count(),
+        );
+
+        $match = QueueingSessionMatch::query()->findOrFail($matchId);
+        $breakdown = is_array($match->result_breakdown) ? $match->result_breakdown : [];
+        $players = collect($breakdown['players'] ?? []);
+        $loserRow = $players->firstWhere('user_id', $opponent->id);
+        $this->assertNotNull($loserRow);
+        $this->assertSame(0, (int) ($loserRow['session_points_earned'] ?? -1));
+    }
+
     public function test_guest_earns_session_points_on_finish_without_wallet_or_elo(): void
     {
         $host = User::factory()->create();

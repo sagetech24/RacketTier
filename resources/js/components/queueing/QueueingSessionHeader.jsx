@@ -119,7 +119,10 @@ export function QueueingSessionHeader({
                         <span className="font-bold">Queue Master:</span> {session.created_by?.name ?? 'Unknown'}
                     </p>
                     <p className="text-sm text-[#c8c5d2]/90">
-                        <span className="font-bold">Points:</span> {matchPointFormulaLabel()}
+                        <span className="font-bold">Points:</span>{' '}
+                        {matchPointFormulaLabel({
+                            zeroLossPoints: Boolean(session.zero_loss_points),
+                        })}
                     </p>
                     {/* <p className="text-sm text-[#c8c5d2]/90">
                         <span className="font-bold">ELO &amp; rank:</span> members vs members only

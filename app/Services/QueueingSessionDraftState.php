@@ -125,34 +125,27 @@ class QueueingSessionDraftState
     }
 
     /**
-     * Drop players with no match history; soft-remove players who already played
-     * so their session stats remain available for the end-of-session leaderboard.
+     * Soft-remove a player from the active roster so they can be restored.
+     * Session stats remain available for the end-of-session leaderboard when
+     * the player already played.
      */
     public function removePlayer(QueueingSessionDraft $draft, int $playerId): void
     {
-        $kept = [];
-
-        foreach ($draft->players as $player) {
+        foreach ($draft->players as $i => $player) {
             if ((int) ($player['id'] ?? 0) !== $playerId) {
-                $kept[] = $player;
-
                 continue;
             }
 
-            $played = ((int) ($player['wins_count'] ?? 0) + (int) ($player['losses_count'] ?? 0)) > 0
-                || (int) ($player['session_points'] ?? 0) > 0;
-
-            if ($played) {
-                $player['is_removed'] = true;
-                $player['is_waiting'] = false;
-                $player['is_playing'] = false;
-                $player['team'] = null;
-                $player['queue_position'] = 0;
-                $kept[] = $player;
-            }
+            $draft->players[$i] = array_merge($player, [
+                'is_removed' => true,
+                'is_waiting' => false,
+                'is_playing' => false,
+                'team' => null,
+                'queue_position' => 0,
+            ]);
+            break;
         }
 
-        $draft->players = array_values($kept);
         $this->dropQueuedMatchesContainingPlayer($draft, $playerId);
         $this->recompactQueuePositions($draft);
     }

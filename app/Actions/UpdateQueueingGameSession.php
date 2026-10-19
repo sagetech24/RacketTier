@@ -14,6 +14,7 @@ class UpdateQueueingGameSession
         GameSession $session,
         string $queueName,
         bool $skipScores,
+        bool $zeroLossPoints = false,
         bool $optionalGuestSkill = true,
         bool $optionalGuestGender = true,
         ?AutoMatchCriteria $autoMatchCriteria = null,
@@ -35,10 +36,11 @@ class UpdateQueueingGameSession
             abort(422, 'Game type can only be changed before the first match is created.');
         }
 
-        return DB::transaction(function () use ($session, $queueName, $skipScores, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria, $matchType): GameSession {
+        return DB::transaction(function () use ($session, $queueName, $skipScores, $zeroLossPoints, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria, $matchType): GameSession {
             $updates = [
                 'queue_name' => $queueName,
                 'skip_scores' => $skipScores,
+                'zero_loss_points' => $zeroLossPoints,
                 'optional_guest_skill' => $optionalGuestSkill,
                 'optional_guest_gender' => $optionalGuestGender,
             ];

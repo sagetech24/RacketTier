@@ -5,6 +5,7 @@ import { deleteJson, patchJson, postJson } from '../lib/http.js';
  *   queue_name: string,
  *   match_type?: 'singles' | 'doubles',
  *   skip_scores?: boolean,
+ *   zero_loss_points?: boolean,
  *   optional_guest_skill?: boolean,
  *   optional_guest_gender?: boolean,
  *   skill_level?: boolean,
@@ -65,6 +66,7 @@ export async function deleteQueueingSession(sessionId) {
  *   sport_slug: string,
  *   match_type: 'singles' | 'doubles',
  *   skip_scores?: boolean,
+ *   zero_loss_points?: boolean,
  *   optional_guest_skill?: boolean,
  *   optional_guest_gender?: boolean,
  *   skill_level?: boolean,
@@ -574,6 +576,29 @@ export async function deleteQueueingSessionPlayer(sessionId, playerRowId) {
     );
     if (!res.ok) {
         let msg = 'Could not remove player.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
+ * @param {number|string} sessionId
+ * @param {number|string} playerRowId
+ */
+export async function postRestoreQueueingSessionPlayer(sessionId, playerRowId) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/players/${encodeURIComponent(String(playerRowId))}/restore`,
+        {},
+    );
+    if (!res.ok) {
+        let msg = 'Could not restore player.';
         try {
             const j = await res.json();
             if (typeof j.message === 'string') msg = j.message;

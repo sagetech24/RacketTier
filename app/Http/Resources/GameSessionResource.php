@@ -62,8 +62,16 @@ class GameSessionResource extends JsonResource
             'queue_name' => $this->queue_name,
             'win_points' => $this->win_points !== null ? (int) $this->win_points : null,
             'loss_points' => $this->loss_points !== null ? (int) $this->loss_points : null,
-            'point_rules' => MatchPointFormula::rules(),
+            'point_rules' => array_merge(
+                MatchPointFormula::rules(),
+                [
+                    'loss' => (bool) ($this->zero_loss_points ?? false)
+                        ? 0
+                        : MatchPointFormula::LOSS,
+                ],
+            ),
             'skip_scores' => (bool) ($this->skip_scores ?? false),
+            'zero_loss_points' => (bool) ($this->zero_loss_points ?? false),
             'optional_guest_skill' => (bool) ($this->optional_guest_skill ?? true),
             'optional_guest_gender' => (bool) ($this->optional_guest_gender ?? true),
             'auto_match_criteria' => $this->when(

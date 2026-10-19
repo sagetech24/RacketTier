@@ -2269,6 +2269,14 @@ button.rt-qs-session-nav__tab:not(.rt-qs-session-nav__tab--active) {
     background: linear-gradient(to bottom, #4ce081, rgb(76 224 129 / 0.35));
 }
 
+.rt-roster-player-card--removed {
+    opacity: 0.72;
+}
+
+.rt-roster-player-card--removed::before {
+    background: linear-gradient(to bottom, #918f9c, rgb(145 143 156 / 0.35));
+}
+
 .rt-roster-player-card--you {
     border-color: rgb(194 193 255 / 0.28);
     background: linear-gradient(135deg, rgb(194 193 255 / 0.1), rgb(194 193 255 / 0.03));
@@ -2396,6 +2404,16 @@ button.rt-qs-session-nav__tab:not(.rt-qs-session-nav__tab--active) {
     background-color: #918f9c;
 }
 
+.rt-roster-status--removed {
+    border-color: rgb(248 113 113 / 0.3);
+    background-color: rgb(248 113 113 / 0.1);
+    color: #fca5a5;
+}
+
+.rt-roster-status--removed .rt-roster-status-dot {
+    background-color: #fca5a5;
+}
+
 .rt-roster-player-points {
     display: flex;
     flex-direction: column;
@@ -2440,6 +2458,10 @@ button.rt-qs-session-nav__tab:not(.rt-qs-session-nav__tab--active) {
 
 .rt-roster-player-action--remove {
     color: rgb(252 165 165 / 0.9);
+}
+
+.rt-roster-player-action--restore {
+    color: rgb(76 224 129 / 0.95);
 }
 
 .rt-roster-player-action:hover:not(:disabled) {

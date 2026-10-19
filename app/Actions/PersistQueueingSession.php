@@ -104,8 +104,9 @@ class PersistQueueingSession
     }
 
     /**
-     * Active + soft-removed draft players, plus anyone who only exists on finished
-     * match snapshots (hard-removed mid-session before soft-remove existed).
+     * Active + soft-removed draft players who have session history, plus anyone
+     * who only exists on finished match snapshots (hard-removed mid-session
+     * before soft-remove existed). Never-played soft-removed players are omitted.
      *
      * @return list<array<string, mixed>>
      */
@@ -114,9 +115,18 @@ class PersistQueueingSession
         $byId = [];
         foreach ($draft->players as $row) {
             $pid = (int) ($row['id'] ?? 0);
-            if ($pid > 0) {
-                $byId[$pid] = $row;
+            if ($pid <= 0) {
+                continue;
             }
+
+            $removed = (bool) ($row['is_removed'] ?? false);
+            $played = ((int) ($row['wins_count'] ?? 0) + (int) ($row['losses_count'] ?? 0)) > 0
+                || (int) ($row['session_points'] ?? 0) > 0;
+            if ($removed && ! $played) {
+                continue;
+            }
+
+            $byId[$pid] = $row;
         }
 
         foreach ($draft->matches as $match) {

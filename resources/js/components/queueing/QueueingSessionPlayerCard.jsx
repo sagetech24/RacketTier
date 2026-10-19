@@ -40,6 +40,9 @@ export function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
     if (!sessionActive) {
         return null;
     }
+    if (p.is_removed) {
+        return { key: 'removed', label: 'Removed', className: 'rt-roster-status--removed' };
+    }
     if (p.is_playing) {
         return { key: 'playing', label: 'Playing', className: 'rt-roster-status--playing' };
     }
@@ -62,13 +65,22 @@ export function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
  * @param {boolean} canManage
  */
 export function playerCanBeRemovedFromRoster(p, reservedPlayerIds, sessionActive, canManage) {
-    if (!canManage || !sessionActive || p.is_playing) {
+    if (!canManage || !sessionActive || p.is_playing || p.is_removed) {
         return false;
     }
     if (p.is_guest) {
         return true;
     }
     return playerRosterStatus(p, reservedPlayerIds, sessionActive)?.key === 'check_in';
+}
+
+/**
+ * @param {NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number]} p
+ * @param {boolean} sessionActive
+ * @param {boolean} canManage
+ */
+export function playerCanBeRestoredToRoster(p, sessionActive, canManage) {
+    return Boolean(canManage && sessionActive && p.is_removed);
 }
 
 /** @param {{ status: { key: string, label: string, className: string } | null }} props */
@@ -91,6 +103,7 @@ function PlayerStatusBadge({ status }) {
  *   isYou?: boolean;
  *   canEdit?: boolean;
  *   canRemove?: boolean;
+ *   canRestore?: boolean;
  *   busy?: boolean;
  *   showSkillLevel?: boolean;
  *   sortable?: boolean;
@@ -100,6 +113,7 @@ function PlayerStatusBadge({ status }) {
  *   style?: import('react').CSSProperties;
  *   onEdit?: () => void;
  *   onRemove?: () => void;
+ *   onRestore?: () => void;
  * }} props
  */
 export function QueueingSessionPlayerCard({
@@ -110,6 +124,7 @@ export function QueueingSessionPlayerCard({
     isYou = false,
     canEdit = false,
     canRemove = false,
+    canRestore = false,
     busy = false,
     showSkillLevel = true,
     sortable = false,
@@ -119,13 +134,14 @@ export function QueueingSessionPlayerCard({
     style,
     onEdit,
     onRemove,
+    onRestore,
 }) {
     const name = rosterPlayerName(p);
     const wins = p.wins_count ?? 0;
     const losses = p.losses_count ?? 0;
     const points = p.session_points ?? 0;
     const isPlaying = Boolean(sessionActive && p.is_playing);
-    const showActions = canEdit || canRemove;
+    const showActions = canEdit || canRemove || canRestore;
     const canDrag = sortable && Object.keys(dragProps).length > 0;
     // Avoid card click-to-edit fighting drag; use the pencil while sortable.
     const cardClickEdit = canEdit && !sortable && !busy;
@@ -135,6 +151,7 @@ export function QueueingSessionPlayerCard({
         isPlaying ? 'rt-roster-player-card--playing' : '',
         status?.key === 'queueing' ? 'rt-roster-player-card--queueing' : '',
         status?.key === 'check_in' ? 'rt-roster-player-card--check-in' : '',
+        status?.key === 'removed' ? 'rt-roster-player-card--removed' : '',
         isYou ? 'rt-roster-player-card--you' : '',
         canEdit && !sortable ? 'rt-roster-player-card--editable' : '',
         canRemove && !canEdit ? 'rt-roster-player-card--removable' : '',
@@ -212,6 +229,9 @@ export function QueueingSessionPlayerCard({
                                     {showSkillLevel ? (
                                         <PlayerSkillLevelBadge skillLevel={p.skill_level} />
                                     ) : null}
+                                    {status?.key === 'removed' ? (
+                                        <PlayerStatusBadge status={status} />
+                                    ) : null}
                                 </div>
                             </div>
                         </div>
@@ -267,6 +287,22 @@ export function QueueingSessionPlayerCard({
                                     aria-label={`Remove ${name}`}
                                 >
                                     <MaterialIcon name="person_remove" className="text-[17px]!" />
+                                </button>
+                            ) : null}
+                            {canRestore ? (
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRestore?.();
+                                    }}
+                                    className="rt-roster-player-action rt-roster-player-action--restore"
+                                    aria-label={`Restore ${name}`}
+                                    title="Restore to roster"
+                                >
+                                    <MaterialIcon name="person_add" className="text-[17px]!" />
                                 </button>
                             ) : null}
                         </div>

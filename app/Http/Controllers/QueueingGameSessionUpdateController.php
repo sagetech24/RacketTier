@@ -27,6 +27,9 @@ class QueueingGameSessionUpdateController extends Controller
             $request->has('skip_scores')
                 ? (bool) $request->boolean('skip_scores')
                 : (bool) ($gameSession->skip_scores ?? false),
+            $request->has('zero_loss_points')
+                ? (bool) $request->boolean('zero_loss_points')
+                : (bool) ($gameSession->zero_loss_points ?? false),
             $request->has('optional_guest_skill')
                 ? (bool) $request->boolean('optional_guest_skill')
                 : (bool) ($gameSession->optional_guest_skill ?? true),

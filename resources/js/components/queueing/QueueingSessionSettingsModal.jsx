@@ -12,6 +12,7 @@ import {
 } from './QueueingSessionAutoMatchCriteriaField.jsx';
 import { QueueingSessionMatchTypeField } from './QueueingSessionMatchTypeField.jsx';
 import { QueueingSessionSkipScoresField } from './QueueingSessionSkipScoresField.jsx';
+import { QueueingSessionZeroLossPointsField } from './QueueingSessionZeroLossPointsField.jsx';
 import { matchPointFormulaLabel } from '../../lib/matchPointFormula.js';
 
 /**
@@ -27,6 +28,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
     const [queueName, setQueueName] = useState('');
     const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
     const [skipScores, setSkipScores] = useState(false);
+    const [zeroLossPoints, setZeroLossPoints] = useState(false);
     const [optionalGuestSkill, setOptionalGuestSkill] = useState(true);
     const [optionalGuestGender, setOptionalGuestGender] = useState(true);
     const [autoMatchCriteria, setAutoMatchCriteria] = useState(
@@ -41,6 +43,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
         setQueueName(session.queue_name?.trim() ?? '');
         setMatchType(session.match_type === 'doubles' ? 'doubles' : 'singles');
         setSkipScores(Boolean(session.skip_scores));
+        setZeroLossPoints(Boolean(session.zero_loss_points));
         setOptionalGuestSkill(session.optional_guest_skill !== false);
         setOptionalGuestGender(session.optional_guest_gender !== false);
         setAutoMatchCriteria(parseAutoMatchCriteria(session.auto_match_criteria));
@@ -70,6 +73,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
             const updated = await patchUpdateQueueingSession(session.id, {
                 queue_name: name,
                 skip_scores: skipScores,
+                zero_loss_points: zeroLossPoints,
                 optional_guest_skill: optionalGuestSkill,
                 optional_guest_gender: optionalGuestGender,
                 ...(canEditMatchType ? { match_type: matchType } : {}),
@@ -135,11 +139,18 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
                                 />
                             ) : null}
                             <p className="text-sm text-[#c8c5d2]/80">
-                                <span className="font-bold text-[#e4e1e6]">Points:</span> {matchPointFormulaLabel()}. Ratings and ranks update only when both sides have registered members.
+                                <span className="font-bold text-[#e4e1e6]">Points:</span>{' '}
+                                {matchPointFormulaLabel({ zeroLossPoints })}. Ratings and ranks update
+                                only when both sides have registered members.
                             </p>
                             <QueueingSessionSkipScoresField
                                 checked={skipScores}
                                 onChange={setSkipScores}
+                                disabled={submitting}
+                            />
+                            <QueueingSessionZeroLossPointsField
+                                checked={zeroLossPoints}
+                                onChange={setZeroLossPoints}
                                 disabled={submitting}
                             />
                             <QueueingSessionGuestOptionalFields

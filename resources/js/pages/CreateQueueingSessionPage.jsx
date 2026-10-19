@@ -8,6 +8,7 @@ import { DashboardMobileNav } from '../components/dashboard/DashboardMobileNav.j
 import { SportCard } from '../components/dashboard/SportCard.jsx';
 import { DashboardV2Header } from '../components/dashboard/DashboardV2Header.jsx';
 import { QueueingSessionSkipScoresField } from '../components/queueing/QueueingSessionSkipScoresField.jsx';
+import { QueueingSessionZeroLossPointsField } from '../components/queueing/QueueingSessionZeroLossPointsField.jsx';
 import { QueueingSessionGuestOptionalFields } from '../components/queueing/QueueingSessionGuestOptionalFields.jsx';
 import {
     DEFAULT_AUTO_MATCH_CRITERIA,
@@ -30,6 +31,7 @@ export function CreateQueueingSessionPage() {
     const [sportSlug, setSportSlug] = useState('');
     const [matchType, setMatchType] = useState(/** @type {'singles' | 'doubles'} */ ('singles'));
     const [skipScores, setSkipScores] = useState(true);
+    const [zeroLossPoints, setZeroLossPoints] = useState(false);
     const [optionalGuestSkill, setOptionalGuestSkill] = useState(true);
     const [optionalGuestGender, setOptionalGuestGender] = useState(true);
     const [autoMatchCriteria, setAutoMatchCriteria] = useState(DEFAULT_AUTO_MATCH_CRITERIA);
@@ -81,6 +83,7 @@ export function CreateQueueingSessionPage() {
                 sport_slug: sportSlug,
                 match_type: matchType,
                 skip_scores: skipScores,
+                zero_loss_points: zeroLossPoints,
                 optional_guest_skill: optionalGuestSkill,
                 optional_guest_gender: optionalGuestGender,
                 ...normalizedCriteria,
@@ -186,9 +189,16 @@ export function CreateQueueingSessionPage() {
                                     </div>
                                 </div>
                                 <p className="text-sm text-[#c8c5d2]/80">
-                                    <span className="font-bold text-[#e4e1e6]">Points:</span> {matchPointFormulaLabel()}. ratings and ranks update only when both sides have registered members.
+                                    <span className="font-bold text-[#e4e1e6]">Points:</span>{' '}
+                                    {matchPointFormulaLabel({ zeroLossPoints })}. ratings and ranks update
+                                    only when both sides have registered members.
                                 </p>
                                 <QueueingSessionSkipScoresField checked={skipScores} onChange={setSkipScores} disabled={submitting} />
+                                <QueueingSessionZeroLossPointsField
+                                    checked={zeroLossPoints}
+                                    onChange={setZeroLossPoints}
+                                    disabled={submitting}
+                                />
                                 <QueueingSessionGuestOptionalFields
                                     optionalGuestSkill={optionalGuestSkill}
                                     optionalGuestGender={optionalGuestGender}

@@ -5,6 +5,7 @@ import {
     deleteQueueingSessionPlayer,
     patchQueueingSessionCheckInOrder,
     patchUpdateQueueingSessionPlayer,
+    postRestoreQueueingSessionPlayer,
 } from '../api/queueingSession.js';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
@@ -15,6 +16,7 @@ import { DraggableCheckInRoster } from '../components/queueing/DraggableCheckInR
 import {
     QueueingSessionPlayerCard,
     playerCanBeRemovedFromRoster,
+    playerCanBeRestoredToRoster,
     playerIsInLobby,
     playerRosterStatus,
     rosterPlayerName,
@@ -50,6 +52,7 @@ const STATUS_FILTERS = [
     { value: 'playing', label: 'Playing' },
     { value: 'queueing', label: 'Queueing' },
     { value: 'waiting', label: 'Waiting' },
+    { value: 'removed', label: 'Removed' },
 ];
 
 /** @param {unknown} lineup */
@@ -149,13 +152,21 @@ export function QueueingSessionPlayersPage() {
         [session?.players],
     );
 
+    const removedPlayers = useMemo(
+        () => (session?.players ?? []).filter((p) => Boolean(p.is_removed)),
+        [session?.players],
+    );
+
     const filteredRosterPlayers = useMemo(() => {
         const query = playerSearch.trim().toLowerCase();
+        const source = statusFilter === 'removed' ? removedPlayers : rosterPlayers;
 
-        return rosterPlayers.filter((p) => {
-            const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
-            if (statusFilter !== 'all' && status?.key !== statusFilter) {
-                return false;
+        return source.filter((p) => {
+            if (statusFilter !== 'all' && statusFilter !== 'removed') {
+                const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
+                if (status?.key !== statusFilter) {
+                    return false;
+                }
             }
             if (!query) return true;
             const haystack = [
@@ -167,7 +178,14 @@ export function QueueingSessionPlayersPage() {
                 .toLowerCase();
             return haystack.includes(query);
         });
-    }, [playerSearch, reservedPlayerIds, rosterPlayers, sessionActive, statusFilter]);
+    }, [
+        playerSearch,
+        removedPlayers,
+        reservedPlayerIds,
+        rosterPlayers,
+        sessionActive,
+        statusFilter,
+    ]);
 
     const sortedRosterPlayers = useMemo(() => {
         const players = [...filteredRosterPlayers];
@@ -263,6 +281,7 @@ export function QueueingSessionPlayersPage() {
             playing: 0,
             queueing: 0,
             waiting: 0,
+            removed: removedPlayers.length,
         };
         for (const p of rosterPlayers) {
             const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
@@ -272,10 +291,16 @@ export function QueueingSessionPlayersPage() {
             else if (status?.key === 'waiting') counts.waiting += 1;
         }
         return counts;
-    }, [reservedPlayerIds, rosterPlayers, sessionActive]);
+    }, [removedPlayers.length, reservedPlayerIds, rosterPlayers, sessionActive]);
 
     const checkInRosterPlayers = useMemo(() => {
-        if (!sessionActive || statusFilter === 'playing' || statusFilter === 'queueing' || statusFilter === 'waiting') {
+        if (
+            !sessionActive ||
+            statusFilter === 'playing' ||
+            statusFilter === 'queueing' ||
+            statusFilter === 'waiting' ||
+            statusFilter === 'removed'
+        ) {
             return [];
         }
         const rows = sortedRosterPlayers.filter((p) => {
@@ -293,6 +318,9 @@ export function QueueingSessionPlayersPage() {
     const rotationRosterPlayers = useMemo(() => {
         if (statusFilter === 'check_in') {
             return [];
+        }
+        if (statusFilter === 'removed') {
+            return sortedRosterPlayers;
         }
         if (statusFilter === 'all' && sessionActive) {
             return sortedRosterPlayers.filter((p) => {
@@ -410,6 +438,21 @@ export function QueueingSessionPlayersPage() {
         }
     }
 
+    async function onRestore(playerRowId) {
+        if (sessionId == null || !canManagePlayers) return;
+        setActionError('');
+        setBusy(true);
+        try {
+            await postRestoreQueueingSessionPlayer(sessionId, playerRowId);
+            invalidateQueueingSession(sessionId);
+            await refetchSession();
+        } catch (e) {
+            setActionError(e instanceof Error ? e.message : 'Could not restore player.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
     function onRemoveClick(p) {
         if (!canManagePlayers || busy) return;
         setRemoveTarget({ id: p.id, name: rosterPlayerName(p), isGuest: Boolean(p.is_guest) });
@@ -423,11 +466,16 @@ export function QueueingSessionPlayersPage() {
     }
 
     const showInitialSkeleton = loading && !session && !error;
-    const showEmptyRoster = !showInitialSkeleton && rosterPlayers.length === 0;
+    const showEmptyRoster =
+        !showInitialSkeleton && rosterPlayers.length === 0 && removedPlayers.length === 0;
     const hasVisibleRoster =
         checkInRosterPlayers.length > 0 || visibleRotationPlayers.length > 0;
     const showNoFilterResults =
-        !showInitialSkeleton && rosterPlayers.length > 0 && !hasVisibleRoster;
+        !showInitialSkeleton &&
+        !hasVisibleRoster &&
+        (statusFilter === 'removed'
+            ? removedPlayers.length > 0 || rosterPlayers.length > 0
+            : rosterPlayers.length > 0 || removedPlayers.length > 0);
 
     return (
         <AppShell user={user}>
@@ -671,8 +719,27 @@ export function QueueingSessionPlayersPage() {
                                             return null;
                                         }
 
+                                        const showingRemoved = statusFilter === 'removed';
+
                                         return (
                                             <div className="space-y-3">
+                                                {showingRemoved ? (
+                                                    <div className="flex flex-wrap items-center gap-2 px-0.5">
+                                                        <MaterialIcon
+                                                            name="person_off"
+                                                            className="text-[18px]! text-[#fca5a5]"
+                                                        />
+                                                        <h3 className="text-xs font-bold uppercase tracking-wide text-[#fca5a5] md:text-sm">
+                                                            Removed
+                                                        </h3>
+                                                        <span className="rounded-full bg-[#fca5a5]/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-[#fca5a5]">
+                                                            {rotationRosterPlayers.length}
+                                                        </span>
+                                                        <span className="text-[11px] text-[#918f9c] md:text-xs">
+                                                            Restore to put them back on the roster
+                                                        </span>
+                                                    </div>
+                                                ) : null}
                                                 {statusFilter === 'all' &&
                                                 sessionActive &&
                                                 checkInRosterPlayers.length > 0 ? (
@@ -697,10 +764,18 @@ export function QueueingSessionPlayersPage() {
                                                             sessionActive,
                                                         );
                                                         const canEditPlayer =
-                                                            canManagePlayers && !p.is_playing && p.is_guest;
+                                                            canManagePlayers &&
+                                                            !p.is_playing &&
+                                                            !p.is_removed &&
+                                                            p.is_guest;
                                                         const canRemovePlayer = playerCanBeRemovedFromRoster(
                                                             p,
                                                             reservedPlayerIds,
+                                                            sessionActive,
+                                                            canManagePlayers,
+                                                        );
+                                                        const canRestorePlayer = playerCanBeRestoredToRoster(
+                                                            p,
                                                             sessionActive,
                                                             canManagePlayers,
                                                         );
@@ -710,13 +785,14 @@ export function QueueingSessionPlayersPage() {
                                                                 key={p.id}
                                                                 player={p}
                                                                 status={status}
-                                                                position={index + 1}
+                                                                position={showingRemoved ? null : index + 1}
                                                                 sessionActive={sessionActive}
                                                                 isYou={
                                                                     user?.id != null && p.user?.id === user.id
                                                                 }
                                                                 canEdit={canEditPlayer}
                                                                 canRemove={canRemovePlayer}
+                                                                canRestore={canRestorePlayer}
                                                                 busy={busy}
                                                                 showSkillLevel={showSkillLevel}
                                                                 style={{
@@ -724,6 +800,7 @@ export function QueueingSessionPlayersPage() {
                                                                 }}
                                                                 onEdit={() => onEditPlayerClick(p)}
                                                                 onRemove={() => onRemoveClick(p)}
+                                                                onRestore={() => onRestore(p.id)}
                                                             />
                                                         );
                                                     })}
@@ -785,7 +862,7 @@ export function QueueingSessionPlayersPage() {
                 title={removeTarget?.isGuest ? 'Remove guest player?' : 'Remove player?'}
                 description={
                     removeTarget
-                        ? `Remove "${removeTarget.name}" from this queue session? This cannot be undone.`
+                        ? `Remove "${removeTarget.name}" from the active roster? You can restore them later from the Removed filter.`
                         : ''
                 }
                 confirmLabel="Remove"

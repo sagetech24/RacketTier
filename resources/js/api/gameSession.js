@@ -110,6 +110,7 @@ export function postCreateGameSession(payload) {
  *   loss_points?: number | null,
  *   point_rules?: { win_base: number, win_margin_cap: number, loss: number },
  *   skip_scores?: boolean,
+ *   zero_loss_points?: boolean,
  *   optional_guest_skill?: boolean,
  *   optional_guest_gender?: boolean,
  *   auto_match_criteria?: import('./queueingSession.js').AutoMatchCriteria,

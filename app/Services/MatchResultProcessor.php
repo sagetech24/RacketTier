@@ -209,6 +209,10 @@ class MatchResultProcessor
 
     public function resolveSessionPointsEarned(GameSession $session, bool $won, int $margin): int
     {
+        if (! $won && (bool) ($session->zero_loss_points ?? false)) {
+            return 0;
+        }
+
         return MatchPointFormula::earned($won, $margin);
     }
 

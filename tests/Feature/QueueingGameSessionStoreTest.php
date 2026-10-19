@@ -116,4 +116,23 @@ class QueueingGameSessionStoreTest extends TestCase
         $session = GameSession::query()->findOrFail($response->json('data.id'));
         $this->assertTrue($session->skip_scores);
     }
+
+    public function test_create_queueing_session_can_enable_zero_loss_points(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Winner Takes All',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'zero_loss_points' => true,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.zero_loss_points', true);
+        $response->assertJsonPath('data.point_rules.loss', 0);
+
+        $session = GameSession::query()->findOrFail($response->json('data.id'));
+        $this->assertTrue($session->zero_loss_points);
+    }
 }

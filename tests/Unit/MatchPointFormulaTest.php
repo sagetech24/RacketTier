@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Services\MatchPointFormula;
 use App\Services\MatchResultProcessor;
@@ -21,6 +22,18 @@ class MatchPointFormulaTest extends TestCase
     {
         $this->assertSame(8, MatchPointFormula::earned(false, 0));
         $this->assertSame(8, MatchPointFormula::earned(false, 15));
+    }
+
+    public function test_resolve_session_points_respects_zero_loss_points(): void
+    {
+        $processor = app(MatchResultProcessor::class);
+        $session = new GameSession(['zero_loss_points' => true]);
+
+        $this->assertSame(31, $processor->resolveSessionPointsEarned($session, true, 6));
+        $this->assertSame(0, $processor->resolveSessionPointsEarned($session, false, 6));
+
+        $defaultSession = new GameSession(['zero_loss_points' => false]);
+        $this->assertSame(8, $processor->resolveSessionPointsEarned($defaultSession, false, 6));
     }
 
     public function test_match_counts_when_members_are_on_both_sides(): void
