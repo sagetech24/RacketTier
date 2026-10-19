@@ -56,22 +56,32 @@ export function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
 }
 
 /**
- * Guests can be removed whenever they are not on court.
- * Members can be removed only from the check-in lobby (waiting for first match).
+ * QM can edit any roster player who is not on court (guest details or member session skill).
  *
  * @param {NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number]} p
- * @param {Set<number>} reservedPlayerIds
  * @param {boolean} sessionActive
  * @param {boolean} canManage
  */
-export function playerCanBeRemovedFromRoster(p, reservedPlayerIds, sessionActive, canManage) {
+export function playerCanBeEditedOnRoster(p, sessionActive, canManage) {
     if (!canManage || !sessionActive || p.is_playing || p.is_removed) {
         return false;
     }
-    if (p.is_guest) {
-        return true;
+    return true;
+}
+
+/**
+ * QM can remove any roster player who is not on court (guest or member, check-in or rotation).
+ * Soft-removed players can be restored from the Removed filter.
+ *
+ * @param {NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number]} p
+ * @param {boolean} sessionActive
+ * @param {boolean} canManage
+ */
+export function playerCanBeRemovedFromRoster(p, sessionActive, canManage) {
+    if (!canManage || !sessionActive || p.is_playing || p.is_removed) {
+        return false;
     }
-    return playerRosterStatus(p, reservedPlayerIds, sessionActive)?.key === 'check_in';
+    return true;
 }
 
 /**

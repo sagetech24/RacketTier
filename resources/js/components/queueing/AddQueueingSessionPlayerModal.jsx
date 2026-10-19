@@ -56,7 +56,8 @@ export function AddQueueingSessionPlayerModal({
 
     const isGuest = mode === 'guest';
     const isEdit = intent === 'edit';
-    const collectSkillLevel = !optionalGuestSkill;
+    // Members always set a session skill (add + edit). Guests follow the session optional flag.
+    const collectSkillLevel = isGuest ? !optionalGuestSkill : true;
     const requireSkill = collectSkillLevel;
     const requireGender = isGuest ? !optionalGuestGender : false;
 
@@ -226,6 +227,12 @@ export function AddQueueingSessionPlayerModal({
                                 </option>
                             ))}
                         </select>
+                        {!isGuest && isEdit ? (
+                            <p className="mt-1.5 text-[11px] text-[#918f9c]">
+                                Session tier for matchmaking in this queue only. Does not change their
+                                global sport tier.
+                            </p>
+                        ) : null}
                         {!isGuest && !isEdit && member?.skill_level != null ? (
                             <p className="mt-1.5 text-[11px] text-[#918f9c]">
                                 Pre-filled from this member&apos;s sport tier. You can change it before

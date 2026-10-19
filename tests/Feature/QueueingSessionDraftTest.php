@@ -354,6 +354,46 @@ class QueueingSessionDraftTest extends TestCase
         $this->assertFalse((bool) $removed['in_lobby']);
     }
 
+    public function test_queue_master_can_update_member_session_skill_level(): void
+    {
+        $host = User::factory()->create();
+        $member = User::factory()->create();
+
+        $sessionId = (int) $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Member Skill Edit',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'win_points' => 30,
+            'loss_points' => 8,
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $member->id,
+            'skill_level' => 2,
+        ])->assertOk();
+
+        $player = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        )->firstWhere('user.id', $member->id);
+
+        $this->assertNotNull($player);
+        $this->assertSame(2, (int) $player['skill_level']);
+
+        $this->actingAs($host)
+            ->patchJson('/auth/queueing-sessions/'.$sessionId.'/players/'.$player['id'], [
+                'skill_level' => 4,
+            ])
+            ->assertOk();
+
+        $after = collect(
+            $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk()->json('data.players'),
+        )->firstWhere('id', $player['id']);
+
+        $this->assertNotNull($after);
+        $this->assertSame(4, (int) $after['skill_level']);
+        $this->assertFalse((bool) $after['is_guest']);
+    }
+
     public function test_queue_master_can_reorder_check_in_waiters_and_auto_match_follows(): void
     {
         $host = User::factory()->create();

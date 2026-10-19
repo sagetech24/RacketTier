@@ -15,6 +15,7 @@ import { AddQueueingSessionPlayerModal } from '../components/queueing/AddQueuein
 import { DraggableCheckInRoster } from '../components/queueing/DraggableCheckInRoster.jsx';
 import {
     QueueingSessionPlayerCard,
+    playerCanBeEditedOnRoster,
     playerCanBeRemovedFromRoster,
     playerCanBeRestoredToRoster,
     playerIsInLobby,
@@ -381,15 +382,26 @@ export function QueueingSessionPlayersPage() {
      * @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p
      */
     function onEditPlayerClick(p) {
-        if (!canManagePlayers || busy || p.is_playing) return;
+        if (!playerCanBeEditedOnRoster(p, sessionActive, canManagePlayers) || busy) return;
 
-        if (!p.is_guest) return;
+        if (p.is_guest) {
+            setEditPlayerModal({
+                mode: 'guest',
+                playerRowId: p.id,
+                guest: {
+                    name: p.guest_name ?? '',
+                    pronoun: p.pronoun ?? null,
+                    skill_level: p.skill_level ?? null,
+                },
+            });
+            return;
+        }
 
         setEditPlayerModal({
-            mode: 'guest',
+            mode: 'member',
             playerRowId: p.id,
-            guest: {
-                name: p.guest_name ?? '',
+            member: {
+                name: p.user?.name ?? 'Player',
                 pronoun: p.pronoun ?? null,
                 skill_level: p.skill_level ?? null,
             },
@@ -402,6 +414,10 @@ export function QueueingSessionPlayersPage() {
         setBusy(true);
         try {
             const isGuest = editPlayerModal.mode === 'guest';
+            if (!isGuest && (payload.skill_level == null || Number.isNaN(Number(payload.skill_level)))) {
+                setActionError('Tier level is required for members.');
+                return;
+            }
             const body = isGuest
                 ? {
                       guest_name: payload.guest_name,
@@ -409,7 +425,7 @@ export function QueueingSessionPlayersPage() {
                       skill_level: payload.skill_level ?? null,
                   }
                 : {
-                      skill_level: payload.skill_level,
+                      skill_level: Number(payload.skill_level),
                   };
             await patchUpdateQueueingSessionPlayer(sessionId, editPlayerModal.playerRowId, body);
             invalidateQueueingSession(sessionId);
@@ -693,12 +709,15 @@ export function QueueingSessionPlayersPage() {
                                                     playerRosterStatus(p, reservedPlayerIds, sessionActive)
                                                 }
                                                 canEditPlayer={(p) =>
-                                                    canManagePlayers && !p.is_playing && Boolean(p.is_guest)
+                                                    playerCanBeEditedOnRoster(
+                                                        p,
+                                                        sessionActive,
+                                                        canManagePlayers,
+                                                    )
                                                 }
                                                 canRemovePlayer={(p) =>
                                                     playerCanBeRemovedFromRoster(
                                                         p,
-                                                        reservedPlayerIds,
                                                         sessionActive,
                                                         canManagePlayers,
                                                     )
@@ -763,14 +782,13 @@ export function QueueingSessionPlayersPage() {
                                                             reservedPlayerIds,
                                                             sessionActive,
                                                         );
-                                                        const canEditPlayer =
-                                                            canManagePlayers &&
-                                                            !p.is_playing &&
-                                                            !p.is_removed &&
-                                                            p.is_guest;
+                                                        const canEditPlayer = playerCanBeEditedOnRoster(
+                                                            p,
+                                                            sessionActive,
+                                                            canManagePlayers,
+                                                        );
                                                         const canRemovePlayer = playerCanBeRemovedFromRoster(
                                                             p,
-                                                            reservedPlayerIds,
                                                             sessionActive,
                                                             canManagePlayers,
                                                         );
