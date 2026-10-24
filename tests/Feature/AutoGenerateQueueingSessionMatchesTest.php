@@ -875,4 +875,154 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $this->assertTrue((bool) $players->firstWhere('id', $guest->id)['in_lobby']);
         $this->assertFalse((bool) $players->firstWhere('id', $rotation->id)['in_lobby']);
     }
+
+    private function seedDoublesSession(User $host): GameSession
+    {
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+
+        return GameSession::query()->create([
+            'facility_id' => null,
+            'sport_id' => $sport->id,
+            'session_context' => 'queueing',
+            'queue_name' => 'Doubles Rotation',
+            'match_type' => 'doubles',
+            'created_by' => $host->id,
+            'is_active' => true,
+            'status' => 'queueing',
+            'game_type' => 'queueing',
+            'win_points' => 30,
+            'loss_points' => 8,
+            'started_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param  list<array{0: GameSessionPlayer, 1: GameSessionPlayer}>  $pairs
+     */
+    private function assertNoPartnershipAmong(array $lineup, array $pairs): void
+    {
+        $byTeam = collect($lineup)->groupBy('team');
+        $team1 = collect($byTeam->get(1, []))->pluck('id')->sort()->values()->all();
+        $team2 = collect($byTeam->get(2, []))->pluck('id')->sort()->values()->all();
+
+        foreach ($pairs as [$a, $b]) {
+            $pair = collect([$a->id, $b->id])->sort()->values()->all();
+            $this->assertNotSame($pair, $team1, 'Unexpected repeated partnership on team 1');
+            $this->assertNotSame($pair, $team2, 'Unexpected repeated partnership on team 2');
+        }
+    }
+
+    public function test_rotation_mode_avoids_partnership_repeated_twice_when_alternatives_exist(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedDoublesSession($host);
+
+        $a = $this->addPlayer($session, 1, 3, wins: 2, losses: 0);
+        $b = $this->addPlayer($session, 2, 3, wins: 2, losses: 0);
+        $c = $this->addPlayer($session, 3, 3, wins: 1, losses: 1);
+        $d = $this->addPlayer($session, 4, 3, wins: 1, losses: 1);
+        $e = $this->addPlayer($session, 5, 3, wins: 1, losses: 0);
+        $f = $this->addPlayer($session, 6, 3, wins: 1, losses: 0);
+
+        // A+B partnered twice already; C+D once as opponents of A+B.
+        foreach ([1, 2] as $matchNo) {
+            QueueingSessionMatch::query()->create([
+                'game_session_id' => $session->id,
+                'match_no' => $matchNo,
+                'status' => 'finished',
+                'lineup' => [
+                    ['game_session_player_id' => $a->id, 'team' => 1],
+                    ['game_session_player_id' => $b->id, 'team' => 1],
+                    ['game_session_player_id' => $c->id, 'team' => 2],
+                    ['game_session_player_id' => $d->id, 'team' => 2],
+                ],
+                'finished_at' => now(),
+            ]);
+        }
+
+        $criteria = new AutoMatchCriteria(
+            skillMatchMode: AutoMatchCriteria::SKILL_MODE_ROTATION,
+            wlStatistics: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertNotEmpty($result['proposals']);
+        $this->assertSame('Partner rotation', $result['proposals'][0]['bracket_label']);
+        $this->assertFalse($result['proposals'][0]['from_lobby']);
+        $this->assertNoPartnershipAmong($result['proposals'][0]['lineup'], [[$a, $b]]);
+    }
+
+    public function test_rotation_mode_prefers_never_partnered_pairs_with_sparse_history(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedDoublesSession($host);
+
+        $a = $this->addPlayer($session, 1, 3, wins: 1, losses: 0);
+        $b = $this->addPlayer($session, 2, 3, wins: 1, losses: 0);
+        $c = $this->addPlayer($session, 3, 3, wins: 1, losses: 0);
+        $d = $this->addPlayer($session, 4, 3, wins: 1, losses: 0);
+
+        QueueingSessionMatch::query()->create([
+            'game_session_id' => $session->id,
+            'match_no' => 1,
+            'status' => 'finished',
+            'lineup' => [
+                ['game_session_player_id' => $a->id, 'team' => 1],
+                ['game_session_player_id' => $b->id, 'team' => 1],
+                ['game_session_player_id' => $c->id, 'team' => 2],
+                ['game_session_player_id' => $d->id, 'team' => 2],
+            ],
+            'finished_at' => now(),
+        ]);
+
+        $criteria = new AutoMatchCriteria(
+            skillMatchMode: AutoMatchCriteria::SKILL_MODE_ROTATION,
+            wlStatistics: false,
+            genderlessMixed: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertCount(1, $result['proposals']);
+        $this->assertNoPartnershipAmong($result['proposals'][0]['lineup'], [[$a, $b], [$c, $d]]);
+        $this->assertSame('Partner rotation', $result['proposals'][0]['bracket_label']);
+    }
+
+    public function test_rotation_mode_on_singles_falls_back_to_balanced(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $this->addPlayer($session, 1, 1, wins: 1, losses: 0);
+        $this->addPlayer($session, 2, 5, wins: 1, losses: 0);
+        $this->addPlayer($session, 3, 1, wins: 1, losses: 0);
+        $this->addPlayer($session, 4, 5, wins: 1, losses: 0);
+
+        $criteria = new AutoMatchCriteria(skillMatchMode: AutoMatchCriteria::SKILL_MODE_ROTATION);
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertSame('balanced', $result['criteria']['skill_match_mode']);
+        $this->assertCount(2, $result['proposals']);
+        foreach ($result['proposals'] as $proposal) {
+            $this->assertSame('Balanced skill', $proposal['bracket_label']);
+        }
+    }
+
+    public function test_auto_proposals_endpoint_accepts_rotation_mode(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedDoublesSession($host);
+        $this->addPlayer($session, 1, 3, wins: 1, losses: 0);
+        $this->addPlayer($session, 2, 3, wins: 1, losses: 0);
+        $this->addPlayer($session, 3, 3, wins: 1, losses: 0);
+        $this->addPlayer($session, 4, 3, wins: 1, losses: 0);
+
+        $response = $this->actingAs($host)->getJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/auto-proposals?skill_match_mode=rotation',
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('data.criteria.skill_match_mode', 'rotation');
+        $response->assertJsonPath('data.proposals.0.bracket_label', 'Partner rotation');
+        $response->assertJsonPath('data.proposals.0.from_lobby', false);
+    }
 }

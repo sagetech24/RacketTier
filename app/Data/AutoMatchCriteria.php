@@ -8,6 +8,8 @@ readonly class AutoMatchCriteria
 
     public const SKILL_MODE_SAME_LEVEL = 'same_level';
 
+    public const SKILL_MODE_ROTATION = 'rotation';
+
     public function __construct(
         public bool $skillLevel = true,
         public string $skillMatchMode = self::SKILL_MODE_BALANCED,
@@ -107,6 +109,30 @@ readonly class AutoMatchCriteria
         return $this->skillMatchMode === self::SKILL_MODE_BALANCED;
     }
 
+    public function isRotationMode(): bool
+    {
+        return $this->skillMatchMode === self::SKILL_MODE_ROTATION;
+    }
+
+    /**
+     * Doubles-only partner rotation; coerce to balanced for singles sessions.
+     */
+    public function forMatchType(string $matchType): self
+    {
+        if ($matchType === 'doubles' || ! $this->isRotationMode()) {
+            return $this;
+        }
+
+        return new self(
+            skillLevel: $this->skillLevel,
+            skillMatchMode: self::SKILL_MODE_BALANCED,
+            wlStatistics: $this->wlStatistics,
+            sequence: $this->sequence,
+            genderlessMixed: $this->genderlessMixed,
+            refreshSeed: $this->refreshSeed,
+        );
+    }
+
     private static function parseBool(mixed $value): bool
     {
         if (is_bool($value)) {
@@ -124,7 +150,11 @@ readonly class AutoMatchCriteria
     {
         $mode = is_string($value) ? strtolower(trim($value)) : self::SKILL_MODE_BALANCED;
 
-        return in_array($mode, [self::SKILL_MODE_BALANCED, self::SKILL_MODE_SAME_LEVEL], true)
+        return in_array($mode, [
+            self::SKILL_MODE_BALANCED,
+            self::SKILL_MODE_SAME_LEVEL,
+            self::SKILL_MODE_ROTATION,
+        ], true)
             ? $mode
             : self::SKILL_MODE_BALANCED;
     }

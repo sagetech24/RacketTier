@@ -69,7 +69,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
 
         try {
             const canEditMatchType = Boolean(session.can_edit_match_type);
-            const normalizedCriteria = normalizeAutoMatchCriteria(autoMatchCriteria);
+            const normalizedCriteria = normalizeAutoMatchCriteria(autoMatchCriteria, matchType);
             const updated = await patchUpdateQueueingSession(session.id, {
                 queue_name: name,
                 skip_scores: skipScores,
@@ -133,7 +133,12 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
                             {session.can_edit_match_type ? (
                                 <QueueingSessionMatchTypeField
                                     value={matchType}
-                                    onChange={setMatchType}
+                                    onChange={(next) => {
+                                        setMatchType(next);
+                                        setAutoMatchCriteria((prev) =>
+                                            normalizeAutoMatchCriteria(prev, next),
+                                        );
+                                    }}
                                     disabled={submitting}
                                     hint="Change this if the wrong format was set before the first match."
                                 />
@@ -164,6 +169,7 @@ export function QueueingSessionSettingsModal({ open, session, onClose, onSaved }
                                 value={autoMatchCriteria}
                                 onChange={setAutoMatchCriteria}
                                 disabled={submitting}
+                                matchType={matchType}
                             />
                             {error ? (
                                 <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">

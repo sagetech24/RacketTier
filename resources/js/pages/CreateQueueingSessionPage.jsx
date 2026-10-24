@@ -77,7 +77,7 @@ export function CreateQueueingSessionPage() {
         }
         setSubmitting(true);
         try {
-            const normalizedCriteria = normalizeAutoMatchCriteria(autoMatchCriteria);
+            const normalizedCriteria = normalizeAutoMatchCriteria(autoMatchCriteria, matchType);
             const data = await postCreateQueueingSession({
                 queue_name: name,
                 sport_slug: sportSlug,
@@ -172,7 +172,13 @@ export function CreateQueueingSessionPage() {
                                                 <button
                                                     key={t}
                                                     type="button"
-                                                    onClick={() => setMatchType(/** @type {'singles' | 'doubles'} */ (t))}
+                                                    onClick={() => {
+                                                        const next = /** @type {'singles' | 'doubles'} */ (t);
+                                                        setMatchType(next);
+                                                        setAutoMatchCriteria((prev) =>
+                                                            normalizeAutoMatchCriteria(prev, next),
+                                                        );
+                                                    }}
                                                     className={
                                                         matchType === t
                                                             ? 'flex-1 rounded-l-none bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
@@ -213,6 +219,7 @@ export function CreateQueueingSessionPage() {
                                     value={autoMatchCriteria}
                                     onChange={setAutoMatchCriteria}
                                     disabled={submitting}
+                                    matchType={matchType}
                                 />
                             </div>
                             {submitError ? (

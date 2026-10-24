@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Data\AutoMatchCriteria;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
+use App\Models\QueueingSessionMatch;
 use App\Services\QueueingSessionDraftHydrator;
 use App\Services\QueueingSessionDraftLineup;
 use App\Services\QueueingSessionDraftStore;
@@ -29,6 +30,26 @@ class AutoGenerateQueueingSessionMatches
     private const SCORE_LOSER_VS_LOSER = -20;
 
     private const SCORE_ALL_LOSERS_DIFF_MATCH = -10;
+
+    /** Soft partnership ceiling: prefer never repeating; heavily penalize a 3rd+ pairing. */
+    private const ROTATION_MAX_PARTNERSHIPS = 2;
+
+    private const ROTATION_CANDIDATE_WINDOW = 10;
+
+    private const ROTATION_PARTNER_WEIGHT = 100;
+
+    private const ROTATION_REPEAT_PENALTY = 500;
+
+    private const ROTATION_OVER_MAX_PENALTY = 2000;
+
+    private const ROTATION_OPPONENT_NOVELTY_BONUS = 15;
+
+    /**
+     * Partner / opponent pair counts keyed by "minId:maxId".
+     *
+     * @var array{partners: array<string, int>, opponents: array<string, int>}
+     */
+    private array $pairHistory = ['partners' => [], 'opponents' => []];
 
     public function __construct(
         private QueueingSessionMatchLineup $lineup,
@@ -74,7 +95,10 @@ class AutoGenerateQueueingSessionMatches
         }
 
         $matchType = $session->match_type === 'doubles' ? 'doubles' : 'singles';
+        $criteria = $criteria->forMatchType($matchType);
         $required = $matchType === 'doubles' ? 4 : 2;
+
+        $this->pairHistory = ['partners' => [], 'opponents' => []];
 
         if ($session->isDraft()) {
             $draft = $this->draftStore->load((int) $session->id);
@@ -82,6 +106,7 @@ class AutoGenerateQueueingSessionMatches
             $hydrated = $this->hydrator->hydrate($session);
             /** @var Collection<int, GameSessionPlayer> $roster */
             $roster = $hydrated->players->values();
+            $this->ingestLineupsFromDraftMatches($draft->matches);
         } else {
             $reserved = $this->lineup->reservedPlayerIds((int) $session->id);
 
@@ -91,6 +116,7 @@ class AutoGenerateQueueingSessionMatches
                 ->where('game_session_id', $session->id)
                 ->orderBy('queue_position')
                 ->get();
+            $this->ingestLineupsFromPersistedMatches((int) $session->id);
         }
 
         /** @var Collection<int, GameSessionPlayer> $eligible */
@@ -195,6 +221,10 @@ class AutoGenerateQueueingSessionMatches
                 'players' => $playersOut,
                 'lineup' => $lineupOut,
             ];
+
+            if ($criteria->isRotationMode() && $matchType === 'doubles') {
+                $this->ingestTeamAssignments($matchPlayers, $teamAssignments);
+            }
 
             $selectedIds = $selected->pluck('id')->all();
             $lobby = $lobby->reject(fn (GameSessionPlayer $p): bool => in_array($p->id, $selectedIds, true))->values();
@@ -324,6 +354,14 @@ class AutoGenerateQueueingSessionMatches
         }
 
         $rest = $lobby->slice(1)->values();
+
+        if ($criteria->isRotationMode()) {
+            if ($matchType !== 'doubles') {
+                return $this->fillLobbyBalancedAroundAnchor($anchor, $rest, $required, $matchType, $criteria, $hasStats);
+            }
+
+            return $this->fillLobbyRotationAroundAnchor($lobby, $required, $criteria, $hasStats);
+        }
 
         if ($criteria->isBalancedSkillMode()) {
             return $this->fillLobbyBalancedAroundAnchor($anchor, $rest, $required, $matchType, $criteria, $hasStats);
@@ -459,7 +497,7 @@ class AutoGenerateQueueingSessionMatches
         $anchor = $seeds->first();
         $pool = $rotation->values();
 
-        if ($criteria->usesSkillMatching() && $anchor !== null) {
+        if ($criteria->usesSkillMatching() && $anchor !== null && ! $criteria->isRotationMode()) {
             $anchorLevel = $this->normalizedSkillLevel($anchor);
 
             if ($criteria->isBalancedSkillMode()) {
@@ -484,6 +522,10 @@ class AutoGenerateQueueingSessionMatches
             }
         }
 
+        if ($criteria->isRotationMode() && $matchType === 'doubles') {
+            return $this->selectRotationFillPreferringNovelty($pool, $seeds, $need, $criteria, $hasStats);
+        }
+
         // W/L applies only among rotation fill-ins; seeds have no form yet.
         $rotationHasStats = $pool->contains(fn (GameSessionPlayer $p): bool => $this->matchesPlayed($p) > 0);
         $picked = $this->selectPlayersForMatch($pool, $need, $matchType, $criteria, $rotationHasStats);
@@ -506,6 +548,14 @@ class AutoGenerateQueueingSessionMatches
 
         if (! $criteria->usesSkillMatching()) {
             return $this->selectByWlAndSequence($pool, $required, $criteria, $hasStats);
+        }
+
+        if ($criteria->isRotationMode()) {
+            if ($matchType === 'doubles') {
+                return $this->selectRotationDoubles($pool, $criteria, $hasStats);
+            }
+
+            return $this->selectBalancedSingles($pool, $criteria, $hasStats);
         }
 
         if ($criteria->isBalancedSkillMode()) {
@@ -766,6 +816,418 @@ class AutoGenerateQueueingSessionMatches
     }
 
     /**
+     * Maximize new partners/opponents using session pair history (doubles only).
+     *
+     * @param  Collection<int, GameSessionPlayer>  $pool
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function selectRotationDoubles(
+        Collection $pool,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): Collection {
+        $ordered = $this->fairnessSort($pool, $criteria);
+        if ($criteria->wlStatistics && $hasStats) {
+            $ordered = $this->sortByPlayerKeys($ordered, [
+                fn (GameSessionPlayer $p): int => $this->matchesPlayed($p),
+                fn (GameSessionPlayer $p): int => -$this->winRateBand($p),
+                fn (GameSessionPlayer $p): int => $this->sequenceSortKey($p, $criteria),
+            ]);
+        }
+        $ordered = $this->applyRefreshTieBreak($ordered, $criteria)->values();
+
+        if ($ordered->count() < 4) {
+            return $ordered->take(4)->values();
+        }
+
+        $window = $ordered->take(min(self::ROTATION_CANDIDATE_WINDOW, $ordered->count()))->values();
+        $best = $this->bestRotationQuartet($window, $criteria, $hasStats);
+
+        if ($best === null) {
+            return $ordered->take(4)->values();
+        }
+
+        return $best;
+    }
+
+    /**
+     * Lobby-only rotation: score combinations within the FIFO lobby window.
+     *
+     * @param  Collection<int, GameSessionPlayer>  $lobby
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function fillLobbyRotationAroundAnchor(
+        Collection $lobby,
+        int $required,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): Collection {
+        if ($lobby->count() < $required) {
+            return collect();
+        }
+
+        $window = $lobby->take(min(self::ROTATION_CANDIDATE_WINDOW, $lobby->count()))->values();
+        $best = $this->bestRotationQuartet($window, $criteria, $hasStats);
+
+        return $best ?? $lobby->take($required)->values();
+    }
+
+    /**
+     * Fill remaining doubles slots from rotation, preferring novelty vs locked seeds.
+     *
+     * @param  Collection<int, GameSessionPlayer>  $pool
+     * @param  Collection<int, GameSessionPlayer>  $seeds
+     * @return Collection<int, GameSessionPlayer>
+     */
+    private function selectRotationFillPreferringNovelty(
+        Collection $pool,
+        Collection $seeds,
+        int $need,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): Collection {
+        if ($need <= 0) {
+            return collect();
+        }
+
+        $ordered = $this->fairnessSort($pool, $criteria);
+        $ordered = $this->applyRefreshTieBreak($ordered, $criteria)->values();
+
+        if ($ordered->count() < $need) {
+            return collect();
+        }
+
+        if ($seeds->count() + $need < 4) {
+            return $ordered->take($need)->values();
+        }
+
+        // Enumerate fill combinations from a fairness window and pick the set that
+        // forms the best quartet with the locked seeds.
+        $window = $ordered->take(min(self::ROTATION_CANDIDATE_WINDOW, $ordered->count()))->values();
+        $seedList = $seeds->values()->all();
+        $fillCombos = $this->combinations($window->all(), $need);
+
+        $bestFill = null;
+        $bestScore = null;
+
+        foreach ($fillCombos as $fill) {
+            $quartet = array_merge($seedList, $fill);
+            if (count($quartet) !== 4) {
+                continue;
+            }
+            $scored = $this->scoreBestPartition($quartet, $criteria, $hasStats);
+            if ($scored === null) {
+                continue;
+            }
+            if ($bestScore === null || $this->rotationScoreBetter($scored['score'], $bestScore)) {
+                $bestScore = $scored['score'];
+                $bestFill = $fill;
+            }
+        }
+
+        if ($bestFill === null) {
+            return $ordered->take($need)->values();
+        }
+
+        return collect($bestFill)->values();
+    }
+
+    /**
+     * @param  Collection<int, GameSessionPlayer>  $window
+     * @return Collection<int, GameSessionPlayer>|null  Ordered as team1a, team1b, team2a, team2b
+     */
+    private function bestRotationQuartet(
+        Collection $window,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): ?Collection {
+        if ($window->count() < 4) {
+            return null;
+        }
+
+        $bestOrdered = null;
+        $bestScore = null;
+
+        foreach ($this->combinations($window->all(), 4) as $quartet) {
+            $scored = $this->scoreBestPartition($quartet, $criteria, $hasStats);
+            if ($scored === null) {
+                continue;
+            }
+            if ($bestScore === null || $this->rotationScoreBetter($scored['score'], $bestScore)) {
+                $bestScore = $scored['score'];
+                $bestOrdered = $scored['ordered'];
+            }
+        }
+
+        return $bestOrdered;
+    }
+
+    /**
+     * @param  list<GameSessionPlayer>  $quartet
+     * @return array{ordered: Collection<int, GameSessionPlayer>, score: array{cost: int, novelty: int, sequence: int}}|null
+     */
+    private function scoreBestPartition(
+        array $quartet,
+        AutoMatchCriteria $criteria,
+        bool $hasStats,
+    ): ?array {
+        if (count($quartet) !== 4) {
+            return null;
+        }
+
+        // Three unique ways to split four players into two pairs.
+        $partitions = [
+            [[0, 1], [2, 3]],
+            [[0, 2], [1, 3]],
+            [[0, 3], [1, 2]],
+        ];
+
+        $best = null;
+
+        foreach ($partitions as $pairs) {
+            [$a, $b] = $pairs[0];
+            [$c, $d] = $pairs[1];
+            $p0 = $quartet[$a];
+            $p1 = $quartet[$b];
+            $p2 = $quartet[$c];
+            $p3 = $quartet[$d];
+
+            $partnerCost = $this->partnershipCost((int) $p0->id, (int) $p1->id)
+                + $this->partnershipCost((int) $p2->id, (int) $p3->id);
+
+            $novelty = 0;
+            foreach ([$p0, $p1] as $sideA) {
+                foreach ([$p2, $p3] as $sideB) {
+                    if ($this->opponentCount((int) $sideA->id, (int) $sideB->id) === 0) {
+                        $novelty += self::ROTATION_OPPONENT_NOVELTY_BONUS;
+                    }
+                }
+            }
+
+            $sequence = 0;
+            foreach ([$p0, $p1, $p2, $p3] as $p) {
+                $sequence += $this->sequenceSortKey($p, $criteria);
+                if ($criteria->wlStatistics && $hasStats) {
+                    $sequence -= $this->winRateBand($p);
+                }
+            }
+
+            $score = [
+                'cost' => $partnerCost,
+                'novelty' => $novelty,
+                'sequence' => $sequence,
+            ];
+
+            if ($best === null || $this->rotationScoreBetter($score, $best['score'])) {
+                $best = [
+                    'ordered' => collect([$p0, $p1, $p2, $p3])->values(),
+                    'score' => $score,
+                ];
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * @param  array{cost: int, novelty: int, sequence: int}  $a
+     * @param  array{cost: int, novelty: int, sequence: int}  $b
+     */
+    private function rotationScoreBetter(array $a, array $b): bool
+    {
+        if ($a['cost'] !== $b['cost']) {
+            return $a['cost'] < $b['cost'];
+        }
+        if ($a['novelty'] !== $b['novelty']) {
+            return $a['novelty'] > $b['novelty'];
+        }
+
+        return $a['sequence'] < $b['sequence'];
+    }
+
+    private function partnershipCost(int $a, int $b): int
+    {
+        $count = $this->partnerCount($a, $b);
+        $cost = $count * self::ROTATION_PARTNER_WEIGHT;
+        if ($count >= 1) {
+            $cost += self::ROTATION_REPEAT_PENALTY;
+        }
+        if ($count >= self::ROTATION_MAX_PARTNERSHIPS) {
+            $cost += self::ROTATION_OVER_MAX_PENALTY * (1 + ($count - self::ROTATION_MAX_PARTNERSHIPS));
+        }
+
+        return $cost;
+    }
+
+    private function partnerCount(int $a, int $b): int
+    {
+        return $this->pairHistory['partners'][$this->pairKey($a, $b)] ?? 0;
+    }
+
+    private function opponentCount(int $a, int $b): int
+    {
+        return $this->pairHistory['opponents'][$this->pairKey($a, $b)] ?? 0;
+    }
+
+    private function pairKey(int $a, int $b): string
+    {
+        return $a < $b ? $a.':'.$b : $b.':'.$a;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $matches
+     */
+    private function ingestLineupsFromDraftMatches(array $matches): void
+    {
+        foreach ($matches as $match) {
+            if (! is_array($match)) {
+                continue;
+            }
+            $lineup = is_array($match['lineup'] ?? null) ? $match['lineup'] : [];
+            $this->ingestStoredLineup($lineup);
+        }
+    }
+
+    private function ingestLineupsFromPersistedMatches(int $sessionId): void
+    {
+        $matches = QueueingSessionMatch::query()
+            ->where('game_session_id', $sessionId)
+            ->get(['lineup']);
+
+        foreach ($matches as $match) {
+            $lineup = is_array($match->lineup) ? $match->lineup : [];
+            $this->ingestStoredLineup($lineup);
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lineup
+     */
+    private function ingestStoredLineup(array $lineup): void
+    {
+        /** @var array<int, list<int>> $byTeam */
+        $byTeam = [1 => [], 2 => []];
+
+        foreach ($lineup as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $pid = (int) ($row['game_session_player_id'] ?? 0);
+            $team = (int) ($row['team'] ?? 0);
+            if ($pid <= 0 || ! in_array($team, [1, 2], true)) {
+                continue;
+            }
+            $byTeam[$team][] = $pid;
+        }
+
+        $this->ingestTeamIdGroups($byTeam[1], $byTeam[2]);
+    }
+
+    /**
+     * @param  Collection<int, GameSessionPlayer>  $players
+     * @param  array<int, int>  $teamAssignments  index => team
+     */
+    private function ingestTeamAssignments(Collection $players, array $teamAssignments): void
+    {
+        $team1 = [];
+        $team2 = [];
+        foreach ($players->values() as $index => $player) {
+            $team = $teamAssignments[$index] ?? null;
+            if ($team === 1) {
+                $team1[] = (int) $player->id;
+            } elseif ($team === 2) {
+                $team2[] = (int) $player->id;
+            }
+        }
+        $this->ingestTeamIdGroups($team1, $team2);
+    }
+
+    /**
+     * @param  list<int>  $team1
+     * @param  list<int>  $team2
+     */
+    private function ingestTeamIdGroups(array $team1, array $team2): void
+    {
+        $this->incrementPairCounts('partners', $team1);
+        $this->incrementPairCounts('partners', $team2);
+
+        foreach ($team1 as $a) {
+            foreach ($team2 as $b) {
+                $key = $this->pairKey($a, $b);
+                $this->pairHistory['opponents'][$key] = ($this->pairHistory['opponents'][$key] ?? 0) + 1;
+            }
+        }
+    }
+
+    /**
+     * @param  'partners'|'opponents'  $bucket
+     * @param  list<int>  $ids
+     */
+    private function incrementPairCounts(string $bucket, array $ids): void
+    {
+        $unique = array_values(array_unique($ids));
+        $n = count($unique);
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                $key = $this->pairKey($unique[$i], $unique[$j]);
+                $this->pairHistory[$bucket][$key] = ($this->pairHistory[$bucket][$key] ?? 0) + 1;
+            }
+        }
+    }
+
+    /**
+     * @template T
+     * @param  list<T>  $items
+     * @return list<list<T>>
+     */
+    private function combinations(array $items, int $k): array
+    {
+        $n = count($items);
+        if ($k <= 0 || $k > $n) {
+            return [];
+        }
+        if ($k === $n) {
+            return [$items];
+        }
+        if ($k === 1) {
+            return array_map(fn ($item): array => [$item], $items);
+        }
+
+        $result = [];
+        $this->combinationsRecurse($items, $k, 0, [], $result);
+
+        return $result;
+    }
+
+    /**
+     * @template T
+     * @param  list<T>  $items
+     * @param  list<T>  $chosen
+     * @param  list<list<T>>  $result
+     */
+    private function combinationsRecurse(
+        array $items,
+        int $k,
+        int $start,
+        array $chosen,
+        array &$result,
+    ): void {
+        if (count($chosen) === $k) {
+            $result[] = $chosen;
+
+            return;
+        }
+
+        $n = count($items);
+        $need = $k - count($chosen);
+        for ($i = $start; $i <= $n - $need; $i++) {
+            $chosen[] = $items[$i];
+            $this->combinationsRecurse($items, $k, $i + 1, $chosen, $result);
+            array_pop($chosen);
+        }
+    }
+
+    /**
      * @param  Collection<int, GameSessionPlayer>  $selected
      * @return Collection<int, GameSessionPlayer>
      */
@@ -775,6 +1237,19 @@ class AutoGenerateQueueingSessionMatches
         bool $hasStats,
     ): Collection {
         if ($selected->count() <= 1) {
+            return $selected->values();
+        }
+
+        // Re-partition so team assignment [1,1,2,2] uses the lowest-history pairs
+        // (covers lobby-seed + rotation-fill mixes that arrive unordered).
+        if ($criteria->isRotationMode()) {
+            if ($selected->count() === 4) {
+                $scored = $this->scoreBestPartition($selected->values()->all(), $criteria, $hasStats);
+                if ($scored !== null) {
+                    return $scored['ordered'];
+                }
+            }
+
             return $selected->values();
         }
 
@@ -803,12 +1278,11 @@ class AutoGenerateQueueingSessionMatches
             return [0 => 1, 1 => 2];
         }
 
-        if ($criteria->usesSkillMatching() && ! $criteria->isBalancedSkillMode()) {
-            $levels = $players->map(fn (GameSessionPlayer $p): int => $this->normalizedSkillLevel($p))->unique()->count();
-            if ($levels === 1) {
-                return [0 => 1, 1 => 1, 2 => 2, 3 => 2];
-            }
+        if ($criteria->isRotationMode()) {
+            return [0 => 1, 1 => 1, 2 => 2, 3 => 2];
+        }
 
+        if ($criteria->usesSkillMatching() && ! $criteria->isBalancedSkillMode()) {
             return [0 => 1, 1 => 1, 2 => 2, 3 => 2];
         }
 
@@ -1263,6 +1737,10 @@ class AutoGenerateQueueingSessionMatches
     /** @param  Collection<int, GameSessionPlayer>  $chunk */
     private function bracketLabelForChunk(Collection $chunk, bool $hasStats, AutoMatchCriteria $criteria): string
     {
+        if ($criteria->isRotationMode()) {
+            return 'Partner rotation';
+        }
+
         if ($this->poolHasLastMatchResults($chunk)) {
             $results = $chunk
                 ->map(fn (GameSessionPlayer $p): ?string => $this->lastMatchResult($p))

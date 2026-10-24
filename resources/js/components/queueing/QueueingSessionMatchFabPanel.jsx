@@ -575,6 +575,7 @@ export function QueueingSessionMatchFabPanel({
             <AutoMatchCriteriaModal
                 open={autoMatchCriteriaOpen}
                 initialCriteria={autoMatchCriteria ?? undefined}
+                matchType={localSession?.match_type === 'doubles' ? 'doubles' : 'singles'}
                 onClose={handleAutoMatchCriteriaClose}
                 onConfirm={handleAutoMatchCriteriaConfirm}
             />

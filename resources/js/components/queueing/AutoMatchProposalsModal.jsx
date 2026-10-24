@@ -25,7 +25,11 @@ function criteriaSummaryChips(criteria) {
     const chips = [];
     if (criteria.skill_level) {
         chips.push(
-            criteria.skill_match_mode === 'same_level' ? 'Same skill level' : 'Balanced skill',
+            criteria.skill_match_mode === 'same_level'
+                ? 'Same skill level'
+                : criteria.skill_match_mode === 'rotation'
+                  ? 'Partner rotation'
+                  : 'Balanced skill',
         );
     }
     if (criteria.wl_statistics) chips.push('W/L stats');

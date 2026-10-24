@@ -18,6 +18,7 @@ export { DEFAULT_AUTO_MATCH_CRITERIA, parseAutoMatchCriteria };
  * @param {{
  *   open: boolean,
  *   initialCriteria?: AutoMatchCriteria,
+ *   matchType?: 'singles' | 'doubles',
  *   onClose: () => void,
  *   onConfirm: (criteria: AutoMatchCriteria) => void,
  *   confirmLabel?: string,
@@ -26,6 +27,7 @@ export { DEFAULT_AUTO_MATCH_CRITERIA, parseAutoMatchCriteria };
 export function AutoMatchCriteriaModal({
     open,
     initialCriteria,
+    matchType = 'singles',
     onClose,
     onConfirm,
     confirmLabel = 'Generate suggestions',
@@ -34,8 +36,8 @@ export function AutoMatchCriteriaModal({
 
     useEffect(() => {
         if (!open) return;
-        setCriteria(parseAutoMatchCriteria(initialCriteria));
-    }, [open, initialCriteria]);
+        setCriteria(normalizeAutoMatchCriteria(parseAutoMatchCriteria(initialCriteria), matchType));
+    }, [open, initialCriteria, matchType]);
 
     useEffect(() => {
         if (!open) return undefined;
@@ -47,7 +49,7 @@ export function AutoMatchCriteriaModal({
                 return;
             }
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                const next = normalizeAutoMatchCriteria(criteria);
+                const next = normalizeAutoMatchCriteria(criteria, matchType);
                 if (!autoMatchCriteriaHasAny(next)) return;
                 event.preventDefault();
                 onConfirm(next);
@@ -56,7 +58,7 @@ export function AutoMatchCriteriaModal({
 
         document.addEventListener('keydown', onKeyDown);
         return () => document.removeEventListener('keydown', onKeyDown);
-    }, [open, onClose, onConfirm, criteria]);
+    }, [open, onClose, onConfirm, criteria, matchType]);
 
     if (!open) return null;
 
@@ -64,7 +66,7 @@ export function AutoMatchCriteriaModal({
 
     function handleConfirm() {
         if (!hasAnyCriterion) return;
-        onConfirm(normalizeAutoMatchCriteria(criteria));
+        onConfirm(normalizeAutoMatchCriteria(criteria, matchType));
     }
 
     return (
@@ -77,7 +79,7 @@ export function AutoMatchCriteriaModal({
                     onClick={onClose}
                 />
                 <div
-                    className="rt-end-match-modal-sheet relative flex max-h-[90vh] w-full max-w-md flex-col rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl sm:rounded-2xl"
+                    className="rt-end-match-modal-sheet relative flex max-h-[90vh] w-full max-w-xl flex-col rounded-t-2xl border border-[#2a2a2d] bg-[#1b1b1e] shadow-xl sm:rounded-2xl"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="rt-auto-match-criteria-title"
@@ -120,6 +122,7 @@ export function AutoMatchCriteriaModal({
                             onChange={setCriteria}
                             showHeading={false}
                             showPresets
+                            matchType={matchType}
                         />
                     </div>
 

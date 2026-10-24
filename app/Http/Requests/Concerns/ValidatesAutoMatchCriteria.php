@@ -18,6 +18,7 @@ trait ValidatesAutoMatchCriteria
             'skill_match_mode' => ['sometimes', 'string', Rule::in([
                 AutoMatchCriteria::SKILL_MODE_BALANCED,
                 AutoMatchCriteria::SKILL_MODE_SAME_LEVEL,
+                AutoMatchCriteria::SKILL_MODE_ROTATION,
             ])],
             'wl_statistics' => ['sometimes', 'boolean'],
             'sequence' => ['sometimes', 'boolean'],

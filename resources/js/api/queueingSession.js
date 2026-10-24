@@ -9,7 +9,7 @@ import { deleteJson, patchJson, postJson } from '../lib/http.js';
  *   optional_guest_skill?: boolean,
  *   optional_guest_gender?: boolean,
  *   skill_level?: boolean,
- *   skill_match_mode?: 'balanced' | 'same_level',
+ *   skill_match_mode?: 'balanced' | 'same_level' | 'rotation',
  *   wl_statistics?: boolean,
  *   sequence?: boolean,
  *   genderless_mixed?: boolean,
@@ -70,7 +70,7 @@ export async function deleteQueueingSession(sessionId) {
  *   optional_guest_skill?: boolean,
  *   optional_guest_gender?: boolean,
  *   skill_level?: boolean,
- *   skill_match_mode?: 'balanced' | 'same_level',
+ *   skill_match_mode?: 'balanced' | 'same_level' | 'rotation',
  *   wl_statistics?: boolean,
  *   sequence?: boolean,
  *   genderless_mixed?: boolean,
@@ -278,7 +278,7 @@ export async function fetchQueueingSessionMatches(sessionId) {
 /**
  * @typedef {{
  *   skill_level: boolean,
- *   skill_match_mode: 'balanced' | 'same_level',
+ *   skill_match_mode: 'balanced' | 'same_level' | 'rotation',
  *   wl_statistics: boolean,
  *   sequence: boolean,
  *   genderless_mixed: boolean,
@@ -369,7 +369,12 @@ export async function fetchQueueingSessionAutoProposals(sessionId, criteria) {
     return {
         criteria: {
             skill_level: rawCriteria.skill_level !== false,
-            skill_match_mode: rawCriteria.skill_match_mode === 'same_level' ? 'same_level' : 'balanced',
+            skill_match_mode:
+                rawCriteria.skill_match_mode === 'same_level'
+                    ? 'same_level'
+                    : rawCriteria.skill_match_mode === 'rotation'
+                      ? 'rotation'
+                      : 'balanced',
             wl_statistics: rawCriteria.wl_statistics !== false,
             sequence: rawCriteria.sequence !== false,
             genderless_mixed: rawCriteria.genderless_mixed !== false,

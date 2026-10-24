@@ -11,7 +11,7 @@ export const DEFAULT_AUTO_MATCH_CRITERIA = /** @type {AutoMatchCriteria} */ ({
     genderless_mixed: true,
 });
 
-/** @type {Array<{ id: string, label: string, hint: string, criteria: AutoMatchCriteria }>} */
+/** @type {Array<{ id: string, label: string, hint: string, criteria: AutoMatchCriteria, doublesOnly?: boolean }>} */
 export const AUTO_MATCH_PRESETS = [
     {
         id: 'balanced',
@@ -49,8 +49,22 @@ export const AUTO_MATCH_PRESETS = [
             genderless_mixed: true,
         },
     },
+    {
+        id: 'rotation',
+        label: 'Partner rotation',
+        hint: 'Maximize new partners',
+        doublesOnly: true,
+        criteria: {
+            skill_level: true,
+            skill_match_mode: 'rotation',
+            wl_statistics: true,
+            sequence: true,
+            genderless_mixed: true,
+        },
+    },
 ];
 
+/** @type {Array<{ value: 'balanced' | 'same_level' | 'rotation', label: string, description: string, doublesOnly?: boolean }>} */
 const SKILL_MATCH_MODE_OPTIONS = [
     {
         value: 'balanced',
@@ -62,7 +76,23 @@ const SKILL_MATCH_MODE_OPTIONS = [
         label: 'Same level',
         description: 'Keep players of similar skill together',
     },
+    {
+        value: 'rotation',
+        label: 'Rotation',
+        description: 'Maximize new partners; avoid repeats (doubles)',
+        doublesOnly: true,
+    },
 ];
+
+/**
+ * @param {unknown} mode
+ * @returns {'balanced' | 'same_level' | 'rotation'}
+ */
+export function parseSkillMatchMode(mode) {
+    if (mode === 'same_level') return 'same_level';
+    if (mode === 'rotation') return 'rotation';
+    return 'balanced';
+}
 
 /** @type {Array<{ key: keyof AutoMatchCriteria, icon: string, label: string, description: string, priority?: number }>} */
 const CRITERION_CARDS = [
@@ -108,7 +138,7 @@ export function parseAutoMatchCriteria(value) {
 
     return {
         skill_level: raw.skill_level !== false,
-        skill_match_mode: raw.skill_match_mode === 'same_level' ? 'same_level' : 'balanced',
+        skill_match_mode: parseSkillMatchMode(raw.skill_match_mode),
         wl_statistics: raw.wl_statistics !== false,
         sequence: raw.sequence !== false,
         genderless_mixed: raw.genderless_mixed !== false,
@@ -133,13 +163,20 @@ export function autoMatchCriteriaHasAny(criteria) {
 
 /**
  * @param {AutoMatchCriteria} criteria
+ * @param {'singles' | 'doubles'} [matchType]
  * @returns {AutoMatchCriteria}
  */
-export function normalizeAutoMatchCriteria(criteria) {
+export function normalizeAutoMatchCriteria(criteria, matchType) {
+    let mode = parseSkillMatchMode(criteria.skill_match_mode);
+    if (!criteria.skill_level) {
+        mode = 'balanced';
+    } else if (mode === 'rotation' && matchType === 'singles') {
+        mode = 'balanced';
+    }
+
     return {
         skill_level: Boolean(criteria.skill_level),
-        skill_match_mode:
-            criteria.skill_level && criteria.skill_match_mode === 'same_level' ? 'same_level' : 'balanced',
+        skill_match_mode: mode,
         wl_statistics: Boolean(criteria.wl_statistics),
         sequence: Boolean(criteria.sequence),
         genderless_mixed: Boolean(criteria.genderless_mixed),
@@ -154,7 +191,11 @@ export function autoMatchPrioritySummary(criteria) {
     const parts = [];
     if (criteria.skill_level) {
         parts.push(
-            criteria.skill_match_mode === 'same_level' ? 'Skill (same level)' : 'Skill (balanced)',
+            criteria.skill_match_mode === 'same_level'
+                ? 'Skill (same level)'
+                : criteria.skill_match_mode === 'rotation'
+                  ? 'Skill (partner rotation)'
+                  : 'Skill (balanced)',
         );
     }
     if (criteria.wl_statistics) parts.push('W/L');
@@ -187,6 +228,7 @@ function criteriaMatchesPreset(criteria, preset) {
  *   disabled?: boolean,
  *   showHeading?: boolean,
  *   showPresets?: boolean,
+ *   matchType?: 'singles' | 'doubles',
  * }} props
  */
 export function QueueingSessionAutoMatchCriteriaField({
@@ -195,11 +237,17 @@ export function QueueingSessionAutoMatchCriteriaField({
     disabled = false,
     showHeading = true,
     showPresets = true,
+    matchType = 'singles',
 }) {
     const hasAnyCriterion = autoMatchCriteriaHasAny(value);
+    const isDoubles = matchType === 'doubles';
+    const presets = AUTO_MATCH_PRESETS.filter((preset) => isDoubles || !preset.doublesOnly);
+    const skillModeOptions = SKILL_MATCH_MODE_OPTIONS.filter(
+        (option) => isDoubles || !option.doublesOnly,
+    );
 
     function patch(partial) {
-        onChange(normalizeAutoMatchCriteria({ ...value, ...partial }));
+        onChange(normalizeAutoMatchCriteria({ ...value, ...partial }, matchType));
     }
 
     return (
@@ -219,15 +267,25 @@ export function QueueingSessionAutoMatchCriteriaField({
                     <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
                         Quick presets
                     </p>
-                    <div className="grid grid-cols-3 gap-2" role="group" aria-label="Matching presets">
-                        {AUTO_MATCH_PRESETS.map((preset) => {
+                    <div
+                        className={
+                            presets.length > 3
+                                ? 'grid grid-cols-2 gap-2 sm:grid-cols-4'
+                                : 'grid grid-cols-3 gap-2'
+                        }
+                        role="group"
+                        aria-label="Matching presets"
+                    >
+                        {presets.map((preset) => {
                             const selected = criteriaMatchesPreset(value, preset.criteria);
                             return (
                                 <button
                                     key={preset.id}
                                     type="button"
                                     disabled={disabled}
-                                    onClick={() => onChange(normalizeAutoMatchCriteria(preset.criteria))}
+                                    onClick={() =>
+                                        onChange(normalizeAutoMatchCriteria(preset.criteria, matchType))
+                                    }
                                     className={[
                                         'min-h-11 cursor-pointer rounded-xl border px-2 py-2 text-center transition-colors duration-200',
                                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60',
@@ -304,11 +362,16 @@ export function QueueingSessionAutoMatchCriteriaField({
 
                             {card.key === 'skill_level' && value.skill_level ? (
                                 <div
-                                    className="ml-1 grid grid-cols-2 gap-2 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e]/80 p-2"
+                                    className={[
+                                        'ml-1 gap-2 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e]/80 p-2',
+                                        skillModeOptions.length > 2
+                                            ? 'grid grid-cols-1 sm:grid-cols-3'
+                                            : 'grid grid-cols-2',
+                                    ].join(' ')}
                                     role="radiogroup"
                                     aria-label="Skill matching mode"
                                 >
-                                    {SKILL_MATCH_MODE_OPTIONS.map((option) => {
+                                    {skillModeOptions.map((option) => {
                                         const selected = value.skill_match_mode === option.value;
                                         return (
                                             <button
@@ -319,10 +382,7 @@ export function QueueingSessionAutoMatchCriteriaField({
                                                 disabled={disabled}
                                                 onClick={() =>
                                                     patch({
-                                                        skill_match_mode:
-                                                            option.value === 'same_level'
-                                                                ? 'same_level'
-                                                                : 'balanced',
+                                                        skill_match_mode: option.value,
                                                     })
                                                 }
                                                 className={[
