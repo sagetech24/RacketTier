@@ -60,16 +60,35 @@ export function liveDurationSeconds(startedAt, nowMs = Date.now()) {
     return Math.max(0, Math.floor((nowMs - startMs) / 1000));
 }
 
+/** @param {unknown} player */
+export function lineupPlayerDisplayName(player) {
+    if (!player || typeof player !== 'object') return 'Player';
+    const row = /** @type {{ name?: unknown, guest_name?: unknown }} */ (player);
+    return String(row.name || row.guest_name || 'Player');
+}
+
 /** @param {unknown} lineup */
 export function lineupDisplayNamesByTeam(lineup) {
     const rows = Array.isArray(lineup) ? lineup : [];
-    const label = (p) => p.name || p.guest_name || 'Player';
-    const team1 = rows.filter((p) => p.team === 1).map(label);
-    const team2 = rows.filter((p) => p.team === 2).map(label);
+    const team1 = rows.filter((p) => p.team === 1).map(lineupPlayerDisplayName);
+    const team2 = rows.filter((p) => p.team === 2).map(lineupPlayerDisplayName);
     if (team1.length === 0 && team2.length === 0 && rows.length === 2) {
-        return { team1: [label(rows[0])], team2: [label(rows[1])] };
+        return { team1: [lineupPlayerDisplayName(rows[0])], team2: [lineupPlayerDisplayName(rows[1])] };
     }
     return { team1, team2 };
+}
+
+/**
+ * True when any lineup player name includes the query (case-insensitive).
+ * Empty query matches all matches.
+ * @param {Record<string, unknown>} match
+ * @param {string} query
+ */
+export function finishedMatchIncludesPlayerQuery(match, query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    const lineup = Array.isArray(match?.lineup) ? match.lineup : [];
+    return lineup.some((player) => lineupPlayerDisplayName(player).toLowerCase().includes(q));
 }
 
 /** @param {Array<Record<string, unknown>>} rows */
