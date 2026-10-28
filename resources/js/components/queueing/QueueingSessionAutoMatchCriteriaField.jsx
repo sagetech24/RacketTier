@@ -241,10 +241,6 @@ export function QueueingSessionAutoMatchCriteriaField({
 }) {
     const hasAnyCriterion = autoMatchCriteriaHasAny(value);
     const isDoubles = matchType === 'doubles';
-    const presets = AUTO_MATCH_PRESETS.filter((preset) => isDoubles || !preset.doublesOnly);
-    const skillModeOptions = SKILL_MATCH_MODE_OPTIONS.filter(
-        (option) => isDoubles || !option.doublesOnly,
-    );
 
     function patch(partial) {
         onChange(normalizeAutoMatchCriteria({ ...value, ...partial }, matchType));
@@ -268,38 +264,42 @@ export function QueueingSessionAutoMatchCriteriaField({
                         Quick presets
                     </p>
                     <div
-                        className={
-                            presets.length > 3
-                                ? 'grid grid-cols-2 gap-2 sm:grid-cols-4'
-                                : 'grid grid-cols-3 gap-2'
-                        }
+                        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
                         role="group"
                         aria-label="Matching presets"
                     >
-                        {presets.map((preset) => {
-                            const selected = criteriaMatchesPreset(value, preset.criteria);
+                        {AUTO_MATCH_PRESETS.map((preset) => {
+                            const doublesOnly = Boolean(preset.doublesOnly);
+                            const unavailable = doublesOnly && !isDoubles;
+                            const selected = !unavailable && criteriaMatchesPreset(value, preset.criteria);
+                            const presetDisabled = disabled || unavailable;
                             return (
                                 <button
                                     key={preset.id}
                                     type="button"
-                                    disabled={disabled}
-                                    onClick={() =>
-                                        onChange(normalizeAutoMatchCriteria(preset.criteria, matchType))
-                                    }
+                                    disabled={presetDisabled}
+                                    title={unavailable ? 'Available for doubles only' : undefined}
+                                    onClick={() => {
+                                        if (unavailable) return;
+                                        onChange(normalizeAutoMatchCriteria(preset.criteria, matchType));
+                                    }}
                                     className={[
-                                        'min-h-11 cursor-pointer rounded-xl border px-2 py-2 text-center transition-colors duration-200',
+                                        'min-h-11 rounded-xl border px-2 py-2 text-center transition-colors duration-200',
                                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60',
-                                        'disabled:cursor-not-allowed disabled:opacity-50',
-                                        'active:scale-[0.98]',
+                                        presetDisabled
+                                            ? 'cursor-not-allowed opacity-50'
+                                            : 'cursor-pointer active:scale-[0.98]',
                                         selected
                                             ? 'border-[#c2c1ff]/50 bg-[#c2c1ff]/15 text-[#c2c1ff]'
                                             : 'border-[#2a2a2d] bg-[#131316] text-[#c8c5d2] hover:border-white/15',
+                                        unavailable && !disabled ? 'hover:border-[#2a2a2d]' : '',
                                     ].join(' ')}
                                     aria-pressed={selected}
+                                    aria-disabled={presetDisabled}
                                 >
                                     <span className="block text-xs font-bold leading-tight">{preset.label}</span>
                                     <span className="mt-0.5 block text-[10px] leading-tight opacity-75">
-                                        {preset.hint}
+                                        {unavailable ? 'Doubles only' : preset.hint}
                                     </span>
                                 </button>
                             );
@@ -362,42 +362,52 @@ export function QueueingSessionAutoMatchCriteriaField({
 
                             {card.key === 'skill_level' && value.skill_level ? (
                                 <div
-                                    className={[
-                                        'ml-1 gap-2 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e]/80 p-2',
-                                        skillModeOptions.length > 2
-                                            ? 'grid grid-cols-1 sm:grid-cols-3'
-                                            : 'grid grid-cols-2',
-                                    ].join(' ')}
+                                    className="ml-1 grid grid-cols-1 gap-2 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e]/80 p-2 sm:grid-cols-3"
                                     role="radiogroup"
                                     aria-label="Skill matching mode"
                                 >
-                                    {skillModeOptions.map((option) => {
-                                        const selected = value.skill_match_mode === option.value;
+                                    {SKILL_MATCH_MODE_OPTIONS.map((option) => {
+                                        const doublesOnly = Boolean(option.doublesOnly);
+                                        const unavailable = doublesOnly && !isDoubles;
+                                        const selected =
+                                            !unavailable && value.skill_match_mode === option.value;
+                                        const optionDisabled = disabled || unavailable;
                                         return (
                                             <button
                                                 key={option.value}
                                                 type="button"
                                                 role="radio"
                                                 aria-checked={selected}
-                                                disabled={disabled}
-                                                onClick={() =>
+                                                aria-disabled={optionDisabled}
+                                                disabled={optionDisabled}
+                                                title={
+                                                    unavailable ? 'Available for doubles only' : undefined
+                                                }
+                                                onClick={() => {
+                                                    if (unavailable) return;
                                                     patch({
                                                         skill_match_mode: option.value,
-                                                    })
-                                                }
+                                                    });
+                                                }}
                                                 className={[
-                                                    'min-h-11 cursor-pointer rounded-lg border px-2.5 py-2 text-left transition-colors duration-200',
+                                                    'min-h-11 rounded-lg border px-2.5 py-2 text-left transition-colors duration-200',
                                                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c2c1ff]/60',
-                                                    'disabled:cursor-not-allowed disabled:opacity-50',
-                                                    'active:scale-[0.98]',
+                                                    optionDisabled
+                                                        ? 'cursor-not-allowed opacity-50'
+                                                        : 'cursor-pointer active:scale-[0.98]',
                                                     selected
                                                         ? 'border-[#4ce081]/45 bg-[#4ce081]/12 text-[#4ce081]'
                                                         : 'border-transparent bg-[#131316] text-[#c8c5d2] hover:border-white/10',
+                                                    unavailable && !disabled
+                                                        ? 'hover:border-transparent'
+                                                        : '',
                                                 ].join(' ')}
                                             >
                                                 <span className="block text-xs font-bold">{option.label}</span>
                                                 <span className="mt-0.5 block text-[10px] leading-snug opacity-80">
-                                                    {option.description}
+                                                    {unavailable
+                                                        ? 'Doubles only'
+                                                        : option.description}
                                                 </span>
                                             </button>
                                         );
