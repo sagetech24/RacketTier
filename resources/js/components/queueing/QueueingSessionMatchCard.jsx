@@ -98,10 +98,13 @@ function MatchTeamBlock({ names, teamNo, status, winningTeam }) {
  *   canManageMatches?: boolean;
  *   canEndMatch?: boolean;
  *   busy?: boolean;
+ *   canOverrideFinished?: boolean;
  *   onStartQueuedMatch?: (matchId: number) => void;
  *   onEditMatch?: (row: Record<string, unknown>) => void;
  *   onRemoveMatch?: (row: Record<string, unknown>) => void;
  *   onEndMatch?: (row: Record<string, unknown>) => void;
+ *   onSwitchFinishedResult?: (row: Record<string, unknown>) => void;
+ *   onUpdateFinishedPairing?: (row: Record<string, unknown>) => void;
  * }} props
  */
 export function QueueingSessionMatchCard({
@@ -110,10 +113,13 @@ export function QueueingSessionMatchCard({
     canManageMatches = false,
     canEndMatch = false,
     busy = false,
+    canOverrideFinished = false,
     onStartQueuedMatch,
     onEditMatch,
     onRemoveMatch,
     onEndMatch,
+    onSwitchFinishedResult,
+    onUpdateFinishedPairing,
 }) {
     const status = typeof row.status === 'string' ? row.status : 'queueing';
     const { team1, team2 } = lineupDisplayNamesByTeam(row.lineup);
@@ -300,6 +306,31 @@ export function QueueingSessionMatchCard({
                         >
                             <MaterialIcon name="close" className="text-[16px]!" />
                             Cancel
+                        </button>
+                    </div>
+                ) : null}
+
+                {canOverrideFinished && status === 'finished' ? (
+                    <div className="rt-match-actions">
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onSwitchFinishedResult?.(row)}
+                            className="rt-match-action rt-match-action--secondary"
+                            aria-label="Switch match result"
+                        >
+                            <MaterialIcon name="swap_horiz" className="text-[16px]!" />
+                            Switch Results
+                        </button>
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onUpdateFinishedPairing?.(row)}
+                            className="rt-match-action rt-match-action--secondary"
+                            aria-label="Update team pairing"
+                        >
+                            <MaterialIcon name="groups" className="text-[16px]!" />
+                            Switch Pairing
                         </button>
                     </div>
                 ) : null}

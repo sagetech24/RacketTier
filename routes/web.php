@@ -35,6 +35,8 @@ use App\Http\Controllers\QueueingSessionMatchDestroyController;
 use App\Http\Controllers\QueueingSessionMatchesIndexController;
 use App\Http\Controllers\QueueingSessionMatchesStoreController;
 use App\Http\Controllers\QueueingSessionMatchStartController;
+use App\Http\Controllers\QueueingSessionMatchFinishedLineupController;
+use App\Http\Controllers\QueueingSessionMatchSwitchResultController;
 use App\Http\Controllers\QueueingSessionMatchUpdateController;
 use App\Http\Controllers\QueueingSessionPlayersDestroyController;
 use App\Http\Controllers\QueueingSessionPlayersRestoreController;
@@ -180,6 +182,10 @@ Route::middleware('auth')->group(function () {
         ->name('auth.queueing-sessions.matches.start');
     Route::patch('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}', QueueingSessionMatchUpdateController::class)
         ->name('auth.queueing-sessions.matches.update');
+    Route::post('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}/switch-result', QueueingSessionMatchSwitchResultController::class)
+        ->name('auth.queueing-sessions.matches.switch-result');
+    Route::patch('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}/finished-lineup', QueueingSessionMatchFinishedLineupController::class)
+        ->name('auth.queueing-sessions.matches.finished-lineup');
     Route::delete('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}', QueueingSessionMatchDestroyController::class)
         ->name('auth.queueing-sessions.matches.destroy');
 });

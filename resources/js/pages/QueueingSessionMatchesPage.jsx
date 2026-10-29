@@ -4,14 +4,17 @@ import '../../css/dashboard-v2.css';
 import { postFinishGameSessionMatch } from '../api/gameSession.js';
 import {
     deleteQueueingSessionMatch,
+    patchOverrideFinishedMatchLineup,
     patchUpdateQueueingSessionMatch,
     postStartQueueingSessionMatch,
+    postSwitchQueueingSessionMatchResult,
 } from '../api/queueingSession.js';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
 import { MODAL_OVERLAY_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
+import { FinishedMatchPairingModal } from '../components/queueing/FinishedMatchPairingModal.jsx';
 import { QueueingSessionFinishedMatches } from '../components/queueing/QueueingSessionFinishedMatches.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchCard } from '../components/queueing/QueueingSessionMatchCard.jsx';
@@ -191,6 +194,10 @@ export function QueueingSessionMatchesPage() {
     const [editInitialTeams, setEditInitialTeams] = useState({ team1: [], team2: [] });
     /** @type {null | { id: number, matchNo: number | null, status: string }} */
     const [removeMatchConfirm, setRemoveMatchConfirm] = useState(null);
+    /** @type {Record<string, unknown> | null} */
+    const [switchResultMatch, setSwitchResultMatch] = useState(null);
+    /** @type {Record<string, unknown> | null} */
+    const [pairingOverrideMatch, setPairingOverrideMatch] = useState(null);
 
     const reload = useCallback(async () => {
         if (sessionId == null) return;
@@ -462,9 +469,61 @@ export function QueueingSessionMatchesPage() {
     }
 
     const canManageMatches = Boolean(session?.can_manage) && Boolean(session?.is_active);
+    const canOverrideFinishedMatches = Boolean(session?.can_manage);
     const canEndMatch = canManageMatches && session?.status === 'ongoing';
+    const matchType = session?.match_type === 'doubles' ? 'doubles' : 'singles';
     const activeTabIndex = Math.max(0, availableMatchTabs.indexOf(activeMatchTab ?? ''));
     const activeCount = (grouped[activeMatchTab] ?? []).length;
+
+    /**
+     * @param {Record<string, unknown>} row
+     */
+    function openSwitchResultConfirm(row) {
+        setActionError('');
+        setSwitchResultMatch(row);
+    }
+
+    async function confirmSwitchResult() {
+        if (sessionId == null || switchResultMatch?.id == null) return;
+        setActionError('');
+        setBusy(true);
+        try {
+            await postSwitchQueueingSessionMatchResult(sessionId, Number(switchResultMatch.id));
+            setSwitchResultMatch(null);
+            await reload();
+        } catch (e) {
+            setActionError(e instanceof Error ? e.message : 'Could not switch match result.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * @param {Record<string, unknown>} row
+     */
+    function openPairingOverride(row) {
+        setActionError('');
+        setPairingOverrideMatch(row);
+    }
+
+    /**
+     * @param {Array<{ id: number, team: number }>} lineup
+     */
+    async function onSaveFinishedPairing(lineup) {
+        if (sessionId == null || pairingOverrideMatch?.id == null) return;
+        setActionError('');
+        setBusy(true);
+        try {
+            await patchOverrideFinishedMatchLineup(sessionId, Number(pairingOverrideMatch.id), { lineup });
+            setPairingOverrideMatch(null);
+            await reload();
+        } catch (e) {
+            setActionError(e instanceof Error ? e.message : 'Could not update pairing.');
+            throw e;
+        } finally {
+            setBusy(false);
+        }
+    }
 
     return (
         <AppShell user={user}>
@@ -577,7 +636,13 @@ export function QueueingSessionMatchesPage() {
                                                     description={MATCH_EMPTY_STATES.finished.description}
                                                 />
                                             ) : (
-                                                <QueueingSessionFinishedMatches rows={rows} />
+                                                <QueueingSessionFinishedMatches
+                                                    rows={rows}
+                                                    canOverrideFinished={canOverrideFinishedMatches}
+                                                    busy={busy}
+                                                    onSwitchFinishedResult={openSwitchResultConfirm}
+                                                    onUpdateFinishedPairing={openPairingOverride}
+                                                />
                                             )
                                         ) : (
                                             <MatchCardsList
@@ -759,6 +824,27 @@ export function QueueingSessionMatchesPage() {
                 confirmBusyLabel={removeMatchConfirm?.status === 'ongoing' ? 'Canceling…' : 'Removing…'}
                 onCancel={() => setRemoveMatchConfirm(null)}
                 onConfirm={() => confirmRemoveMatch()}
+            />
+
+            <ConfirmActionModal
+                open={switchResultMatch != null}
+                title={`Switch results${switchResultMatch?.match_no != null ? ` #${switchResultMatch.match_no}` : ''}?`}
+                description="Swap Team 1 and Team 2 as winner. Session points and rankings for this session will recalculate."
+                busy={busy}
+                confirmLabel="Switch results"
+                confirmBusyLabel="Switching…"
+                confirmClassName="flex-1 rounded-lg bg-[#4ce081] py-2 text-sm font-bold text-[#003919] disabled:cursor-not-allowed disabled:opacity-50"
+                onCancel={() => setSwitchResultMatch(null)}
+                onConfirm={() => void confirmSwitchResult()}
+            />
+
+            <FinishedMatchPairingModal
+                open={pairingOverrideMatch != null}
+                match={pairingOverrideMatch}
+                matchType={matchType}
+                busy={busy}
+                onClose={() => setPairingOverrideMatch(null)}
+                onSave={onSaveFinishedPairing}
             />
         </AppShell>
     );

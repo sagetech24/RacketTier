@@ -480,6 +480,59 @@ export async function patchUpdateQueueingSessionMatch(sessionId, matchId, body) 
 }
 
 /**
+ * Swap winning team (and scores) on a finished queueing match.
+ * @param {number|string} sessionId
+ * @param {number|string} matchId
+ */
+export async function postSwitchQueueingSessionMatchResult(sessionId, matchId) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/${encodeURIComponent(String(matchId))}/switch-result`,
+        {},
+    );
+    if (!res.ok) {
+        let msg = 'Could not switch match result.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
+ * Re-pair players on a finished match (same player ids, new teams).
+ * @param {number|string} sessionId
+ * @param {number|string} matchId
+ * @param {{ lineup: Array<{ id: number, team?: number }> }} body
+ */
+export async function patchOverrideFinishedMatchLineup(sessionId, matchId, body) {
+    const res = await patchJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/${encodeURIComponent(String(matchId))}/finished-lineup`,
+        body,
+    );
+    if (!res.ok) {
+        let msg = 'Could not update finished match pairing.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+            else if (j.errors && typeof j.errors === 'object') {
+                const first = Object.values(j.errors)[0];
+                if (Array.isArray(first) && first[0]) msg = String(first[0]);
+            }
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
  * @param {number|string} sessionId
  * @param {number|string} matchId
  */

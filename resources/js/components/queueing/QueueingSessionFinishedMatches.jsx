@@ -10,8 +10,22 @@ import {
 } from '../../lib/queueingMatchDisplay.js';
 import { QueueingSessionMatchCard } from './QueueingSessionMatchCard.jsx';
 
-/** @param {{ rows: Array<Record<string, unknown>> }} props */
-export function QueueingSessionFinishedMatches({ rows }) {
+/**
+ * @param {{
+ *   rows: Array<Record<string, unknown>>,
+ *   canOverrideFinished?: boolean,
+ *   busy?: boolean,
+ *   onSwitchFinishedResult?: (row: Record<string, unknown>) => void,
+ *   onUpdateFinishedPairing?: (row: Record<string, unknown>) => void,
+ * }} props
+ */
+export function QueueingSessionFinishedMatches({
+    rows,
+    canOverrideFinished = false,
+    busy = false,
+    onSwitchFinishedResult,
+    onUpdateFinishedPairing,
+}) {
     const [playerSearch, setPlayerSearch] = useState('');
 
     const filteredRows = useMemo(() => {
@@ -65,7 +79,14 @@ export function QueueingSessionFinishedMatches({ rows }) {
                         <ul className="rt-match-cards-grid space-y-3">
                             {filteredRows.map((row, index) => (
                                 <li key={row.id}>
-                                    <QueueingSessionMatchCard row={row} index={index} />
+                                    <QueueingSessionMatchCard
+                                        row={row}
+                                        index={index}
+                                        busy={busy}
+                                        canOverrideFinished={canOverrideFinished}
+                                        onSwitchFinishedResult={onSwitchFinishedResult}
+                                        onUpdateFinishedPairing={onUpdateFinishedPairing}
+                                    />
                                 </li>
                             ))}
                         </ul>
@@ -94,6 +115,11 @@ export function QueueingSessionFinishedMatches({ rows }) {
                                         <th scope="col" className="px-3 py-3">
                                             Duration
                                         </th>
+                                        {canOverrideFinished ? (
+                                            <th scope="col" className="px-3 py-3">
+                                                Override
+                                            </th>
+                                        ) : null}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -214,6 +240,36 @@ export function QueueingSessionFinishedMatches({ rows }) {
                                                 <td className="whitespace-nowrap px-3 py-3 align-middle text-sm tabular-nums text-[#c8c5d2]">
                                                     {formatDuration(row.started_at, row.finished_at)}
                                                 </td>
+                                                {canOverrideFinished ? (
+                                                    <td className="px-3 py-3 align-middle">
+                                                        <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap">
+                                                            <button
+                                                                type="button"
+                                                                disabled={busy}
+                                                                onClick={() => onSwitchFinishedResult?.(row)}
+                                                                className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-[11px] font-semibold text-[#c8c5d2] transition-colors hover:border-[#c2c1ff]/40 hover:text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
+                                                            >
+                                                                <MaterialIcon
+                                                                    name="swap_horiz"
+                                                                    className="text-[14px]!"
+                                                                />
+                                                                Switch
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                disabled={busy}
+                                                                onClick={() => onUpdateFinishedPairing?.(row)}
+                                                                className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-[11px] font-semibold text-[#c8c5d2] transition-colors hover:border-[#c2c1ff]/40 hover:text-[#c2c1ff] disabled:cursor-not-allowed disabled:opacity-50"
+                                                            >
+                                                                <MaterialIcon
+                                                                    name="groups"
+                                                                    className="text-[14px]!"
+                                                                />
+                                                                Pairing
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                ) : null}
                                             </tr>
                                         );
                                     })}
