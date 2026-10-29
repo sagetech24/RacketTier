@@ -13,6 +13,7 @@ use App\Models\Ranking;
 use App\Models\RatingHistory;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * After a finished-match correction, rebuild session W–L / points and (when
@@ -24,6 +25,7 @@ class RebuildQueueingSessionMatchEffects
     public function __construct(
         private MatchResultProcessor $matchResultProcessor,
         private QueueingSessionDraftLineup $draftLineup,
+        private RemapFinishedMatchBreakdown $remapBreakdown,
     ) {}
 
     public function rebuildDraft(GameSession $session, QueueingSessionDraft $draft): void
@@ -45,7 +47,10 @@ class RebuildQueueingSessionMatchEffects
             ->where('game_session_id', $session->id)
             ->where('status', 'finished')
             ->orderBy('match_no')
+            ->lockForUpdate()
             ->get();
+
+        $this->normalizePersistedBreakdownIds($finished);
 
         $this->rebuildPersistedPlayerStats($session, $finished);
 
@@ -55,6 +60,122 @@ class RebuildQueueingSessionMatchEffects
 
         $this->unwindSessionGlobals($session);
         $this->replayPersistedFinishedMatches($session, $finished);
+    }
+
+    /**
+     * Repair a persisted session after a bad override: optionally flip one
+     * match back, remap breakdown ids, then full rebuild.
+     *
+     * @return array{remapped_matches: int, undone_match_id: int|null}
+     */
+    public function repairPersistedSession(
+        GameSession $session,
+        ?int $undoSwitchMatchId = null,
+    ): array {
+        if (! $session->isQueueing() || $session->isDraft()) {
+            abort(422, 'Repair only applies to persisted queueing sessions.');
+        }
+
+        return DB::transaction(function () use ($session, $undoSwitchMatchId): array {
+            /** @var GameSession $locked */
+            $locked = GameSession::query()
+                ->whereKey($session->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $finished = QueueingSessionMatch::query()
+                ->where('game_session_id', $locked->id)
+                ->where('status', 'finished')
+                ->orderBy('match_no')
+                ->lockForUpdate()
+                ->get();
+
+            $remapped = $this->normalizePersistedBreakdownIds($finished);
+
+            $undoneMatchId = null;
+            if ($undoSwitchMatchId !== null) {
+                /** @var QueueingSessionMatch|null $target */
+                $target = $finished->first(
+                    fn (QueueingSessionMatch $m): bool => (int) $m->id === $undoSwitchMatchId,
+                );
+                if (! $target) {
+                    abort(422, 'Finished match not found in this session.');
+                }
+
+                $winningTeam = (int) ($target->winning_team ?? 0);
+                if (! in_array($winningTeam, [1, 2], true)) {
+                    abort(422, 'Finished match is missing a winning team.');
+                }
+
+                $switched = $winningTeam === 1 ? 2 : 1;
+                $team1Score = $target->team1_score;
+                $team2Score = $target->team2_score;
+                if ($team1Score !== null && $team2Score !== null) {
+                    $tmp = $team1Score;
+                    $team1Score = $team2Score;
+                    $team2Score = $tmp;
+                }
+
+                $row = [
+                    'lineup' => is_array($target->lineup) ? $target->lineup : [],
+                    'winning_team' => $switched,
+                    'team1_score' => $team1Score,
+                    'team2_score' => $team2Score,
+                ];
+                $breakdown = $this->recomputeBreakdown($locked, $row);
+
+                $target->update([
+                    'winning_team' => $switched,
+                    'team1_score' => $team1Score,
+                    'team2_score' => $team2Score,
+                    'result_breakdown' => $breakdown,
+                ]);
+                $undoneMatchId = (int) $target->id;
+
+                $finished = QueueingSessionMatch::query()
+                    ->where('game_session_id', $locked->id)
+                    ->where('status', 'finished')
+                    ->orderBy('match_no')
+                    ->lockForUpdate()
+                    ->get();
+            }
+
+            $this->rebuildPersistedPlayerStats($locked, $finished);
+
+            if ($finished->isNotEmpty()) {
+                $this->unwindSessionGlobals($locked);
+                $this->replayPersistedFinishedMatches($locked, $finished);
+            }
+
+            return [
+                'remapped_matches' => $remapped,
+                'undone_match_id' => $undoneMatchId,
+            ];
+        });
+    }
+
+    /**
+     * @param  Collection<int, QueueingSessionMatch>  $finished
+     */
+    private function normalizePersistedBreakdownIds(Collection $finished): int
+    {
+        $remappedCount = 0;
+
+        foreach ($finished as $match) {
+            $lineup = is_array($match->lineup) ? $match->lineup : [];
+            $before = $match->result_breakdown;
+            $after = $this->remapBreakdown->remap(
+                is_array($before) ? $before : null,
+                $lineup,
+            );
+
+            if ($after !== null && $after !== $before) {
+                $match->update(['result_breakdown' => $after]);
+                $remappedCount++;
+            }
+        }
+
+        return $remappedCount;
     }
 
     /**

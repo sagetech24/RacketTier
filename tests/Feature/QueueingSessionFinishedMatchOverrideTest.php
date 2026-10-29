@@ -237,6 +237,88 @@ class QueueingSessionFinishedMatchOverrideTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_repair_remaps_stale_breakdown_ids_and_can_undo_switch(): void
+    {
+        [$host, $opponent, $sessionId] = $this->createFinishedSinglesDraft();
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/end')->assertOk();
+
+        $session = GameSession::query()->findOrFail($sessionId);
+        $match = QueueingSessionMatch::query()
+            ->where('game_session_id', $sessionId)
+            ->where('status', 'finished')
+            ->firstOrFail();
+
+        // Simulate pre-fix persist: lineup has real ids, breakdown still has draft ids.
+        $hostPlayer = GameSessionPlayer::query()
+            ->where('game_session_id', $sessionId)
+            ->where('user_id', $host->id)
+            ->firstOrFail();
+        $oppPlayer = GameSessionPlayer::query()
+            ->where('game_session_id', $sessionId)
+            ->where('user_id', $opponent->id)
+            ->firstOrFail();
+
+        $breakdown = $match->result_breakdown;
+        $this->assertIsArray($breakdown);
+        $breakdown['players'] = collect($breakdown['players'])->map(function (array $row) use ($host, $opponent): array {
+            if ((int) ($row['user_id'] ?? 0) === (int) $host->id) {
+                $row['game_session_player_id'] = 900001;
+            }
+            if ((int) ($row['user_id'] ?? 0) === (int) $opponent->id) {
+                $row['game_session_player_id'] = 900002;
+            }
+
+            return $row;
+        })->all();
+        $match->update(['result_breakdown' => $breakdown]);
+
+        // Mimic wrecked rebuild: wipe session board stats.
+        GameSessionPlayer::query()->where('game_session_id', $sessionId)->update([
+            'wins_count' => 0,
+            'losses_count' => 0,
+            'session_points' => 0,
+        ]);
+
+        // Switch flipped the winner in production; undo + remap + rebuild.
+        $this->actingAs($host)
+            ->postJson('/auth/queueing-sessions/'.$sessionId.'/matches/'.$match->id.'/switch-result')
+            ->assertOk();
+
+        /** @var \App\Services\RebuildQueueingSessionMatchEffects $rebuild */
+        $rebuild = app(\App\Services\RebuildQueueingSessionMatchEffects::class);
+        $result = $rebuild->repairPersistedSession($session->fresh(), (int) $match->id);
+
+        $this->assertSame((int) $match->id, $result['undone_match_id']);
+
+        $match->refresh();
+        $this->assertSame(1, (int) $match->winning_team);
+
+        $hostPlayer->refresh();
+        $oppPlayer->refresh();
+        $this->assertSame(1, (int) $hostPlayer->wins_count);
+        $this->assertSame(0, (int) $hostPlayer->losses_count);
+        $this->assertGreaterThan(0, (int) $hostPlayer->session_points);
+        $this->assertSame(0, (int) $oppPlayer->wins_count);
+        $this->assertSame(1, (int) $oppPlayer->losses_count);
+
+        $hostWallet = MemberPointWallet::query()
+            ->where('user_id', $host->id)
+            ->where('sport_id', $session->sport_id)
+            ->firstOrFail();
+        $oppWallet = MemberPointWallet::query()
+            ->where('user_id', $opponent->id)
+            ->where('sport_id', $session->sport_id)
+            ->firstOrFail();
+        $this->assertSame(35, (int) $hostWallet->balance);
+        $this->assertSame(8, (int) $oppWallet->balance);
+
+        $hostRanking = Ranking::query()
+            ->where('user_id', $host->id)
+            ->where('sport_id', $session->sport_id)
+            ->firstOrFail();
+        $this->assertGreaterThan(1000, (int) $hostRanking->rating);
+    }
+
     public function test_cannot_switch_result_on_non_finished_match(): void
     {
         $host = User::factory()->create();

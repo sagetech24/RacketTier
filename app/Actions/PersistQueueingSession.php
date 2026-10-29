@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\MatchResultProcessor;
 use App\Services\QueueingSessionDraftLineup;
 use App\Services\QueueingSessionDraftStore;
+use App\Services\RemapFinishedMatchBreakdown;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class PersistQueueingSession
         private QueueingSessionDraftStore $draftStore,
         private QueueingSessionDraftLineup $draftLineup,
         private MatchResultProcessor $matchResultProcessor,
+        private RemapFinishedMatchBreakdown $remapBreakdown,
     ) {}
 
     public function execute(GameSession $session): GameSession
@@ -218,6 +220,9 @@ class PersistQueueingSession
                 return $entry;
             })->all();
 
+            $breakdown = is_array($row['result_breakdown'] ?? null) ? $row['result_breakdown'] : null;
+            $breakdown = $this->remapBreakdown->remapWithIdMap($breakdown, $playerIdMap);
+
             QueueingSessionMatch::query()->create([
                 'game_session_id' => $session->id,
                 'match_no' => (int) ($row['match_no'] ?? 0),
@@ -228,7 +233,7 @@ class PersistQueueingSession
                 'winning_team' => $row['winning_team'] ?? null,
                 'started_at' => $row['started_at'] ?? null,
                 'finished_at' => $row['finished_at'] ?? null,
-                'result_breakdown' => is_array($row['result_breakdown'] ?? null) ? $row['result_breakdown'] : null,
+                'result_breakdown' => $breakdown,
             ]);
         }
     }
