@@ -15,6 +15,7 @@ import { MODAL_OVERLAY_CLASS, ModalPortal } from '../components/app/ModalPortal.
 import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.jsx';
 import { FinishedMatchPairingModal } from '../components/queueing/FinishedMatchPairingModal.jsx';
+import { QueueingSessionAutoSuggestSection } from '../components/queueing/QueueingSessionAutoSuggestSection.jsx';
 import { QueueingSessionFinishedMatches } from '../components/queueing/QueueingSessionFinishedMatches.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchCard } from '../components/queueing/QueueingSessionMatchCard.jsx';
@@ -645,17 +646,33 @@ export function QueueingSessionMatchesPage() {
                                                 />
                                             )
                                         ) : (
-                                            <MatchCardsList
-                                                status={status}
-                                                rows={rows}
-                                                canManageMatches={canManageMatches}
-                                                canEndMatch={canEndMatch}
-                                                busy={busy}
-                                                onStartQueuedMatch={onStartQueuedMatch}
-                                                onEditMatch={openEditMatchModal}
-                                                onRemoveMatch={openRemoveMatchConfirm}
-                                                onEndMatch={openFinishMatchModal}
-                                            />
+                                            <>
+                                                <MatchCardsList
+                                                    status={status}
+                                                    rows={rows}
+                                                    canManageMatches={canManageMatches}
+                                                    canEndMatch={canEndMatch}
+                                                    busy={busy}
+                                                    onStartQueuedMatch={onStartQueuedMatch}
+                                                    onEditMatch={openEditMatchModal}
+                                                    onRemoveMatch={openRemoveMatchConfirm}
+                                                    onEndMatch={openFinishMatchModal}
+                                                />
+                                                {status === 'queueing' && sessionId != null ? (
+                                                    <QueueingSessionAutoSuggestSection
+                                                        sessionId={sessionId}
+                                                        autoSuggestMatches={
+                                                            /** @type {import('../api/queueingSession.js').AutoSuggestMatchesPayload | null | undefined} */
+                                                            (session?.auto_suggest_matches)
+                                                        }
+                                                        canManage={canManageMatches}
+                                                        busy={busy}
+                                                        onApproved={reload}
+                                                        onDismissed={reload}
+                                                        onActionError={setActionError}
+                                                    />
+                                                ) : null}
+                                            </>
                                         )}
                                     </section>
                                 );

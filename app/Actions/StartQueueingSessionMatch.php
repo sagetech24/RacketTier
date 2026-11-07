@@ -59,7 +59,7 @@ class StartQueueingSessionMatch
             });
         }
 
-        return DB::transaction(function () use ($session, $match, $required): GameSession {
+        $started = DB::transaction(function () use ($session, $match, $required): GameSession {
             /** @var GameSession $locked */
             $locked = GameSession::query()
                 ->whereKey($session->id)
@@ -123,5 +123,7 @@ class StartQueueingSessionMatch
 
             return $locked->fresh();
         });
+
+        return app(RefreshQueueingSessionAutoSuggestMatches::class)->execute($started);
     }
 }

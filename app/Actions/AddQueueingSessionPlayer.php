@@ -32,7 +32,7 @@ class AddQueueingSessionPlayer
             return $this->executeMemberDraft($session, $userId, $skillLevel, $pronoun);
         }
 
-        return DB::transaction(function () use ($session, $userId, $skillLevel, $pronoun): array {
+        $payload = DB::transaction(function () use ($session, $userId, $skillLevel, $pronoun): array {
             $locked = GameSession::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
             if (! $locked->is_active) {
                 abort(422, 'Cannot modify the roster after the session has ended.');
@@ -65,6 +65,10 @@ class AddQueueingSessionPlayer
 
             return $this->payload($row);
         });
+
+        app(RefreshQueueingSessionAutoSuggestMatches::class)->execute($session->fresh() ?? $session);
+
+        return $payload;
     }
 
     /**
@@ -87,7 +91,7 @@ class AddQueueingSessionPlayer
             return $this->executeGuestDraft($session, $guestName, $resolvedPronoun, $skillLevel);
         }
 
-        return DB::transaction(function () use ($session, $guestName, $resolvedPronoun, $skillLevel): array {
+        $payload = DB::transaction(function () use ($session, $guestName, $resolvedPronoun, $skillLevel): array {
             $locked = GameSession::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
             if (! $locked->is_active) {
                 abort(422, 'Cannot modify the roster after the session has ended.');
@@ -116,6 +120,10 @@ class AddQueueingSessionPlayer
 
             return $this->payload($row);
         });
+
+        app(RefreshQueueingSessionAutoSuggestMatches::class)->execute($session->fresh() ?? $session);
+
+        return $payload;
     }
 
     /**

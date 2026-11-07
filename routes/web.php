@@ -30,6 +30,8 @@ use App\Http\Controllers\QueueingGameSessionStoreController;
 use App\Http\Controllers\QueueingGameSessionSummaryController;
 use App\Http\Controllers\QueueingGameSessionUpdateController;
 use App\Http\Controllers\QueueingSessionAutoProposalsController;
+use App\Http\Controllers\QueueingSessionAutoSuggestApproveController;
+use App\Http\Controllers\QueueingSessionAutoSuggestDismissController;
 use App\Http\Controllers\QueueingSessionCheckInOrderController;
 use App\Http\Controllers\QueueingSessionMatchDestroyController;
 use App\Http\Controllers\QueueingSessionMatchesIndexController;
@@ -176,6 +178,12 @@ Route::middleware('auth')->group(function () {
         ->name('auth.queueing-sessions.matches.index');
     Route::get('/auth/queueing-sessions/{gameSession}/matches/auto-proposals', QueueingSessionAutoProposalsController::class)
         ->name('auth.queueing-sessions.matches.auto-proposals');
+    Route::post('/auth/queueing-sessions/{gameSession}/matches/auto-suggest/{suggestionId}/approve', QueueingSessionAutoSuggestApproveController::class)
+        ->name('auth.queueing-sessions.matches.auto-suggest.approve')
+        ->where('suggestionId', '[A-Za-z0-9\\-]+');
+    Route::delete('/auth/queueing-sessions/{gameSession}/matches/auto-suggest/{suggestionId}', QueueingSessionAutoSuggestDismissController::class)
+        ->name('auth.queueing-sessions.matches.auto-suggest.dismiss')
+        ->where('suggestionId', '[A-Za-z0-9\\-]+');
     Route::post('/auth/queueing-sessions/{gameSession}/matches', QueueingSessionMatchesStoreController::class)
         ->name('auth.queueing-sessions.matches.store');
     Route::post('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}/start', QueueingSessionMatchStartController::class)

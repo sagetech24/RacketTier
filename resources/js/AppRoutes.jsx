@@ -1,16 +1,16 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminRoute } from './components/AdminRoute.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { RootLayout } from './components/RootLayout.jsx';
 import { PageLoader } from './components/PageLoader.jsx';
 
-const CreateMatchPage = lazy(() => import('./pages/CreateMatchPage.jsx').then((m) => ({ default: m.CreateMatchPage })));
 const ActivityPage = lazy(() => import('./pages/ActivityPage.jsx').then((m) => ({ default: m.ActivityPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx').then((m) => ({ default: m.DashboardPage })));
 const DashboardPageV2 = lazy(() => import('./pages/DashboardPageV2.jsx').then((m) => ({ default: m.DashboardPageV2 })));
-const FacilitiesPage = lazy(() => import('./pages/FacilitiesPage.jsx').then((m) => ({ default: m.FacilitiesPage })));
-const GameRoomPage = lazy(() => import('./pages/GameRoomPage.jsx').then((m) => ({ default: m.GameRoomPage })));
+const FacilitiesComingSoonPage = lazy(() =>
+    import('./pages/FacilitiesComingSoonPage.jsx').then((m) => ({ default: m.FacilitiesComingSoonPage })),
+);
 const HomePage = lazy(() => import('./pages/HomePage.jsx').then((m) => ({ default: m.HomePage })));
 const HomePageV2 = lazy(() => import('./pages/HomePageV2.jsx').then((m) => ({ default: m.HomePageV2 })));
 const HomePageV3 = lazy(() => import('./pages/HomePageV3.jsx').then((m) => ({ default: m.HomePageV3 })));
@@ -124,20 +124,14 @@ export function AppRoutes() {
                     element={
                         <ProtectedRoute>
                             <LazyPage>
-                                <FacilitiesPage />
+                                <FacilitiesComingSoonPage />
                             </LazyPage>
                         </ProtectedRoute>
                     }
                 />
                 <Route
                     path="facility/:facilityId/create-match"
-                    element={
-                        <ProtectedRoute>
-                            <LazyPage>
-                                <CreateMatchPage />
-                            </LazyPage>
-                        </ProtectedRoute>
-                    }
+                    element={<Navigate to="/facilities" replace />}
                 />
                 <Route
                     path="ranking"
@@ -151,13 +145,7 @@ export function AppRoutes() {
                 />
                 <Route
                     path="facility/:facilityId/game-room"
-                    element={
-                        <ProtectedRoute>
-                            <LazyPage>
-                                <GameRoomPage />
-                            </LazyPage>
-                        </ProtectedRoute>
-                    }
+                    element={<Navigate to="/facilities" replace />}
                 />
                 <Route
                     path="queueing-session"

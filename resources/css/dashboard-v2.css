@@ -1916,7 +1916,6 @@ button.rt-qs-session-nav__tab:not(.rt-qs-session-nav__tab--active) {
     .rt-match-card,
     .rt-match-card-skeleton,
     .rt-match-panel--enter,
-    .rt-finished-match-row,
     .rt-match-status-pill--ongoing .rt-match-status-dot,
     .rt-match-live-dot,
     .rt-match-card--ongoing {
@@ -1933,10 +1932,6 @@ button.rt-qs-session-nav__tab:not(.rt-qs-session-nav__tab--active) {
     .rt-match-tab:active,
     .rt-match-action:active:not(:disabled) {
         transform: none;
-    }
-
-    .rt-finished-match-row:hover {
-        background-color: transparent;
     }
 
     .rt-roster-player-card--editable:hover,
@@ -2688,6 +2683,16 @@ button.rt-qs-session-nav__tab:not(.rt-qs-session-nav__tab--active) {
 
 .rt-match-card--queueing {
     border-color: rgb(251 191 36 / 0.14);
+    background-color: rgb(251 191 36 / 0.1);
+}
+
+.rt-match-card--suggest::before {
+    background: linear-gradient(to bottom, #c2c1ff, rgb(194 193 255 / 0.35));
+}
+
+.rt-match-card--suggest {
+    border-color: rgb(194 193 255 / 0.22);
+    background-color: rgb(194 193 255 / 0.1);
 }
 
 .rt-match-card--ongoing {
@@ -2741,6 +2746,13 @@ button.rt-qs-session-nav__tab:not(.rt-qs-session-nav__tab--active) {
     font-weight: 800;
     letter-spacing: 0.02em;
     color: #c8c5d2;
+}
+
+.rt-match-no--queued {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.875rem;
+    letter-spacing: 0.01em;
+    color: #e4e1e6;
 }
 
 .rt-match-no--table {
@@ -3156,24 +3168,6 @@ html.rt-lineup-dnd-locked body {
         rt-skeleton-shimmer 1.4s ease-in-out infinite;
 }
 
-.rt-finished-matches-mobile {
-    display: block;
-}
-
-.rt-finished-matches-table {
-    display: none;
-}
-
-.rt-finished-match-row {
-    opacity: 0;
-    animation: rt-ranking-row-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    transition: background-color 0.2s ease-out;
-}
-
-.rt-finished-match-row:hover {
-    background-color: rgb(255 255 255 / 0.02);
-}
-
 .rt-admin-members-row {
     transition: background-color 0.15s ease-out;
 }
@@ -3181,23 +3175,6 @@ html.rt-lineup-dnd-locked body {
 .rt-admin-members-row:hover {
     background-color: rgb(255 255 255 / 0.03);
 }
-
-.rt-finished-match-row--validated {
-    box-shadow: inset 3px 0 0 rgb(76 224 129 / 0.55);
-}
-
-.rt-finished-row-stagger--1 { animation-delay: 0.04s; }
-.rt-finished-row-stagger--2 { animation-delay: 0.08s; }
-.rt-finished-row-stagger--3 { animation-delay: 0.12s; }
-.rt-finished-row-stagger--4 { animation-delay: 0.16s; }
-.rt-finished-row-stagger--5 { animation-delay: 0.2s; }
-.rt-finished-row-stagger--6 { animation-delay: 0.24s; }
-.rt-finished-row-stagger--7 { animation-delay: 0.28s; }
-.rt-finished-row-stagger--8 { animation-delay: 0.32s; }
-.rt-finished-row-stagger--9 { animation-delay: 0.36s; }
-.rt-finished-row-stagger--10 { animation-delay: 0.4s; }
-.rt-finished-row-stagger--11 { animation-delay: 0.44s; }
-.rt-finished-row-stagger--12 { animation-delay: 0.48s; }
 
 .rt-match-status-circle {
     display: inline-block;
@@ -3464,14 +3441,6 @@ html.rt-lineup-dnd-locked body {
     .rt-roster-player-cards-grid > article,
     .rt-roster-player-cards-grid--check-in > * {
         height: 100%;
-    }
-
-    .rt-finished-matches-mobile {
-        display: none;
-    }
-
-    .rt-finished-matches-table {
-        display: block;
     }
 
     .rt-match-tab {

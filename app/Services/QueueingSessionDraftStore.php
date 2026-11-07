@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Actions\RefreshQueueingSessionAutoSuggestMatches;
 use App\Data\QueueingSessionDraft;
 use App\Models\GameSession;
 use Illuminate\Support\Facades\Cache;
@@ -79,7 +80,19 @@ class QueueingSessionDraftStore
 
             $this->persist($locked, $draft, $checkpoint);
 
-            return $this->hydrator->hydrate($locked->fresh());
+            $hydrated = $this->hydrator->hydrate($locked->fresh());
+            $sessionId = (int) $locked->id;
+
+            DB::afterCommit(function () use ($sessionId): void {
+                $session = GameSession::query()->find($sessionId);
+                if ($session === null || ! $session->is_active || ! $session->isQueueing()) {
+                    return;
+                }
+
+                app(RefreshQueueingSessionAutoSuggestMatches::class)->execute($session);
+            });
+
+            return $hydrated;
         });
     }
 

@@ -59,7 +59,7 @@ class CreateQueueingSessionMatch
             return $this->hydrator->hydrateMatch($hydrated, (int) $matchId);
         }
 
-        return DB::transaction(function () use ($session, $manualLineup, $required): QueueingSessionMatch {
+        $created = DB::transaction(function () use ($session, $manualLineup, $required): QueueingSessionMatch {
             /** @var GameSession $locked */
             $locked = GameSession::query()
                 ->whereKey($session->id)
@@ -86,5 +86,9 @@ class CreateQueueingSessionMatch
                 'started_at' => null,
             ]);
         });
+
+        app(RefreshQueueingSessionAutoSuggestMatches::class)->execute($session->fresh() ?? $session);
+
+        return $created;
     }
 }

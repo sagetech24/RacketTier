@@ -59,6 +59,11 @@ class AutoGenerateQueueingSessionMatches
     ) {}
 
     /**
+     * @param  array{
+     *   limit?: int|null,
+     *   lookahead?: bool,
+     *   proposal_id_prefix?: string,
+     * }  $options
      * @return array{
      *   criteria: array<string, bool|string>,
      *   proposals: list<array{
@@ -66,6 +71,8 @@ class AutoGenerateQueueingSessionMatches
      *     match_type: 'singles'|'doubles',
      *     bracket_label: ?string,
      *     from_lobby: bool,
+     *     wave?: int,
+     *     players_ready?: bool,
      *     players: list<array<string, mixed>>,
      *     lineup: list<array{id: int, team: int}>,
      *   }>,
@@ -82,9 +89,15 @@ class AutoGenerateQueueingSessionMatches
      *   },
      * }
      */
-    public function execute(GameSession $session, ?AutoMatchCriteria $criteria = null): array
+    public function execute(GameSession $session, ?AutoMatchCriteria $criteria = null, array $options = []): array
     {
         $criteria ??= new AutoMatchCriteria;
+        $lookahead = (bool) ($options['lookahead'] ?? false);
+        $limit = isset($options['limit']) ? (int) $options['limit'] : null;
+        if ($limit !== null && $limit < 1) {
+            $limit = null;
+        }
+        $proposalIdPrefix = (string) ($options['proposal_id_prefix'] ?? 'auto');
 
         if (! $session->is_active) {
             abort(422, 'This session is not active.');
@@ -100,6 +113,11 @@ class AutoGenerateQueueingSessionMatches
 
         $this->pairHistory = ['partners' => [], 'opponents' => []];
 
+        /** @var list<array{availability: 'playing'|'queued', player_ids: list<int>}> $releaseQueue */
+        $releaseQueue = [];
+        /** @var array<int, 'ready'|'playing'|'queued'> $availabilityById */
+        $availabilityById = [];
+
         if ($session->isDraft()) {
             $draft = $this->draftStore->load((int) $session->id);
             $reserved = $this->draftLineup->reservedPlayerIds($draft);
@@ -107,6 +125,10 @@ class AutoGenerateQueueingSessionMatches
             /** @var Collection<int, GameSessionPlayer> $roster */
             $roster = $hydrated->players->values();
             $this->ingestLineupsFromDraftMatches($draft->matches);
+            if ($lookahead) {
+                $releaseQueue = $this->buildReleaseQueueFromDraftMatches($draft->matches);
+                $availabilityById = $this->availabilityMapFromRoster($roster, $reserved);
+            }
         } else {
             $reserved = $this->lineup->reservedPlayerIds((int) $session->id);
 
@@ -117,7 +139,14 @@ class AutoGenerateQueueingSessionMatches
                 ->orderBy('queue_position')
                 ->get();
             $this->ingestLineupsFromPersistedMatches((int) $session->id);
+            if ($lookahead) {
+                $releaseQueue = $this->buildReleaseQueueFromPersistedMatches((int) $session->id);
+                $availabilityById = $this->availabilityMapFromRoster($roster, $reserved);
+            }
         }
+
+        /** @var Collection<int, GameSessionPlayer> $byId */
+        $byId = $roster->keyBy(fn (GameSessionPlayer $p): int => (int) $p->id);
 
         /** @var Collection<int, GameSessionPlayer> $eligible */
         $eligible = $roster
@@ -133,11 +162,12 @@ class AutoGenerateQueueingSessionMatches
         $totalEligible = $eligible->count();
         $eligibilityBreakdown = $this->eligibilityBreakdown($roster, $reserved, $totalEligible);
 
-        $hasStats = $eligible->contains(
-            fn (GameSessionPlayer $p): bool => ((int) $p->wins_count + (int) $p->losses_count) > 0,
+        $hasStats = $roster->contains(
+            fn (GameSessionPlayer $p): bool => ! (bool) $p->getAttribute('is_removed')
+                && ((int) $p->wins_count + (int) $p->losses_count) > 0,
         );
 
-        if ($totalEligible < $required) {
+        if (! $lookahead && $totalEligible < $required) {
             return [
                 'criteria' => $criteria->toArray(),
                 'proposals' => [],
@@ -171,7 +201,7 @@ class AutoGenerateQueueingSessionMatches
         $proposals = [];
         $proposalIndex = 0;
 
-        while (true) {
+        while ($limit === null || $proposalIndex < $limit) {
             $fromLobby = false;
             $selected = collect();
 
@@ -190,7 +220,20 @@ class AutoGenerateQueueingSessionMatches
             }
 
             if ($selected->count() < $required) {
-                break;
+                if (! $lookahead || $releaseQueue === []) {
+                    break;
+                }
+
+                $released = array_shift($releaseQueue);
+                $this->admitReleasedPlayersToPools(
+                    $released['player_ids'],
+                    $byId,
+                    $lobby,
+                    $rotation,
+                );
+                $hasStats = $hasStats || $released['player_ids'] !== [];
+
+                continue;
             }
 
             $matchPlayers = $this->orderSelectedForTeams($selected, $criteria, $hasStats);
@@ -202,9 +245,18 @@ class AutoGenerateQueueingSessionMatches
 
             $playersOut = [];
             $lineupOut = [];
+            $playersReady = true;
             foreach ($matchPlayers as $index => $p) {
                 $team = $teamAssignments[$index];
-                $playersOut[] = $this->playerSummary($p, $team);
+                $summary = $this->playerSummary($p, $team);
+                if ($lookahead) {
+                    $availability = $availabilityById[(int) $p->id] ?? 'ready';
+                    $summary['availability'] = $availability;
+                    if ($availability !== 'ready') {
+                        $playersReady = false;
+                    }
+                }
+                $playersOut[] = $summary;
                 $lineupOut[] = ['id' => (int) $p->id, 'team' => $team];
             }
 
@@ -213,14 +265,19 @@ class AutoGenerateQueueingSessionMatches
             $bracketLabel = $fromLobby
                 ? 'Check-in'
                 : $this->bracketLabelForChunk($matchPlayers, $hasStats, $criteria);
-            $proposals[] = [
-                'proposal_id' => 'auto-'.$seedSuffix.'-'.$proposalIndex,
+            $proposal = [
+                'proposal_id' => $proposalIdPrefix.'-'.$seedSuffix.'-'.$proposalIndex,
                 'match_type' => $matchType,
                 'bracket_label' => $bracketLabel,
                 'from_lobby' => $fromLobby,
                 'players' => $playersOut,
                 'lineup' => $lineupOut,
             ];
+            if ($lookahead) {
+                $proposal['wave'] = $proposalIndex;
+                $proposal['players_ready'] = $playersReady;
+            }
+            $proposals[] = $proposal;
 
             if ($criteria->isRotationMode() && $matchType === 'doubles') {
                 $this->ingestTeamAssignments($matchPlayers, $teamAssignments);
@@ -1832,5 +1889,172 @@ class AutoGenerateQueueingSessionMatches
             'last_match_result' => $this->lastMatchResult($p),
             'team' => $team,
         ];
+    }
+
+    /**
+     * @param  Collection<int, GameSessionPlayer>  $roster
+     * @param  list<int>  $reserved
+     * @return array<int, 'ready'|'playing'|'queued'>
+     */
+    private function availabilityMapFromRoster(Collection $roster, array $reserved): array
+    {
+        $reservedLookup = array_flip($reserved);
+        $map = [];
+
+        foreach ($roster as $player) {
+            if ((bool) $player->getAttribute('is_removed')) {
+                continue;
+            }
+            $id = (int) $player->id;
+            if ($player->is_playing) {
+                $map[$id] = 'playing';
+            } elseif (isset($reservedLookup[$id])) {
+                $map[$id] = 'queued';
+            } elseif ($player->is_waiting) {
+                $map[$id] = 'ready';
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $matches
+     * @return list<array{availability: 'playing'|'queued', player_ids: list<int>}>
+     */
+    private function buildReleaseQueueFromDraftMatches(array $matches): array
+    {
+        $ongoing = [];
+        $queueing = [];
+
+        foreach ($matches as $match) {
+            if (! is_array($match)) {
+                continue;
+            }
+            $status = (string) ($match['status'] ?? '');
+            $playerIds = $this->playerIdsFromMatchLineup(
+                is_array($match['lineup'] ?? null) ? $match['lineup'] : [],
+            );
+            if ($playerIds === []) {
+                continue;
+            }
+            $sortKey = [
+                (int) ($match['match_no'] ?? 0),
+                (int) ($match['id'] ?? 0),
+            ];
+            if ($status === 'ongoing') {
+                $ongoing[] = ['sort' => $sortKey, 'entry' => ['availability' => 'playing', 'player_ids' => $playerIds]];
+            } elseif ($status === 'queueing') {
+                $queueing[] = ['sort' => $sortKey, 'entry' => ['availability' => 'queued', 'player_ids' => $playerIds]];
+            }
+        }
+
+        usort($ongoing, fn (array $a, array $b): int => $a['sort'] <=> $b['sort']);
+        usort($queueing, fn (array $a, array $b): int => $a['sort'] <=> $b['sort']);
+
+        return array_values(array_merge(
+            array_column($ongoing, 'entry'),
+            array_column($queueing, 'entry'),
+        ));
+    }
+
+    /**
+     * @return list<array{availability: 'playing'|'queued', player_ids: list<int>}>
+     */
+    private function buildReleaseQueueFromPersistedMatches(int $sessionId): array
+    {
+        $matches = QueueingSessionMatch::query()
+            ->where('game_session_id', $sessionId)
+            ->whereIn('status', ['ongoing', 'queueing'])
+            ->orderBy('match_no')
+            ->orderBy('id')
+            ->get(['id', 'match_no', 'status', 'lineup', 'started_at']);
+
+        $ongoing = [];
+        $queueing = [];
+
+        foreach ($matches as $match) {
+            $playerIds = $this->playerIdsFromMatchLineup(
+                is_array($match->lineup) ? $match->lineup : [],
+            );
+            if ($playerIds === []) {
+                continue;
+            }
+            $entry = [
+                'availability' => $match->status === 'ongoing' ? 'playing' : 'queued',
+                'player_ids' => $playerIds,
+            ];
+            if ($match->status === 'ongoing') {
+                $ongoing[] = $entry;
+            } else {
+                $queueing[] = $entry;
+            }
+        }
+
+        return array_values(array_merge($ongoing, $queueing));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lineup
+     * @return list<int>
+     */
+    private function playerIdsFromMatchLineup(array $lineup): array
+    {
+        $ids = [];
+        foreach ($lineup as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $pid = (int) ($row['game_session_player_id'] ?? 0);
+            if ($pid > 0) {
+                $ids[] = $pid;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Virtually finish a busy match: graduate lobby players into rotation and append to pools.
+     *
+     * @param  list<int>  $playerIds
+     * @param  Collection<int, GameSessionPlayer>  $byId
+     * @param  Collection<int, GameSessionPlayer>  $lobby
+     * @param  Collection<int, GameSessionPlayer>  $rotation
+     */
+    private function admitReleasedPlayersToPools(
+        array $playerIds,
+        Collection $byId,
+        Collection &$lobby,
+        Collection &$rotation,
+    ): void {
+        $present = array_flip(
+            $lobby->map(fn (GameSessionPlayer $p): int => (int) $p->id)
+                ->merge($rotation->map(fn (GameSessionPlayer $p): int => (int) $p->id))
+                ->all(),
+        );
+
+        foreach ($playerIds as $playerId) {
+            if (isset($present[$playerId])) {
+                continue;
+            }
+
+            /** @var GameSessionPlayer|null $player */
+            $player = $byId->get($playerId);
+            if (! $player instanceof GameSessionPlayer) {
+                continue;
+            }
+            if ((bool) $player->getAttribute('is_removed')) {
+                continue;
+            }
+
+            // Virtual finish graduates never-played lobby players into rotation.
+            if ($this->matchesPlayed($player) === 0) {
+                $player->losses_count = ((int) $player->losses_count) + 1;
+            }
+
+            $rotation = $rotation->push($player)->values();
+            $present[$playerId] = true;
+        }
     }
 }

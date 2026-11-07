@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class UpdateQueueingGameSession
 {
+    public function __construct(
+        private RefreshQueueingSessionAutoSuggestMatches $refreshAutoSuggest,
+    ) {}
+
     public function execute(
         User $host,
         GameSession $session,
@@ -36,7 +40,10 @@ class UpdateQueueingGameSession
             abort(422, 'Game type can only be changed before the first match is created.');
         }
 
-        return DB::transaction(function () use ($session, $queueName, $skipScores, $zeroLossPoints, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria, $matchType): GameSession {
+        $shouldRefreshSuggest = $autoMatchCriteria !== null
+            || ($matchType !== null && $matchType !== (string) $session->match_type);
+
+        $updated = DB::transaction(function () use ($session, $queueName, $skipScores, $zeroLossPoints, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria, $matchType): GameSession {
             $updates = [
                 'queue_name' => $queueName,
                 'skip_scores' => $skipScores,
@@ -57,5 +64,11 @@ class UpdateQueueingGameSession
 
             return $session->fresh();
         });
+
+        if ($shouldRefreshSuggest && $updated->is_active) {
+            return $this->refreshAutoSuggest->execute($updated);
+        }
+
+        return $updated;
     }
 }

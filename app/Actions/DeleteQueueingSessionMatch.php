@@ -100,6 +100,8 @@ class DeleteQueueingSessionMatch
 
             abort(422, 'Finished matches cannot be removed.');
         });
+
+        app(RefreshQueueingSessionAutoSuggestMatches::class)->execute($session->fresh() ?? $session);
     }
 
     private function cancelOngoingMatch(GameSession $session, QueueingSessionMatch $match): void

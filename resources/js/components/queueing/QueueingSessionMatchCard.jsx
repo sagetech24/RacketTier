@@ -99,6 +99,11 @@ function MatchTeamBlock({ names, teamNo, status, winningTeam }) {
  *   canEndMatch?: boolean;
  *   busy?: boolean;
  *   canOverrideFinished?: boolean;
+ *   variant?: 'default' | 'suggest';
+ *   suggestReady?: boolean;
+ *   suggestBracketLabel?: string | null;
+ *   onApproveSuggest?: () => void;
+ *   onDismissSuggest?: () => void;
  *   onStartQueuedMatch?: (matchId: number) => void;
  *   onEditMatch?: (row: Record<string, unknown>) => void;
  *   onRemoveMatch?: (row: Record<string, unknown>) => void;
@@ -114,6 +119,11 @@ export function QueueingSessionMatchCard({
     canEndMatch = false,
     busy = false,
     canOverrideFinished = false,
+    variant = 'default',
+    suggestReady = false,
+    suggestBracketLabel = null,
+    onApproveSuggest,
+    onDismissSuggest,
     onStartQueuedMatch,
     onEditMatch,
     onRemoveMatch,
@@ -121,17 +131,23 @@ export function QueueingSessionMatchCard({
     onSwitchFinishedResult,
     onUpdateFinishedPairing,
 }) {
+    const isSuggest = variant === 'suggest';
     const status = typeof row.status === 'string' ? row.status : 'queueing';
     const { team1, team2 } = lineupDisplayNamesByTeam(row.lineup);
     const winningTeam = row.winning_team === 1 || row.winning_team === 2 ? row.winning_team : null;
     const hasScore = row.team1_score != null && row.team2_score != null;
     const matchNo = row.match_no;
+    const checkIn =
+        Boolean(row.from_lobby) ||
+        suggestBracketLabel === 'Check-in' ||
+        String(suggestBracketLabel || '').toLowerCase() === 'check-in';
 
     const cardClass = [
         'rt-match-card',
         status === 'ongoing' ? 'rt-match-card--ongoing' : '',
         status === 'finished' ? 'rt-match-card--finished' : '',
         status === 'queueing' ? 'rt-match-card--queueing' : '',
+        isSuggest ? 'rt-match-card--suggest' : '',
     ]
         .filter(Boolean)
         .join(' ');
@@ -142,13 +158,38 @@ export function QueueingSessionMatchCard({
         <article className={[cardClass, staggerClass].join(' ')}>
             <div className="rt-match-card-inner">
                 <header className="rt-match-card-head">
-                    <div className="flex min-w-0 items-center gap-2">
-                        {matchNo != null && status !== 'ongoing' ? (
-                            <span className="rt-match-no" title={`Match ${matchNo}`}>
-                                #{matchNo}
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        {!isSuggest && matchNo != null && status === 'queueing' ? (
+                            status === 'queueing' ? (
+                                <span className="relative w-[50px] h-[25px] flex items-center justify-center" title={`Match #${matchNo}`}>
+                                    <span className="absolute -top-3 left-0 text-xl font-extrabold italic tabular-nums [text-shadow:0_2px_8px_rgb(0_0_0_/_0.55),0_0_1px_rgb(0_0_0_/_0.8)] sm:text-md">
+                                        #{matchNo}
+                                    </span>
+                                </span>
+                            ) : null
+                        ) : null}
+                        {!isSuggest && matchNo != null && status === 'finished' ? (
+                            <span className="rt-match-no" title={`Match #${matchNo}`}>
+                                Match #{matchNo}
                             </span>
                         ) : null}
-                        {status === 'queueing' ? (
+                        {isSuggest ? (
+                            <>
+                                {suggestBracketLabel ? (
+                                    <span
+                                        className={[
+                                            'rounded-full border px-2.5 py-0.5 text-[10px] font-semibold capitalize tracking-wide',
+                                            checkIn
+                                                ? 'border-[#38bdf8]/40 bg-[#38bdf8]/15 text-[#38bdf8]'
+                                                : 'border-[#c2c1ff]/40 bg-[#c2c1ff]/15 text-[#c2c1ff]',
+                                        ].join(' ')}
+                                    >
+                                        {suggestBracketLabel}
+                                    </span>
+                                ) : null}
+                            </>
+                        ) : null}
+                        {!isSuggest && status === 'queueing' ? (
                             <span className="rt-match-head-badge rt-match-head-badge--queueing">
                                 <MaterialIcon name="hourglass_top" className="text-[14px]!" />
                                 Waiting to start
@@ -178,10 +219,23 @@ export function QueueingSessionMatchCard({
                                 <LiveMatchDuration startedAt={row.started_at} />
                             </span>
                         ) : null}
-                        <span className={matchStatusPillClass(status)}>
-                            <span className="rt-match-status-dot" aria-hidden />
-                            {matchStatusLabel(status)}
-                        </span>
+                        {isSuggest ? (
+                            <span
+                                className={[
+                                    'rounded-full border px-2.5 py-0.5 text-[10px] font-semibold tracking-wide',
+                                    suggestReady
+                                        ? 'border-[#4ce081]/40 bg-[#4ce081]/15 text-[#4ce081]'
+                                        : 'border-[#fbbf24]/35 bg-[#fbbf24]/10 text-[#fbbf24]',
+                                ].join(' ')}
+                            >
+                                {suggestReady ? 'Ready' : 'After current court/queue'}
+                            </span>
+                        ) : (
+                            <span className={matchStatusPillClass(status)}>
+                                <span className="rt-match-status-dot" aria-hidden />
+                                {matchStatusLabel(status)}
+                            </span>
+                        )}
                     </div>
                 </header>
 
@@ -240,7 +294,37 @@ export function QueueingSessionMatchCard({
                     </div>
                 ) : null}
 
-                {canManageMatches && status === 'queueing' ? (
+                {isSuggest && canManageMatches ? (
+                    <div className="rt-match-actions">
+                        <button
+                            type="button"
+                            disabled={busy || !suggestReady}
+                            onClick={() => onApproveSuggest?.()}
+                            title={
+                                suggestReady
+                                    ? 'Approve and queue this match'
+                                    : 'Players are still on court or already queued'
+                            }
+                            className="rt-match-action rt-match-action--primary"
+                        >
+                            <MaterialIcon name="playlist_add" className="text-[16px]!" />
+                            Approve & queue
+                        </button>
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onDismissSuggest?.()}
+                            className="rt-match-action rt-match-action--danger"
+                            aria-label="Remove suggestion"
+                            title="Remove this suggestion"
+                        >
+                            <MaterialIcon name="close" className="text-[16px]!" />
+                            Close
+                        </button>
+                    </div>
+                ) : null}
+
+                {!isSuggest && canManageMatches && status === 'queueing' ? (
                     <div className="rt-match-actions">
                         <button
                             type="button"
@@ -320,7 +404,7 @@ export function QueueingSessionMatchCard({
                             aria-label="Switch match result"
                         >
                             <MaterialIcon name="swap_horiz" className="text-[16px]!" />
-                            Switch Results
+                            Swap Results
                         </button>
                         <button
                             type="button"
@@ -330,7 +414,7 @@ export function QueueingSessionMatchCard({
                             aria-label="Update team pairing"
                         >
                             <MaterialIcon name="groups" className="text-[16px]!" />
-                            Switch Pairing
+                            Edit Pairing
                         </button>
                     </div>
                 ) : null}

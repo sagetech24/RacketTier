@@ -49,6 +49,7 @@ class PersistQueueingSession
                 'status' => 'finished',
                 'ended_at' => now(),
                 'draft_snapshot' => null,
+                'auto_suggest_matches' => null,
                 'draft_participant_user_ids' => $draft->participantUserIds(),
             ]);
 

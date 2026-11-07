@@ -78,7 +78,15 @@ class GameSessionResource extends JsonResource
                 $this->isQueueing(),
                 fn (): array => $this->resolveAutoMatchCriteria()->toStoredArray(),
             ),
+            'auto_suggest_matches' => $this->when(
+                $this->isQueueing() && $this->is_active,
+                fn (): ?array => is_array($this->auto_suggest_matches) ? $this->auto_suggest_matches : null,
+            ),
             'completed_matches_count' => (int) ($this->completed_matches_count ?? 0),
+            'queueing_matches_count' => $this->when(
+                isset($this->queueing_matches_count),
+                fn (): int => (int) $this->queueing_matches_count,
+            ),
             'persistence_state' => $this->persistence_state ?? 'persisted',
             'draft_version' => (int) ($this->draft_version ?? 0),
             'facility' => $this->when(

@@ -42,7 +42,7 @@ class FinishGameSessionMatch
 
         $required = $session->match_type === 'doubles' ? 4 : 2;
 
-        return DB::transaction(function () use ($session, $team1Score, $team2Score, $required, $queueingSessionMatchId, $winningTeamOverride): GameSession {
+        $finished = DB::transaction(function () use ($session, $team1Score, $team2Score, $required, $queueingSessionMatchId, $winningTeamOverride): GameSession {
             /** @var GameSession $locked */
             $locked = GameSession::query()
                 ->whereKey($session->id)
@@ -161,6 +161,12 @@ class FinishGameSessionMatch
 
             return $locked->fresh();
         });
+
+        if ($finished->isQueueing() && $finished->is_active) {
+            return app(RefreshQueueingSessionAutoSuggestMatches::class)->execute($finished);
+        }
+
+        return $finished;
     }
 
     private function finishDraftMatch(

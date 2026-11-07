@@ -66,6 +66,7 @@ class EndQueueingGameSession
                 'is_active' => false,
                 'status' => 'finished',
                 'ended_at' => now(),
+                'auto_suggest_matches' => null,
             ]);
 
             return $locked->fresh();

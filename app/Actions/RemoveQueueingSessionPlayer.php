@@ -64,5 +64,7 @@ class RemoveQueueingSessionPlayer
 
             $this->queueingSessionState->recompactQueuePositions((int) $locked->id);
         });
+
+        app(RefreshQueueingSessionAutoSuggestMatches::class)->execute($session->fresh() ?? $session);
     }
 }

@@ -399,6 +399,75 @@ export async function fetchQueueingSessionAutoProposals(sessionId, criteria) {
 }
 
 /**
+ * @typedef {{
+ *   suggestion_id: string,
+ *   match_type: 'singles' | 'doubles',
+ *   bracket_label: string | null,
+ *   from_lobby: boolean,
+ *   wave: number,
+ *   players_ready: boolean,
+ *   lineup: Array<{ id: number, team: 1 | 2 }>,
+ *   players: Array<AutoProposalPlayer & { availability?: 'ready' | 'playing' | 'queued' }>,
+ * }} AutoSuggestMatch
+ *
+ * @typedef {{
+ *   generated_at: string,
+ *   draft_version: number,
+ *   criteria: AutoMatchCriteria,
+ *   suggestions: AutoSuggestMatch[],
+ * }} AutoSuggestMatchesPayload
+ */
+
+/**
+ * @param {number|string} sessionId
+ * @param {string} suggestionId
+ */
+export async function deleteQueueingSessionAutoSuggest(sessionId, suggestionId) {
+    const res = await deleteJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/auto-suggest/${encodeURIComponent(String(suggestionId))}`,
+    );
+    if (!res.ok) {
+        let msg = 'Could not dismiss auto-suggest match.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
+ * @param {number|string} sessionId
+ * @param {string} suggestionId
+ */
+export async function postApproveQueueingSessionAutoSuggest(sessionId, suggestionId) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/auto-suggest/${encodeURIComponent(String(suggestionId))}/approve`,
+        {},
+    );
+    if (!res.ok) {
+        let msg = 'Could not approve auto-suggest match.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+            else if (j.errors && typeof j.errors === 'object') {
+                const first = Object.values(j.errors)[0];
+                if (Array.isArray(first) && first[0]) msg = String(first[0]);
+            }
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
  * @param {number|string} sessionId
  * @param {{ lineup: Array<{ id: number, team?: number }> }} body
  */
