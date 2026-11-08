@@ -5,6 +5,7 @@ import { queueSessionCardActionClass } from '../../lib/queueingSessionNav.js';
 import { QueueingSessionNav } from './QueueingSessionNav.jsx';
 import { QueueingSessionSettingsModal } from './QueueingSessionSettingsModal.jsx';
 import { matchPointFormulaLabel } from '../../lib/matchPointFormula.js';
+import { formatAverageMatchesPerPlayer } from '../../lib/queueingSessionStats.js';
 
 /**
  * @param {{
@@ -147,6 +148,10 @@ export function QueueingSessionHeader({
                     ) : null}
                     <p className="text-sm text-[#c8c5d2]/90">
                         <span className="font-bold">Matches Played:</span> {session.completed_matches_count ?? 0}
+                    </p>
+                    <p className="text-sm text-[#c8c5d2]/90">
+                        <span className="font-bold">Average match per Player:</span>{' '}
+                        {formatAverageMatchesPerPlayer(session)}
                     </p>
                 </div>
             </div>

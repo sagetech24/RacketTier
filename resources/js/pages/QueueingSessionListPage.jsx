@@ -22,6 +22,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import { queryKeys } from '../lib/queryClient.js';
 import { normalizedAppPath, queueingSessionNavPaths, queueSessionCardActionClass } from '../lib/queueingSessionNav.js';
 import { canDeleteQueueingSession } from '../lib/queueingSessionPermissions.js';
+import { formatAverageMatchesPerPlayer } from '../lib/queueingSessionStats.js';
 import { userIsAdmin } from '../lib/userRoles.js';
 
 function formatTime(iso) {
@@ -176,6 +177,10 @@ function QueueingSessionCard({
                         <span>{row.completed_matches_count} matches</span>
                     </div>
                 ) : null}
+                <div className="flex items-center gap-1.5">
+                    <MaterialIcon name="trending_up" className="text-sm! md:text-lg! text-[#7877c6]" />
+                    <span>{formatAverageMatchesPerPlayer(row)} ave. matches / player</span>
+                </div>
             </div>
 
             </div>
