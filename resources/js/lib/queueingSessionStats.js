@@ -30,5 +30,5 @@ export function averageMatchesPerPlayer(session) {
  * @returns {string}
  */
 export function formatAverageMatchesPerPlayer(session) {
-    return averageMatchesPerPlayer(session).toFixed(1);
+    return String(Math.round(averageMatchesPerPlayer(session)));
 }

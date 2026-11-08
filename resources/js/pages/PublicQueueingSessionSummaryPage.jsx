@@ -12,6 +12,7 @@ import { QueueingSessionPodiumCard } from '../components/queueing/QueueingSessio
 import { sessionRequiresSkillLevel } from '../components/queueing/skillLevelUtils.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { sortFinishedMatchesRecentFirst } from '../lib/queueingMatchDisplay.js';
+import { formatAverageMatchesPerPlayer } from '../lib/queueingSessionStats.js';
 
 /**
  * @param {{ label: string, value: number | string }} props
@@ -122,6 +123,10 @@ export function PublicQueueingSessionSummaryPage() {
                         <div className="mb-2 grid gap-2 md:grid-cols-2 md:gap-6">
                             <div className="space-y-1">
                                 <p className="text-sm capitalize text-[#c8c5d2]/90">
+                                    <span className="font-bold">Sport played:</span>{' '}
+                                    {session.sport?.name ?? 'N/A'}
+                                </p>
+                                <p className="text-sm capitalize text-[#c8c5d2]/90">
                                     <span className="font-bold">Game Type:</span> {session.match_type}
                                 </p>
                                 <p className="text-sm capitalize text-[#c8c5d2]/90">
@@ -134,6 +139,14 @@ export function PublicQueueingSessionSummaryPage() {
                                 </p>
                                 <p className="text-sm text-[#c8c5d2]/90">
                                     <span className="font-bold">Ended:</span> {formatWhen(session.ended_at)}
+                                </p>
+                                <p className="text-sm text-[#c8c5d2]/90">
+                                    <span className="font-bold">Average match per Player:</span>{' '}
+                                    {formatAverageMatchesPerPlayer({
+                                        completed_matches_count: totals?.matches ?? 0,
+                                        participant_count: totals?.players ?? 0,
+                                        match_type: session.match_type,
+                                    })}
                                 </p>
                             </div>
                         </div>
