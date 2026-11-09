@@ -33,6 +33,9 @@ class BuildQueueingSessionSummary
             ->with('user:id,name,email')
             ->orderByDesc('session_points')
             ->orderByDesc('wins_count')
+            // Check-in time (created_at); earlier arrival ranks higher. Nulls last, then id.
+            ->orderByRaw('created_at is null')
+            ->orderBy('created_at')
             ->orderBy('id')
             ->get();
 
@@ -45,13 +48,35 @@ class BuildQueueingSessionSummary
     private function summaryFromDraft(GameSession $session): array
     {
         $hydrated = $this->hydrator->hydrate($session);
-        $players = $hydrated->players->sortBy([
-            ['session_points', 'desc'],
-            ['wins_count', 'desc'],
-            ['id', 'asc'],
-        ])->values();
+        $players = $hydrated->players
+            ->sort(fn (GameSessionPlayer $a, GameSessionPlayer $b): int => $this->compareLeaderboardPlayers($a, $b))
+            ->values();
 
         return $this->buildSummary($hydrated, $players, eloDeltaSum: 0);
+    }
+
+    /**
+     * Rank: session points ↓, wins ↓, earlier check-in ↑, id ↑.
+     */
+    private function compareLeaderboardPlayers(GameSessionPlayer $a, GameSessionPlayer $b): int
+    {
+        $pointsCmp = ((int) $b->session_points) <=> ((int) $a->session_points);
+        if ($pointsCmp !== 0) {
+            return $pointsCmp;
+        }
+
+        $winsCmp = ((int) $b->wins_count) <=> ((int) $a->wins_count);
+        if ($winsCmp !== 0) {
+            return $winsCmp;
+        }
+
+        $aCheckIn = $a->created_at?->getTimestamp() ?? PHP_INT_MAX;
+        $bCheckIn = $b->created_at?->getTimestamp() ?? PHP_INT_MAX;
+        if ($aCheckIn !== $bCheckIn) {
+            return $aCheckIn <=> $bCheckIn;
+        }
+
+        return ((int) $a->id) <=> ((int) $b->id);
     }
 
     /**

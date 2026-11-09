@@ -100,7 +100,14 @@ export function QueueingSessionPage() {
             const pa = a.session_points ?? -1;
             const pb = b.session_points ?? -1;
             if (pb !== pa) return pb - pa;
-            return (b.wins_count ?? 0) - (a.wins_count ?? 0);
+            const wa = a.wins_count ?? 0;
+            const wb = b.wins_count ?? 0;
+            if (wb !== wa) return wb - wa;
+            // Earlier check-in ranks higher among tied players.
+            const ta = a.checked_in_at ? Date.parse(a.checked_in_at) : Number.POSITIVE_INFINITY;
+            const tb = b.checked_in_at ? Date.parse(b.checked_in_at) : Number.POSITIVE_INFINITY;
+            if (ta !== tb) return ta - tb;
+            return (a.id ?? 0) - (b.id ?? 0);
         });
         return rows.map((p, idx) => ({
             rank: idx + 1,

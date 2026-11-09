@@ -170,6 +170,48 @@ class PublicQueueingSessionSummaryTest extends TestCase
         $this->getJson('/public/queueing-sessions/'.$session->publicSummaryKey())->assertOk();
     }
 
+    public function test_summary_ranks_tied_players_by_earlier_check_in(): void
+    {
+        $host = User::factory()->create(['name' => 'Early Bird']);
+        $lateUser = User::factory()->create(['name' => 'Late Arrival']);
+        $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
+        $session = $this->makeFinishedSession($host, $sport, 'Tie Break Night');
+
+        // Insert late player first so they get the lower id; check-in time should still lose.
+        $lateRow = GameSessionPlayer::query()->create([
+            'game_session_id' => $session->id,
+            'user_id' => $lateUser->id,
+            'queue_position' => 1,
+            'is_waiting' => false,
+            'is_playing' => false,
+            'wins_count' => 2,
+            'losses_count' => 1,
+            'session_points' => 42,
+        ]);
+        $earlyRow = GameSessionPlayer::query()->create([
+            'game_session_id' => $session->id,
+            'user_id' => $host->id,
+            'queue_position' => 2,
+            'is_waiting' => false,
+            'is_playing' => false,
+            'wins_count' => 2,
+            'losses_count' => 1,
+            'session_points' => 42,
+        ]);
+
+        $lateRow->forceFill(['created_at' => now()->subMinutes(10)])->save();
+        $earlyRow->forceFill(['created_at' => now()->subHour()])->save();
+
+        $this->assertLessThan($earlyRow->id, $lateRow->id);
+
+        $response = $this->getJson('/public/queueing-sessions/'.$session->publicSummaryKey());
+        $response->assertOk();
+        $response->assertJsonPath('data.summary.players.0.name', 'Early ****');
+        $response->assertJsonPath('data.summary.players.1.name', 'Late ****');
+        $response->assertJsonPath('data.summary.players.0.earned_points', 42);
+        $response->assertJsonPath('data.summary.players.1.earned_points', 42);
+    }
+
     private function makeFinishedSession(User $host, Sport $sport, string $name): GameSession
     {
         return GameSession::query()->create([
