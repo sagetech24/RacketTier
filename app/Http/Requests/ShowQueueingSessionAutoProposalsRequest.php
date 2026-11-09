@@ -36,6 +36,7 @@ class ShowQueueingSessionAutoProposalsRequest extends FormRequest
             'wl_statistics' => ['sometimes', 'boolean'],
             'sequence' => ['sometimes', 'boolean'],
             'genderless_mixed' => ['sometimes', 'boolean'],
+            'include_lobby' => ['sometimes', 'boolean'],
             'refresh_seed' => ['sometimes', 'integer', 'min:1'],
         ];
     }

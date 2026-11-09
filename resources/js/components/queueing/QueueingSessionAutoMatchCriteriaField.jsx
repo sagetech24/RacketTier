@@ -9,6 +9,7 @@ export const DEFAULT_AUTO_MATCH_CRITERIA = /** @type {AutoMatchCriteria} */ ({
     wl_statistics: true,
     sequence: true,
     genderless_mixed: true,
+    include_lobby: true,
 });
 
 /** @type {Array<{ id: string, label: string, hint: string, criteria: AutoMatchCriteria, doublesOnly?: boolean }>} */
@@ -23,6 +24,7 @@ export const AUTO_MATCH_PRESETS = [
             wl_statistics: true,
             sequence: true,
             genderless_mixed: true,
+            include_lobby: true,
         },
     },
     {
@@ -35,6 +37,7 @@ export const AUTO_MATCH_PRESETS = [
             wl_statistics: false,
             sequence: true,
             genderless_mixed: true,
+            include_lobby: true,
         },
     },
     {
@@ -47,6 +50,7 @@ export const AUTO_MATCH_PRESETS = [
             wl_statistics: false,
             sequence: true,
             genderless_mixed: true,
+            include_lobby: true,
         },
     },
     {
@@ -60,6 +64,7 @@ export const AUTO_MATCH_PRESETS = [
             wl_statistics: true,
             sequence: true,
             genderless_mixed: true,
+            include_lobby: true,
         },
     },
 ];
@@ -142,6 +147,7 @@ export function parseAutoMatchCriteria(value) {
         wl_statistics: raw.wl_statistics !== false,
         sequence: raw.sequence !== false,
         genderless_mixed: raw.genderless_mixed !== false,
+        include_lobby: raw.include_lobby !== false,
     };
 }
 
@@ -180,6 +186,7 @@ export function normalizeAutoMatchCriteria(criteria, matchType) {
         wl_statistics: Boolean(criteria.wl_statistics),
         sequence: Boolean(criteria.sequence),
         genderless_mixed: Boolean(criteria.genderless_mixed),
+        include_lobby: criteria.include_lobby !== false,
     };
 }
 
@@ -281,7 +288,15 @@ export function QueueingSessionAutoMatchCriteriaField({
                                     title={unavailable ? 'Available for doubles only' : undefined}
                                     onClick={() => {
                                         if (unavailable) return;
-                                        onChange(normalizeAutoMatchCriteria(preset.criteria, matchType));
+                                        onChange(
+                                            normalizeAutoMatchCriteria(
+                                                {
+                                                    ...preset.criteria,
+                                                    include_lobby: value.include_lobby !== false,
+                                                },
+                                                matchType,
+                                            ),
+                                        );
                                     }}
                                     className={[
                                         'min-h-11 rounded-xl border px-2 py-2 text-center transition-colors duration-200',
@@ -417,6 +432,52 @@ export function QueueingSessionAutoMatchCriteriaField({
                         </div>
                     );
                 })}
+            </div>
+
+            <div className="space-y-2" role="group" aria-label="Player pool">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
+                    Player pool
+                </p>
+                <label
+                    htmlFor="rt-auto-match-include-lobby"
+                    className={[
+                        'flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors duration-200',
+                        'focus-within:ring-2 focus-within:ring-[#c2c1ff]/50',
+                        value.include_lobby !== false
+                            ? 'border-[#c2c1ff]/35 bg-[#c2c1ff]/10'
+                            : 'border-[#2a2a2d] bg-[#131316] hover:border-white/12',
+                        disabled ? 'cursor-not-allowed opacity-65' : '',
+                    ].join(' ')}
+                >
+                    <span
+                        className={[
+                            'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg',
+                            value.include_lobby !== false
+                                ? 'bg-[#c2c1ff]/20 text-[#c2c1ff]'
+                                : 'bg-[#2a2a2d] text-[#918f9c]',
+                        ].join(' ')}
+                        aria-hidden
+                    >
+                        <MaterialIcon name="login" className="text-xl!" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-[#e4e1e6] md:text-base!">
+                            Include check-in lobby
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-relaxed text-[#918f9c]">
+                            Off = match only rotation players who already played (skip encoded but
+                            not-yet-arrived check-in waiters)
+                        </span>
+                    </span>
+                    <ToggleSwitch
+                        id="rt-auto-match-include-lobby"
+                        checked={value.include_lobby !== false}
+                        disabled={disabled}
+                        size="sm"
+                        onChange={(next) => patch({ include_lobby: next })}
+                        aria-label="Include check-in lobby"
+                    />
+                </label>
             </div>
 
             <div

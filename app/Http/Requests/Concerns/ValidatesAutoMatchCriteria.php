@@ -23,6 +23,7 @@ trait ValidatesAutoMatchCriteria
             'wl_statistics' => ['sometimes', 'boolean'],
             'sequence' => ['sometimes', 'boolean'],
             'genderless_mixed' => ['sometimes', 'boolean'],
+            'include_lobby' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -51,6 +52,7 @@ trait ValidatesAutoMatchCriteria
             'wl_statistics',
             'sequence',
             'genderless_mixed',
+            'include_lobby',
         ]);
     }
 

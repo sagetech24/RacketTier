@@ -13,6 +13,7 @@ import { deleteJson, patchJson, postJson } from '../lib/http.js';
  *   wl_statistics?: boolean,
  *   sequence?: boolean,
  *   genderless_mixed?: boolean,
+ *   include_lobby?: boolean,
  * }} payload
  */
 export async function patchUpdateQueueingSession(sessionId, payload) {
@@ -74,6 +75,7 @@ export async function deleteQueueingSession(sessionId) {
  *   wl_statistics?: boolean,
  *   sequence?: boolean,
  *   genderless_mixed?: boolean,
+ *   include_lobby?: boolean,
  * }} payload
  */
 export async function postCreateQueueingSession(payload) {
@@ -282,6 +284,7 @@ export async function fetchQueueingSessionMatches(sessionId) {
  *   wl_statistics: boolean,
  *   sequence: boolean,
  *   genderless_mixed: boolean,
+ *   include_lobby: boolean,
  *   refresh_seed?: number,
  * }} AutoMatchCriteria
  *
@@ -314,6 +317,7 @@ export async function fetchQueueingSessionMatches(sessionId) {
  *   queued_in_matches: number,
  *   waiting_available: number,
  *   not_in_queue: number,
+ *   check_in_excluded?: number,
  * }} AutoMatchEligibilityBreakdown
  *
  * @typedef {{
@@ -340,6 +344,7 @@ export async function fetchQueueingSessionAutoProposals(sessionId, criteria) {
         params.set('wl_statistics', criteria.wl_statistics ? '1' : '0');
         params.set('sequence', criteria.sequence ? '1' : '0');
         params.set('genderless_mixed', criteria.genderless_mixed ? '1' : '0');
+        params.set('include_lobby', criteria.include_lobby !== false ? '1' : '0');
         if (typeof criteria.refresh_seed === 'number' && criteria.refresh_seed > 0) {
             params.set('refresh_seed', String(criteria.refresh_seed));
         }
@@ -378,6 +383,7 @@ export async function fetchQueueingSessionAutoProposals(sessionId, criteria) {
             wl_statistics: rawCriteria.wl_statistics !== false,
             sequence: rawCriteria.sequence !== false,
             genderless_mixed: rawCriteria.genderless_mixed !== false,
+            include_lobby: rawCriteria.include_lobby !== false,
             refresh_seed:
                 typeof rawCriteria.refresh_seed === 'number' && rawCriteria.refresh_seed > 0
                     ? rawCriteria.refresh_seed
@@ -394,6 +400,10 @@ export async function fetchQueueingSessionAutoProposals(sessionId, criteria) {
             queued_in_matches: Number(rawBreakdown.queued_in_matches ?? 0),
             waiting_available: Number(rawBreakdown.waiting_available ?? data.total_eligible ?? 0),
             not_in_queue: Number(rawBreakdown.not_in_queue ?? 0),
+            check_in_excluded:
+                typeof rawBreakdown.check_in_excluded === 'number' && rawBreakdown.check_in_excluded > 0
+                    ? Number(rawBreakdown.check_in_excluded)
+                    : undefined,
         },
     };
 }

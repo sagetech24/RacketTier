@@ -35,6 +35,7 @@ function criteriaSummaryChips(criteria) {
     if (criteria.wl_statistics) chips.push('W/L stats');
     if (criteria.sequence) chips.push('Sequence');
     if (criteria.genderless_mixed) chips.push('Genderless (mixed)');
+    if (criteria.include_lobby === false) chips.push('Rotation only');
     return chips;
 }
 
@@ -56,6 +57,9 @@ function eligibilitySummaryLine(breakdown) {
     }
     if (breakdown.not_in_queue > 0) {
         parts.push(`${breakdown.not_in_queue} not in queue`);
+    }
+    if (breakdown.check_in_excluded != null && breakdown.check_in_excluded > 0) {
+        parts.push(`${breakdown.check_in_excluded} check-in excluded`);
     }
 
     return `${parts.join(' · ')} · ${breakdown.total_roster} on roster`;
@@ -95,6 +99,9 @@ function autoMatchEmptyMessage({ breakdown, totalEligible, required, matchType, 
     }
     if (breakdown.not_in_queue > 0) {
         busyParts.push(`${breakdown.not_in_queue} not in the waiting queue`);
+    }
+    if (breakdown.check_in_excluded != null && breakdown.check_in_excluded > 0) {
+        busyParts.push(`${breakdown.check_in_excluded} in check-in lobby (excluded)`);
     }
 
     if (busyParts.length > 0) {

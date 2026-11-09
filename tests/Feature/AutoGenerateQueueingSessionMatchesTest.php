@@ -1025,4 +1025,82 @@ class AutoGenerateQueueingSessionMatchesTest extends TestCase
         $response->assertJsonPath('data.proposals.0.bracket_label', 'Partner rotation');
         $response->assertJsonPath('data.proposals.0.from_lobby', false);
     }
+
+    public function test_include_lobby_false_excludes_check_in_players_from_proposals(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $lobbyA = $this->addPlayer($session, 0, 3, wins: 0, losses: 0);
+        $lobbyB = $this->addPlayer($session, 0, 3, wins: 0, losses: 0);
+        $rotationA = $this->addPlayer($session, 1, 3, wins: 1, losses: 0);
+        $rotationB = $this->addPlayer($session, 2, 3, wins: 1, losses: 0);
+
+        $criteria = new AutoMatchCriteria(
+            skillLevel: false,
+            wlStatistics: false,
+            sequence: true,
+            genderlessMixed: false,
+            includeLobby: false,
+        );
+        $result = app(AutoGenerateQueueingSessionMatches::class)->execute($session, $criteria);
+
+        $this->assertCount(1, $result['proposals']);
+        $this->assertFalse($result['proposals'][0]['from_lobby']);
+        $this->assertNotSame('Check-in', $result['proposals'][0]['bracket_label']);
+
+        $ids = collect($result['proposals'][0]['lineup'])->pluck('id')->sort()->values()->all();
+        $this->assertSame(
+            collect([$rotationA->id, $rotationB->id])->sort()->values()->all(),
+            $ids,
+        );
+        $this->assertNotContains($lobbyA->id, $ids);
+        $this->assertNotContains($lobbyB->id, $ids);
+        $this->assertSame(2, $result['total_eligible']);
+        $this->assertSame(2, $result['eligibility_breakdown']['check_in_excluded'] ?? null);
+        $this->assertFalse($result['criteria']['include_lobby']);
+    }
+
+    public function test_include_lobby_false_with_only_lobby_players_returns_empty(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $this->addPlayer($session, 0, 3, wins: 0, losses: 0);
+        $this->addPlayer($session, 0, 3, wins: 0, losses: 0);
+        $this->addPlayer($session, 0, 3, wins: 0, losses: 0);
+
+        $response = $this->actingAs($host)->getJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/auto-proposals?include_lobby=0&sequence=1&skill_level=0&wl_statistics=0',
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('data.criteria.include_lobby', false);
+        $response->assertJsonPath('data.proposals', []);
+        $response->assertJsonPath('data.total_eligible', 0);
+        $response->assertJsonPath('data.eligibility_breakdown.waiting_available', 0);
+        $response->assertJsonPath('data.eligibility_breakdown.check_in_excluded', 3);
+    }
+
+    public function test_include_lobby_defaults_true_and_still_uses_lobby_first(): void
+    {
+        $host = User::factory()->create();
+        $session = $this->seedSinglesSession($host);
+
+        $lobby = $this->addPlayer($session, 0, 3, wins: 0, losses: 0);
+        $this->addPlayer($session, 1, 3, wins: 1, losses: 0);
+        $this->addPlayer($session, 2, 3, wins: 1, losses: 0);
+
+        $response = $this->actingAs($host)->getJson(
+            '/auth/queueing-sessions/'.$session->id.'/matches/auto-proposals?skill_level=0&wl_statistics=0&sequence=1',
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('data.criteria.include_lobby', true);
+        $response->assertJsonPath('data.proposals.0.from_lobby', true);
+        $response->assertJsonPath('data.proposals.0.bracket_label', 'Check-in');
+
+        $firstIds = collect($response->json('data.proposals.0.lineup'))->pluck('id')->all();
+        $this->assertContains($lobby->id, $firstIds);
+    }
 }

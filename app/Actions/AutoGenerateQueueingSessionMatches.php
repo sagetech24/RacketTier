@@ -86,6 +86,7 @@ class AutoGenerateQueueingSessionMatches
      *     queued_in_matches: int,
      *     waiting_available: int,
      *     not_in_queue: int,
+     *     check_in_excluded?: int,
      *   },
      * }
      */
@@ -159,25 +160,10 @@ class AutoGenerateQueueingSessionMatches
             ->sortBy('queue_position')
             ->values();
 
-        $totalEligible = $eligible->count();
-        $eligibilityBreakdown = $this->eligibilityBreakdown($roster, $reserved, $totalEligible);
-
         $hasStats = $roster->contains(
             fn (GameSessionPlayer $p): bool => ! (bool) $p->getAttribute('is_removed')
                 && ((int) $p->wins_count + (int) $p->losses_count) > 0,
         );
-
-        if (! $lookahead && $totalEligible < $required) {
-            return [
-                'criteria' => $criteria->toArray(),
-                'proposals' => [],
-                'total_eligible' => $totalEligible,
-                'required_per_match' => $required,
-                'has_stats' => $hasStats,
-                'match_type' => $matchType,
-                'eligibility_breakdown' => $eligibilityBreakdown,
-            ];
-        }
 
         /** @var Collection<int, GameSessionPlayer> $lobby */
         $lobby = $eligible
@@ -197,6 +183,33 @@ class AutoGenerateQueueingSessionMatches
         $rotation = $eligible
             ->filter(fn (GameSessionPlayer $p): bool => $this->matchesPlayed($p) > 0)
             ->values();
+
+        $checkInExcluded = 0;
+        if (! $criteria->includeLobby) {
+            $checkInExcluded = $lobby->count();
+            $lobby = collect();
+            $eligible = $rotation;
+        }
+
+        $totalEligible = $eligible->count();
+        $eligibilityBreakdown = $this->eligibilityBreakdown(
+            $roster,
+            $reserved,
+            $totalEligible,
+            $checkInExcluded,
+        );
+
+        if (! $lookahead && $totalEligible < $required) {
+            return [
+                'criteria' => $criteria->toArray(),
+                'proposals' => [],
+                'total_eligible' => $totalEligible,
+                'required_per_match' => $required,
+                'has_stats' => $hasStats,
+                'match_type' => $matchType,
+                'eligibility_breakdown' => $eligibilityBreakdown,
+            ];
+        }
 
         $proposals = [];
         $proposalIndex = 0;
@@ -308,10 +321,15 @@ class AutoGenerateQueueingSessionMatches
      *   queued_in_matches: int,
      *   waiting_available: int,
      *   not_in_queue: int,
+     *   check_in_excluded?: int,
      * }
      */
-    private function eligibilityBreakdown(Collection $roster, array $reserved, int $waitingAvailable): array
-    {
+    private function eligibilityBreakdown(
+        Collection $roster,
+        array $reserved,
+        int $waitingAvailable,
+        int $checkInExcluded = 0,
+    ): array {
         $active = $roster->filter(
             fn (GameSessionPlayer $p): bool => ! (bool) $p->getAttribute('is_removed'),
         );
@@ -328,13 +346,19 @@ class AutoGenerateQueueingSessionMatches
             fn (GameSessionPlayer $p): bool => ! $p->is_waiting && ! $p->is_playing,
         )->count();
 
-        return [
+        $breakdown = [
             'total_roster' => $active->count(),
             'playing' => $playing,
             'queued_in_matches' => $queuedInMatches,
             'waiting_available' => $waitingAvailable,
             'not_in_queue' => $notInQueue,
         ];
+
+        if ($checkInExcluded > 0) {
+            $breakdown['check_in_excluded'] = $checkInExcluded;
+        }
+
+        return $breakdown;
     }
 
     /**

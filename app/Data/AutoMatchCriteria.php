@@ -16,6 +16,7 @@ readonly class AutoMatchCriteria
         public bool $wlStatistics = true,
         public bool $sequence = true,
         public bool $genderlessMixed = true,
+        public bool $includeLobby = true,
         public ?int $refreshSeed = null,
     ) {}
 
@@ -42,6 +43,7 @@ readonly class AutoMatchCriteria
             wlStatistics: self::parseBool($stored['wl_statistics'] ?? true),
             sequence: self::parseBool($stored['sequence'] ?? true),
             genderlessMixed: self::parseBool($stored['genderless_mixed'] ?? true),
+            includeLobby: self::parseBool($stored['include_lobby'] ?? true),
         );
     }
 
@@ -53,6 +55,7 @@ readonly class AutoMatchCriteria
             wlStatistics: self::parseBool($validated['wl_statistics'] ?? true),
             sequence: self::parseBool($validated['sequence'] ?? true),
             genderlessMixed: self::parseBool($validated['genderless_mixed'] ?? true),
+            includeLobby: self::parseBool($validated['include_lobby'] ?? true),
             refreshSeed: self::parseRefreshSeed($validated['refresh_seed'] ?? null),
         );
     }
@@ -68,6 +71,7 @@ readonly class AutoMatchCriteria
             'wl_statistics' => $this->wlStatistics,
             'sequence' => $this->sequence,
             'genderless_mixed' => $this->genderlessMixed,
+            'include_lobby' => $this->includeLobby,
         ];
     }
 
@@ -90,6 +94,7 @@ readonly class AutoMatchCriteria
             'wl_statistics' => $this->wlStatistics,
             'sequence' => $this->sequence,
             'genderless_mixed' => $this->genderlessMixed,
+            'include_lobby' => $this->includeLobby,
             'refresh_seed' => $this->refreshSeed,
         ];
     }
@@ -129,6 +134,7 @@ readonly class AutoMatchCriteria
             wlStatistics: $this->wlStatistics,
             sequence: $this->sequence,
             genderlessMixed: $this->genderlessMixed,
+            includeLobby: $this->includeLobby,
             refreshSeed: $this->refreshSeed,
         );
     }

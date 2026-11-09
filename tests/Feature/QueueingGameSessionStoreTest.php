@@ -48,6 +48,7 @@ class QueueingGameSessionStoreTest extends TestCase
             'wl_statistics' => true,
             'sequence' => true,
             'genderless_mixed' => true,
+            'include_lobby' => true,
         ], $session->auto_match_criteria);
         $response->assertJsonPath('data.auto_match_criteria.skill_level', true);
         $response->assertJsonPath('data.optional_guest_skill', true);
