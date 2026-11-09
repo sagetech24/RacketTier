@@ -6,6 +6,7 @@ use App\Actions\UpdateQueueingGameSession;
 use App\Http\Controllers\Concerns\PreparesQueueingSessionResponse;
 use App\Http\Requests\UpdateQueueingGameSessionRequest;
 use App\Models\GameSession;
+use App\Services\LossPointMode;
 use Illuminate\Http\JsonResponse;
 
 class QueueingGameSessionUpdateController extends Controller
@@ -27,9 +28,9 @@ class QueueingGameSessionUpdateController extends Controller
             $request->has('skip_scores')
                 ? (bool) $request->boolean('skip_scores')
                 : (bool) ($gameSession->skip_scores ?? false),
-            $request->has('zero_loss_points')
-                ? (bool) $request->boolean('zero_loss_points')
-                : (bool) ($gameSession->zero_loss_points ?? false),
+            $request->has('loss_point_mode')
+                ? (string) $request->validated('loss_point_mode')
+                : LossPointMode::normalize($gameSession->loss_point_mode ?? null),
             $request->has('optional_guest_skill')
                 ? (bool) $request->boolean('optional_guest_skill')
                 : (bool) ($gameSession->optional_guest_skill ?? true),

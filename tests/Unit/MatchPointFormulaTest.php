@@ -24,16 +24,19 @@ class MatchPointFormulaTest extends TestCase
         $this->assertSame(8, MatchPointFormula::earned(false, 15));
     }
 
-    public function test_resolve_session_points_respects_zero_loss_points(): void
+    public function test_resolve_session_points_respects_loss_point_mode(): void
     {
         $processor = app(MatchResultProcessor::class);
-        $session = new GameSession(['zero_loss_points' => true]);
 
-        $this->assertSame(31, $processor->resolveSessionPointsEarned($session, true, 6));
-        $this->assertSame(0, $processor->resolveSessionPointsEarned($session, false, 6));
+        $zeroSession = new GameSession(['loss_point_mode' => 'zero']);
+        $this->assertSame(31, $processor->resolveSessionPointsEarned($zeroSession, true, 6));
+        $this->assertSame(0, $processor->resolveSessionPointsEarned($zeroSession, false, 6));
 
-        $defaultSession = new GameSession(['zero_loss_points' => false]);
-        $this->assertSame(8, $processor->resolveSessionPointsEarned($defaultSession, false, 6));
+        $effortSession = new GameSession(['loss_point_mode' => 'effort']);
+        $this->assertSame(8, $processor->resolveSessionPointsEarned($effortSession, false, 6));
+
+        $penaltySession = new GameSession(['loss_point_mode' => 'penalty']);
+        $this->assertSame(-8, $processor->resolveSessionPointsEarned($penaltySession, false, 6));
     }
 
     public function test_match_counts_when_members_are_on_both_sides(): void

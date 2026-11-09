@@ -16,6 +16,7 @@ import {
     useInvalidateQueueingSession,
     useQueueingSessionQuery,
 } from '../hooks/queries/useQueueingSessionQuery.js';
+import { displaySessionPoints } from '../lib/queueingSessionStats.js';
 /**
  * @param {import('../api/gameSession.js').GameSessionDetail['players'] extends (infer U)[] | undefined ? U : never} row
  */
@@ -124,7 +125,10 @@ export function QueueingSessionPage() {
         ? [
               { label: 'Matches', value: totals.matches ?? 0 },
               { label: 'Players', value: totals.players ?? 0 },
-              { label: 'Points awarded', value: totals.points_awarded ?? totals.points_awarded_members ?? 0 },
+              {
+                  label: 'Points awarded',
+                  value: displaySessionPoints(totals.points_awarded ?? totals.points_awarded_members ?? 0),
+              },
           ]
         : [];
 

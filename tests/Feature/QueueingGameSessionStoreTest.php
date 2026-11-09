@@ -118,7 +118,7 @@ class QueueingGameSessionStoreTest extends TestCase
         $this->assertTrue($session->skip_scores);
     }
 
-    public function test_create_queueing_session_can_enable_zero_loss_points(): void
+    public function test_create_queueing_session_can_set_loss_point_mode(): void
     {
         $user = User::factory()->create();
 
@@ -126,14 +126,29 @@ class QueueingGameSessionStoreTest extends TestCase
             'queue_name' => 'Winner Takes All',
             'sport_slug' => 'badminton',
             'match_type' => 'singles',
-            'zero_loss_points' => true,
+            'loss_point_mode' => 'zero',
         ]);
 
         $response->assertCreated();
-        $response->assertJsonPath('data.zero_loss_points', true);
+        $response->assertJsonPath('data.loss_point_mode', 'zero');
         $response->assertJsonPath('data.point_rules.loss', 0);
 
         $session = GameSession::query()->findOrFail($response->json('data.id'));
-        $this->assertTrue($session->zero_loss_points);
+        $this->assertSame('zero', $session->loss_point_mode);
+    }
+
+    public function test_create_queueing_session_defaults_to_effort_loss_point_mode(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Effort Queue',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.loss_point_mode', 'effort');
+        $response->assertJsonPath('data.point_rules.loss', 8);
     }
 }

@@ -1,3 +1,4 @@
+import { displaySessionPoints } from '../../lib/queueingSessionStats.js';
 import { playerInitials } from '../ranking/rankingUtils.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardStats.jsx';
@@ -149,7 +150,7 @@ export function QueueingSessionPlayerCard({
     const name = rosterPlayerName(p);
     const wins = p.wins_count ?? 0;
     const losses = p.losses_count ?? 0;
-    const points = p.session_points ?? 0;
+    const points = displaySessionPoints(p.session_points);
     const isPlaying = Boolean(sessionActive && p.is_playing);
     const showActions = canEdit || canRemove || canRestore;
     const canDrag = sortable && Object.keys(dragProps).length > 0;

@@ -122,7 +122,7 @@ export function QueueingSessionHeader({
                     <p className="text-sm text-[#c8c5d2]/90">
                         <span className="font-bold">Points:</span>{' '}
                         {matchPointFormulaLabel({
-                            zeroLossPoints: Boolean(session.zero_loss_points),
+                            lossPointMode: session.loss_point_mode,
                         })}
                     </p>
                     {/* <p className="text-sm text-[#c8c5d2]/90">

@@ -1,3 +1,4 @@
+import { displaySessionPoints } from '../../lib/queueingSessionStats.js';
 import { playerInitials } from '../ranking/rankingUtils.js';
 import { PlayerSkillLevelBadge } from './PlayerSkillLevelBadge.jsx';
 import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardStats.jsx';
@@ -34,7 +35,7 @@ const MEDAL_ALT = ['First place', 'Second place', 'Third place'];
 export function QueueingSessionPodiumCard({ player, place, isYou = false, showSkillLevel = true }) {
     const frameClass = PODIUM_FRAME[place] ?? PODIUM_FRAME[2];
     const orderClass = `rt-ranking-podium-order-${PODIUM_ORDER[place] ?? place}`;
-    const points = player.earned_points ?? 0;
+    const points = displaySessionPoints(player.earned_points);
 
     return (
         <article

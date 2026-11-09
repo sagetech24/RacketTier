@@ -1,4 +1,17 @@
 /**
+ * UI display for session points: never show negatives (backend may store penalty losses).
+ * @param {number | null | undefined} points
+ * @returns {number}
+ */
+export function displaySessionPoints(points) {
+    const n = Number(points ?? 0);
+    if (!Number.isFinite(n) || n < 0) {
+        return 0;
+    }
+    return n;
+}
+
+/**
  * @param {{
  *   completed_matches_count?: number | null,
  *   participant_count?: number | null,

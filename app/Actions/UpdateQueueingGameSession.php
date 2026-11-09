@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Data\AutoMatchCriteria;
 use App\Models\GameSession;
 use App\Models\User;
+use App\Services\LossPointMode;
 use Illuminate\Support\Facades\DB;
 
 class UpdateQueueingGameSession
@@ -18,7 +19,7 @@ class UpdateQueueingGameSession
         GameSession $session,
         string $queueName,
         bool $skipScores,
-        bool $zeroLossPoints = false,
+        string $lossPointMode = LossPointMode::EFFORT,
         bool $optionalGuestSkill = true,
         bool $optionalGuestGender = true,
         ?AutoMatchCriteria $autoMatchCriteria = null,
@@ -40,14 +41,16 @@ class UpdateQueueingGameSession
             abort(422, 'Game type can only be changed before the first match is created.');
         }
 
+        $lossPointMode = LossPointMode::normalize($lossPointMode);
+
         $shouldRefreshSuggest = $autoMatchCriteria !== null
             || ($matchType !== null && $matchType !== (string) $session->match_type);
 
-        $updated = DB::transaction(function () use ($session, $queueName, $skipScores, $zeroLossPoints, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria, $matchType): GameSession {
+        $updated = DB::transaction(function () use ($session, $queueName, $skipScores, $lossPointMode, $optionalGuestSkill, $optionalGuestGender, $autoMatchCriteria, $matchType): GameSession {
             $updates = [
                 'queue_name' => $queueName,
                 'skip_scores' => $skipScores,
-                'zero_loss_points' => $zeroLossPoints,
+                'loss_point_mode' => $lossPointMode,
                 'optional_guest_skill' => $optionalGuestSkill,
                 'optional_guest_gender' => $optionalGuestGender,
             ];

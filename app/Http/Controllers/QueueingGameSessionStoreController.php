@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\CreateQueueingGameSession;
 use App\Http\Requests\StoreQueueingGameSessionRequest;
 use App\Http\Resources\GameSessionResource;
+use App\Services\LossPointMode;
 use Illuminate\Http\JsonResponse;
 
 class QueueingGameSessionStoreController extends Controller
@@ -20,7 +21,9 @@ class QueueingGameSessionStoreController extends Controller
             $request->validated('sport_slug'),
             $request->validated('match_type'),
             (bool) $request->boolean('skip_scores'),
-            (bool) $request->boolean('zero_loss_points'),
+            is_string($request->validated('loss_point_mode'))
+                ? (string) $request->validated('loss_point_mode')
+                : LossPointMode::EFFORT,
             $request->has('optional_guest_skill') ? (bool) $request->boolean('optional_guest_skill') : true,
             $request->has('optional_guest_gender') ? (bool) $request->boolean('optional_guest_gender') : true,
             $request->autoMatchCriteria(),

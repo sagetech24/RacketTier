@@ -4,7 +4,9 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesAutoMatchCriteria;
 use App\Models\GameSession;
+use App\Services\LossPointMode;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateQueueingGameSessionRequest extends FormRequest
 {
@@ -38,7 +40,7 @@ class UpdateQueueingGameSessionRequest extends FormRequest
             'queue_name' => ['required', 'filled', 'string', 'max:120'],
             'match_type' => ['sometimes', 'string', 'in:singles,doubles'],
             'skip_scores' => ['sometimes', 'boolean'],
-            'zero_loss_points' => ['sometimes', 'boolean'],
+            'loss_point_mode' => ['sometimes', 'string', Rule::in(LossPointMode::values())],
             'optional_guest_skill' => ['sometimes', 'boolean'],
             'optional_guest_gender' => ['sometimes', 'boolean'],
             ...$this->autoMatchCriteriaRules(),

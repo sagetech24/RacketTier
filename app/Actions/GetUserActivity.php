@@ -339,7 +339,8 @@ class GetUserActivity
         }
         $parts[] = 'Score '.$score;
         if ($stats['session_points_earned'] !== null) {
-            $parts[] = '+'.$stats['session_points_earned'].' pts';
+            $pts = (int) $stats['session_points_earned'];
+            $parts[] = ($pts > 0 ? '+'.$pts : (string) $pts).' pts';
         }
         if ($stats['rating_change'] !== null) {
             $parts[] = 'Rating Chg '.RatingDisplay::formatChange($stats['rating_change']);

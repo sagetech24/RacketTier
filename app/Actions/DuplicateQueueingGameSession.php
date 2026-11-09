@@ -6,6 +6,7 @@ use App\Data\QueueingSessionDraft;
 use App\Models\GameSession;
 use App\Models\GameSessionPlayer;
 use App\Models\User;
+use App\Services\LossPointMode;
 use App\Services\QueueingSessionDraftHydrator;
 use App\Services\QueueingSessionDraftLineup;
 use App\Services\QueueingSessionDraftStore;
@@ -64,7 +65,7 @@ class DuplicateQueueingGameSession
                 $sportSlug,
                 (string) $source->match_type,
                 (bool) ($source->skip_scores ?? false),
-                (bool) ($source->zero_loss_points ?? false),
+                LossPointMode::normalize($source->loss_point_mode ?? null),
                 (bool) ($source->optional_guest_skill ?? true),
                 (bool) ($source->optional_guest_gender ?? true),
                 $source->resolveAutoMatchCriteria(),

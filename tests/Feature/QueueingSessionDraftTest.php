@@ -768,4 +768,59 @@ class QueueingSessionDraftTest extends TestCase
             ->max('queue_position');
         $this->assertSame((int) $rotationMax, (int) $restored['queue_position']);
     }
+
+    public function test_end_draft_session_persists_negative_penalty_session_points(): void
+    {
+        $host = User::factory()->create();
+        $opponent = User::factory()->create();
+
+        $create = $this->actingAs($host)->postJson('/auth/queueing-sessions', [
+            'queue_name' => 'Penalty Draft End',
+            'sport_slug' => 'badminton',
+            'match_type' => 'singles',
+            'loss_point_mode' => 'penalty',
+        ])->assertCreated();
+
+        $sessionId = (int) $create->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $host->id,
+            'skill_level' => 3,
+        ])->assertOk();
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/players', [
+            'user_id' => $opponent->id,
+            'skill_level' => 3,
+        ])->assertOk();
+
+        $show = $this->actingAs($host)->getJson('/auth/game-sessions/'.$sessionId)->assertOk();
+        $players = collect($show->json('data.players'));
+        $hostPlayerId = (int) $players->firstWhere('user.id', $host->id)['id'];
+        $opponentPlayerId = (int) $players->firstWhere('user.id', $opponent->id)['id'];
+
+        $matchId = (int) $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches', [
+            'lineup' => [
+                ['id' => $hostPlayerId, 'team' => 1],
+                ['id' => $opponentPlayerId, 'team' => 2],
+            ],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/matches/'.$matchId.'/start')
+            ->assertOk();
+
+        $this->actingAs($host)->postJson('/auth/game-sessions/'.$sessionId.'/finish-match', [
+            'team1_score' => 21,
+            'team2_score' => 15,
+            'queueing_session_match_id' => $matchId,
+        ])->assertOk();
+
+        $this->actingAs($host)->postJson('/auth/queueing-sessions/'.$sessionId.'/end')->assertOk();
+
+        $loser = GameSessionPlayer::query()
+            ->where('game_session_id', $sessionId)
+            ->where('user_id', $opponent->id)
+            ->firstOrFail();
+
+        $this->assertSame(-8, (int) $loser->session_points);
+    }
 }

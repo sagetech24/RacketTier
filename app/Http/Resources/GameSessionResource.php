@@ -7,6 +7,7 @@ use App\Models\GameSessionPlayer;
 use App\Models\MemberPointWallet;
 use App\Models\Ranking;
 use App\Models\TierRank;
+use App\Services\LossPointMode;
 use App\Services\MatchPointFormula;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -65,13 +66,11 @@ class GameSessionResource extends JsonResource
             'point_rules' => array_merge(
                 MatchPointFormula::rules(),
                 [
-                    'loss' => (bool) ($this->zero_loss_points ?? false)
-                        ? 0
-                        : MatchPointFormula::LOSS,
+                    'loss' => LossPointMode::amount($this->loss_point_mode ?? null),
                 ],
             ),
             'skip_scores' => (bool) ($this->skip_scores ?? false),
-            'zero_loss_points' => (bool) ($this->zero_loss_points ?? false),
+            'loss_point_mode' => LossPointMode::normalize($this->loss_point_mode ?? null),
             'optional_guest_skill' => (bool) ($this->optional_guest_skill ?? true),
             'optional_guest_gender' => (bool) ($this->optional_guest_gender ?? true),
             'auto_match_criteria' => $this->when(

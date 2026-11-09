@@ -49,7 +49,7 @@ class QueueingGameSessionUpdateTest extends TestCase
         $this->assertTrue($session->skip_scores);
     }
 
-    public function test_queue_master_can_enable_zero_loss_points(): void
+    public function test_queue_master_can_update_loss_point_mode(): void
     {
         $host = User::factory()->create();
         $sport = Sport::query()->where('slug', 'badminton')->firstOrFail();
@@ -67,21 +67,21 @@ class QueueingGameSessionUpdateTest extends TestCase
             'win_points' => null,
             'loss_points' => null,
             'skip_scores' => false,
-            'zero_loss_points' => false,
+            'loss_point_mode' => 'effort',
             'started_at' => now(),
         ]);
 
         $response = $this->actingAs($host)->patchJson('/auth/queueing-sessions/'.$session->id, [
             'queue_name' => 'Points Queue',
-            'zero_loss_points' => true,
+            'loss_point_mode' => 'penalty',
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('data.zero_loss_points', true);
-        $response->assertJsonPath('data.point_rules.loss', 0);
+        $response->assertJsonPath('data.loss_point_mode', 'penalty');
+        $response->assertJsonPath('data.point_rules.loss', -8);
 
         $session->refresh();
-        $this->assertTrue($session->zero_loss_points);
+        $this->assertSame('penalty', $session->loss_point_mode);
     }
 
     public function test_queue_master_can_update_auto_match_criteria(): void

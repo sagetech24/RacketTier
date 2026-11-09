@@ -1,3 +1,4 @@
+import { displaySessionPoints } from '../../lib/queueingSessionStats.js';
 import { playerInitials } from '../ranking/rankingUtils.js';
 import { PlayerSkillLevelBadge } from './PlayerSkillLevelBadge.jsx';
 import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardStats.jsx';
@@ -20,7 +21,7 @@ import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardSta
  * }} props
  */
 export function QueueingSessionListRow({ player, isYou = false, showSkillLevel = true }) {
-    const points = player.earned_points ?? 0;
+    const points = displaySessionPoints(player.earned_points);
     const isGuest = Boolean(player.is_guest);
 
     return (

@@ -1,3 +1,4 @@
+import { displaySessionPoints } from '../../lib/queueingSessionStats.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 
 /** @param {number} [wins] @param {number} [losses] */
@@ -30,7 +31,7 @@ export function QueueingSessionLeaderboardStats({
     const wins = winsProp ?? 0;
     const losses = lossesProp ?? 0;
     const total = total_matches ?? wins + losses;
-    const points = earned_points ?? 0;
+    const points = displaySessionPoints(earned_points);
     const winPct = winRateLabel(wins, losses);
 
     return (
