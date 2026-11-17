@@ -59,6 +59,21 @@ class ReferenceDataCache
         return TierRank::hydrate($rows);
     }
 
+    public function forgetTierRanksForSport(int $sportId): void
+    {
+        Cache::forget('reference:tier_ranks:v2:'.$sportId);
+    }
+
+    public function forgetFacilitiesIndex(): void
+    {
+        Cache::forget('reference:facilities_index:v2');
+    }
+
+    public function forgetPublicStats(): void
+    {
+        Cache::forget('reference:public_stats');
+    }
+
     /**
      * @return array{total_members: int, total_queueing_sessions: int, total_points_awarded: int}
      */

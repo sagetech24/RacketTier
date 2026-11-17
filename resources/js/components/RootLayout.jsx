@@ -43,6 +43,11 @@ export function RootLayout() {
         location.pathname === '/' ||
         location.pathname === '/v1' ||
         location.pathname === '/v2' ||
+        location.pathname === '/admin' ||
+        location.pathname === '/admin/members' ||
+        location.pathname === '/admin/facilities' ||
+        location.pathname === '/admin/sessions' ||
+        location.pathname === '/admin/tiers' ||
         location.pathname === '/v3';
     const isV2Shell = isV2DashboardShellPath(location.pathname);
 

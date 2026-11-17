@@ -5,10 +5,15 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateFacilityRequest;
 use App\Http\Resources\FacilityResource;
 use App\Models\Facility;
+use App\Services\ReferenceDataCache;
 use Illuminate\Http\JsonResponse;
 
 class FacilityUpdateController extends Controller
 {
+    public function __construct(
+        private ReferenceDataCache $referenceDataCache,
+    ) {}
+
     public function __invoke(UpdateFacilityRequest $request, Facility $facility): JsonResponse
     {
         $user = $request->user();
@@ -21,6 +26,7 @@ class FacilityUpdateController extends Controller
         ])->save();
 
         $facility->loadCount('gameSessions');
+        $this->referenceDataCache->forgetFacilitiesIndex();
 
         return response()->json([
             'data' => new FacilityResource($facility),

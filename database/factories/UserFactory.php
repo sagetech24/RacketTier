@@ -47,6 +47,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email' => User::ADMIN_EMAIL,
+            'is_admin' => true,
         ]);
     }
 }

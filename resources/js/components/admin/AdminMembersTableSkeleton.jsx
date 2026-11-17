@@ -1,7 +1,7 @@
 export function AdminMembersTableSkeleton() {
     return (
         <div className="space-y-3" aria-busy="true" aria-label="Loading members">
-            <div className="divide-y divide-white/5 rounded-xl border border-white/5 bg-[#1b1b1e] md:hidden">
+            <div className="divide-y divide-white/5 rounded-xl border border-[#45454a] bg-[#1b1b1e] md:hidden">
                 {Array.from({ length: 6 }).map((_, index) => (
                     <div key={index} className="space-y-2 px-4 py-4">
                         <div className="h-4 w-2/5 animate-pulse rounded bg-white/10" />

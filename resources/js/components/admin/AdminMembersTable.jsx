@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { AdminMemberBadges, AdminRoleBadge, AdminVerifiedBadge, formatMemberRegisteredDate } from './AdminMemberBadges.jsx';
 
 /**
@@ -6,9 +7,13 @@ import { AdminMemberBadges, AdminRoleBadge, AdminVerifiedBadge, formatMemberRegi
 export function AdminMembersTable({ members }) {
     return (
         <>
-            <div className="divide-y divide-white/5 rounded-xl border border-white/5 bg-[#1b1b1e] md:hidden">
+            <div className="divide-y divide-white/5 rounded-xl border border-[#45454a] bg-[#1b1b1e] md:hidden">
                 {members.map((member) => (
-                    <article key={member.id} className="px-4 py-4">
+                    <Link
+                        key={member.id}
+                        to={`/admin/members/${member.id}`}
+                        className="block px-4 py-4 transition-colors hover:bg-white/[0.03]"
+                    >
                         <h3 className="truncate text-base font-bold text-[#e4e1e6]">{member.name}</h3>
                         <p className="mt-0.5 truncate text-xs text-[#918f9c]">{member.email}</p>
                         <div className="mt-3">
@@ -18,7 +23,7 @@ export function AdminMembersTable({ members }) {
                             Registered {formatMemberRegisteredDate(member.member_since)}
                             {member.member_since_human ? ` · ${member.member_since_human}` : ''}
                         </p>
-                    </article>
+                    </Link>
                 ))}
             </div>
 
@@ -44,8 +49,13 @@ export function AdminMembersTable({ members }) {
                         {members.map((member) => (
                             <tr key={member.id} className="rt-admin-members-row border-b border-[#2a2a2d] last:border-b-0">
                                 <td className="px-4 py-3 align-middle">
-                                    <div className="text-sm font-semibold text-[#e4e1e6]">{member.name}</div>
-                                    <div className="mt-0.5 truncate text-xs text-[#918f9c]">{member.email}</div>
+                                    <Link
+                                        to={`/admin/members/${member.id}`}
+                                        className="block hover:text-[#c2c1ff]"
+                                    >
+                                        <div className="text-sm font-semibold text-[#e4e1e6]">{member.name}</div>
+                                        <div className="mt-0.5 truncate text-xs text-[#918f9c]">{member.email}</div>
+                                    </Link>
                                 </td>
                                 <td className="px-4 py-3 align-middle text-sm tabular-nums text-[#c8c5d2]">
                                     <div>{formatMemberRegisteredDate(member.member_since)}</div>

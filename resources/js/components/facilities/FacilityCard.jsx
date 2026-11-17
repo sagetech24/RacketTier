@@ -15,11 +15,11 @@ function initialsFromName(name) {
 /**
  * @param {{
  *   facility: import('../../api/facilities.js').FacilityRow;
- *   canManage: boolean;
- *   onEdit: (facility: import('../../api/facilities.js').FacilityRow) => void;
+ *   canManage?: boolean;
+ *   onEdit?: (facility: import('../../api/facilities.js').FacilityRow) => void;
  * }} props
  */
-export function FacilityCard({ facility, canManage, onEdit }) {
+export function FacilityCard({ facility, canManage = false, onEdit }) {
     const coverSrc = facilityCoverSrc(facility.cover_photo);
     const checkedIn = facility.today_checked_in_players_count ?? 0;
     const matchesToday = facility.today_matches_count ?? 0;

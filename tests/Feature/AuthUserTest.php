@@ -45,7 +45,7 @@ class AuthUserTest extends TestCase
         $response->assertJsonPath('user.is_admin', true);
     }
 
-    public function test_auth_user_is_not_admin_when_flag_true_but_email_differs(): void
+    public function test_auth_user_is_admin_when_flag_true_even_if_email_differs(): void
     {
         $user = User::factory()->create([
             'is_admin' => true,
@@ -54,6 +54,6 @@ class AuthUserTest extends TestCase
         $response = $this->actingAs($user)->getJson('/auth/user');
 
         $response->assertOk();
-        $response->assertJsonPath('user.is_admin', false);
+        $response->assertJsonPath('user.is_admin', true);
     }
 }

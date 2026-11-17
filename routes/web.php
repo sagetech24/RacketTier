@@ -1,6 +1,15 @@
 <?php
 
+use App\Http\Controllers\AdminDashboardSummaryController;
+use App\Http\Controllers\AdminFacilitiesIndexController;
+use App\Http\Controllers\AdminMemberAdjustRatingController;
+use App\Http\Controllers\AdminMemberAdjustWalletController;
+use App\Http\Controllers\AdminMemberAuditController;
+use App\Http\Controllers\AdminMemberShowController;
 use App\Http\Controllers\AdminMembersIndexController;
+use App\Http\Controllers\AdminQueueingSessionsIndexController;
+use App\Http\Controllers\AdminTierRanksIndexController;
+use App\Http\Controllers\AdminTierRankUpdateController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -10,9 +19,11 @@ use App\Http\Controllers\Auth\UserPasswordUpdateController;
 use App\Http\Controllers\Auth\UserProfileUpdateController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\DashboardSummaryController;
+use App\Http\Controllers\FacilityDestroyController;
 use App\Http\Controllers\FacilityGameRoomController;
 use App\Http\Controllers\FacilityIndexController;
 use App\Http\Controllers\FacilityPlayersController;
+use App\Http\Controllers\FacilityRestoreController;
 use App\Http\Controllers\FacilityStoreController;
 use App\Http\Controllers\FacilityUpdateController;
 use App\Http\Controllers\GameSessionFinishMatchController;
@@ -36,8 +47,8 @@ use App\Http\Controllers\QueueingSessionCheckInOrderController;
 use App\Http\Controllers\QueueingSessionMatchDestroyController;
 use App\Http\Controllers\QueueingSessionMatchesIndexController;
 use App\Http\Controllers\QueueingSessionMatchesStoreController;
-use App\Http\Controllers\QueueingSessionMatchStartController;
 use App\Http\Controllers\QueueingSessionMatchFinishedLineupController;
+use App\Http\Controllers\QueueingSessionMatchStartController;
 use App\Http\Controllers\QueueingSessionMatchSwitchResultController;
 use App\Http\Controllers\QueueingSessionMatchUpdateController;
 use App\Http\Controllers\QueueingSessionPlayersDestroyController;
@@ -122,7 +133,12 @@ Route::middleware('auth')->group(function () {
     Route::view('/ranking', 'app');
     Route::view('/activity', 'app');
     Route::view('/profile', 'app');
+    Route::view('/admin', 'app');
     Route::view('/admin/members', 'app');
+    Route::view('/admin/members/{id}', 'app')->whereNumber('id');
+    Route::view('/admin/facilities', 'app');
+    Route::view('/admin/sessions', 'app');
+    Route::view('/admin/tiers', 'app');
     Route::view('/facility/{facility}/game-room', 'app')->whereNumber('facility');
     Route::view('/facility/{facility}/create-match', 'app')->whereNumber('facility');
     Route::view('/queueing-session', 'app');
@@ -132,8 +148,33 @@ Route::middleware('auth')->group(function () {
     Route::view('/queueing-session/{id}/matches', 'app')->whereNumber('id');
     Route::view('/queueing-session/{id}/players', 'app')->whereNumber('id');
 
-    Route::get('/auth/admin/members', [AdminMembersIndexController::class, 'index'])
-        ->name('auth.admin.members.index');
+    Route::middleware('admin')->group(function () {
+        Route::get('/auth/admin/summary', AdminDashboardSummaryController::class)
+            ->name('auth.admin.summary');
+        Route::get('/auth/admin/members', [AdminMembersIndexController::class, 'index'])
+            ->name('auth.admin.members.index');
+        Route::get('/auth/admin/members/{user}', AdminMemberShowController::class)
+            ->name('auth.admin.members.show');
+        Route::get('/auth/admin/members/{user}/audit', AdminMemberAuditController::class)
+            ->name('auth.admin.members.audit');
+        Route::post('/auth/admin/members/{user}/adjust-rating', AdminMemberAdjustRatingController::class)
+            ->name('auth.admin.members.adjust-rating');
+        Route::post('/auth/admin/members/{user}/adjust-wallet', AdminMemberAdjustWalletController::class)
+            ->name('auth.admin.members.adjust-wallet');
+        Route::get('/auth/admin/sessions', AdminQueueingSessionsIndexController::class)
+            ->name('auth.admin.sessions.index');
+        Route::get('/auth/admin/facilities', AdminFacilitiesIndexController::class)
+            ->name('auth.admin.facilities.index');
+        Route::get('/auth/admin/tier-ranks', AdminTierRanksIndexController::class)
+            ->name('auth.admin.tier-ranks.index');
+        Route::patch('/auth/admin/tier-ranks/{tierRank}', AdminTierRankUpdateController::class)
+            ->name('auth.admin.tier-ranks.update');
+        Route::delete('/auth/facilities/{facility}', FacilityDestroyController::class)
+            ->name('auth.facilities.destroy');
+        Route::post('/auth/facilities/{facility}/restore', FacilityRestoreController::class)
+            ->name('auth.facilities.restore');
+    });
+
     Route::get('/auth/sports', [SportsListController::class, 'index'])->name('auth.sports');
     Route::get('/auth/rankings', [RankingIndexController::class, 'index'])->name('auth.rankings');
     Route::get('/auth/facilities', [FacilityIndexController::class, 'index'])->name('auth.facilities.index');

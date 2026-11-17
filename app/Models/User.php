@@ -37,6 +37,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isAdmin(): bool
     {
+        if ((bool) $this->is_admin) {
+            return true;
+        }
+
         return strcasecmp((string) $this->email, self::ADMIN_EMAIL) === 0;
     }
 

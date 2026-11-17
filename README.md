@@ -14,7 +14,7 @@ Who it serves:
 - **Guests** — quick-added, account-less players in a session; tracked for wins/losses but excluded from ELO and wallets.
 - **Queue Master (QM)** — the member who creates and runs a queueing session (roster, matches, results, end + summary).
 - **Facility** — a partner venue where facility game sessions are hosted.
-- **Admin** (`users.is_admin`) — manages facilities and can view/force-manage any queueing session.
+- **Admin** (`users.is_admin`, plus legacy email allowlist) — Admin Dashboard at `/admin` for facilities, members, sessions, tiers, and support corrections; can also force-manage any queueing session.
 
 ## Tech stack
 

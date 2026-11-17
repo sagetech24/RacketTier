@@ -31,8 +31,8 @@
         @include('partials.tailwind-fallback-styles')
     @endif
 </head>
-<body class="min-h-screen bg-black text-white antialiased">
-    <div id="root"></div>
+<body class="min-h-dvh bg-[#121216] text-white antialiased">
+    <div id="root" class="min-h-dvh flex flex-col"></div>
     <script>
         window.__RT_APP_NAME__ = @json(config('app.name'));
         window.__RT_USER__ = @json(auth()->user() ? (new \App\Http\Resources\UserResource(auth()->user()))->resolve() : null);

@@ -1,11 +1,18 @@
 .dashboard-v2-shell {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+    width: 100%;
+    min-height: 100%;
+    min-height: 100dvh;
     min-height: max(884px, 100dvh);
     overflow-x: clip;
 }
 
 /*
  * Arena court backdrop — matches landing v3 gridlines + lavender/green glows.
+ * Fixed attachment keeps the grid/glows covering the viewport while content scrolls.
  */
 .rt-app-shell {
     background-color: #121216;
@@ -19,7 +26,15 @@
         48px 48px,
         100% 100%,
         100% 100%;
+    background-attachment: fixed, fixed, fixed, fixed;
+    background-repeat: repeat, repeat, no-repeat, no-repeat;
     overscroll-behavior-y: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rt-app-shell {
+        background-attachment: scroll, scroll, scroll, scroll;
+    }
 }
 
 .rt-app-shell-orb {
@@ -62,6 +77,8 @@
 .rt-app-shell > .rt-page-main {
     position: relative;
     z-index: 1;
+    flex: 1 0 auto;
+    width: 100%;
 }
 
 .rt-app-shell > .rt-app-header,

@@ -4,10 +4,10 @@ import { AdminMembersForbiddenError, fetchAdminMembers } from '../api/adminMembe
 import { AdminMembersLoadMore } from '../components/admin/AdminMembersLoadMore.jsx';
 import { AdminMembersTable } from '../components/admin/AdminMembersTable.jsx';
 import { AdminMembersTableSkeleton } from '../components/admin/AdminMembersTableSkeleton.jsx';
-import { AppShell } from '../components/app/AppShell.jsx';
+import { AdminSearchField } from '../components/admin/AdminSearchField.jsx';
+import { AdminShell } from '../components/admin/AdminShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
 import { PageHeader } from '../components/app/PageHeader.jsx';
-import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const PER_PAGE = 10;
@@ -140,39 +140,16 @@ export function AdminMembersPage() {
           : `${total} registered member${total === 1 ? '' : 's'}, newest first.`;
 
     return (
-        <AppShell user={user}>
-            <PageHeader size="md" title="Member Management" subtitle={subtitle} />
+        <AdminShell user={user}>
+            <PageHeader size="md" eyebrow="Admin" title="Members" subtitle={subtitle} />
 
-            <div className="mb-6">
-                <div className="rt-facility-search group relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-4 z-10 flex items-center text-[#918f9c]">
-                        <MaterialIcon name="search" className="text-xl" />
-                    </div>
-                    <input
-                        type="text"
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        placeholder="Search by name or email…"
-                        className="rt-facility-search-input"
-                        aria-label="Search members"
-                    />
-                    {searchInput ? (
-                        <button
-                            type="button"
-                            onClick={() => setSearchInput('')}
-                            className="rt-facility-search-clear"
-                            aria-label="Clear search"
-                        >
-                            <MaterialIcon name="close" className="text-lg" />
-                        </button>
-                    ) : null}
-                </div>
-                <div className="mt-2 min-h-5" aria-live="polite">
-                    {loading && members.length > 0 ? (
-                        <p className="text-xs font-medium text-[#918f9c]">Updating results…</p>
-                    ) : null}
-                </div>
-            </div>
+            <AdminSearchField
+                value={searchInput}
+                onChange={setSearchInput}
+                placeholder="Search by name or email…"
+                label="Search members"
+                loadingHint={loading && members.length > 0}
+            />
 
             {error ? (
                 <div className="rt-alert-error mb-6" role="alert">
@@ -223,6 +200,6 @@ export function AdminMembersPage() {
                     />
                 </>
             ) : null}
-        </AppShell>
+        </AdminShell>
     );
 }

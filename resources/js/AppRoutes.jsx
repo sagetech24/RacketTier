@@ -16,7 +16,18 @@ const HomePageV2 = lazy(() => import('./pages/HomePageV2.jsx').then((m) => ({ de
 const HomePageV3 = lazy(() => import('./pages/HomePageV3.jsx').then((m) => ({ default: m.HomePageV3 })));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx').then((m) => ({ default: m.LoginPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((m) => ({ default: m.ProfilePage })));
+const AdminOverviewPage = lazy(() => import('./pages/AdminOverviewPage.jsx').then((m) => ({ default: m.AdminOverviewPage })));
 const AdminMembersPage = lazy(() => import('./pages/AdminMembersPage.jsx').then((m) => ({ default: m.AdminMembersPage })));
+const AdminMemberDetailPage = lazy(() =>
+    import('./pages/AdminMemberDetailPage.jsx').then((m) => ({ default: m.AdminMemberDetailPage })),
+);
+const AdminFacilitiesPage = lazy(() =>
+    import('./pages/AdminFacilitiesPage.jsx').then((m) => ({ default: m.AdminFacilitiesPage })),
+);
+const AdminSessionsPage = lazy(() =>
+    import('./pages/AdminSessionsPage.jsx').then((m) => ({ default: m.AdminSessionsPage })),
+);
+const AdminTiersPage = lazy(() => import('./pages/AdminTiersPage.jsx').then((m) => ({ default: m.AdminTiersPage })));
 const RankingPage = lazy(() => import('./pages/RankingPage.jsx').then((m) => ({ default: m.RankingPage })));
 const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx').then((m) => ({ default: m.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.jsx').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -108,12 +119,72 @@ export function AppRoutes() {
                     }
                 />
                 <Route
+                    path="admin"
+                    element={
+                        <ProtectedRoute>
+                            <AdminRoute>
+                                <LazyPage>
+                                    <AdminOverviewPage />
+                                </LazyPage>
+                            </AdminRoute>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
                     path="admin/members"
                     element={
                         <ProtectedRoute>
                             <AdminRoute>
                                 <LazyPage>
                                     <AdminMembersPage />
+                                </LazyPage>
+                            </AdminRoute>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="admin/members/:id"
+                    element={
+                        <ProtectedRoute>
+                            <AdminRoute>
+                                <LazyPage>
+                                    <AdminMemberDetailPage />
+                                </LazyPage>
+                            </AdminRoute>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="admin/facilities"
+                    element={
+                        <ProtectedRoute>
+                            <AdminRoute>
+                                <LazyPage>
+                                    <AdminFacilitiesPage />
+                                </LazyPage>
+                            </AdminRoute>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="admin/sessions"
+                    element={
+                        <ProtectedRoute>
+                            <AdminRoute>
+                                <LazyPage>
+                                    <AdminSessionsPage />
+                                </LazyPage>
+                            </AdminRoute>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="admin/tiers"
+                    element={
+                        <ProtectedRoute>
+                            <AdminRoute>
+                                <LazyPage>
+                                    <AdminTiersPage />
                                 </LazyPage>
                             </AdminRoute>
                         </ProtectedRoute>

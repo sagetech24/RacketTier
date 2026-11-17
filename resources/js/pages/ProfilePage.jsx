@@ -77,10 +77,10 @@ export function ProfilePage() {
             <div className="flex flex-col gap-4 md:gap-6">
                 {userIsAdmin(authUser) || userIsAdmin(user) ? (
                     <Link
-                        to="/admin/members"
+                        to="/admin"
                         className="rt-facility-btn rt-facility-btn-lavender inline-flex min-h-11 w-full justify-center px-5 sm:w-auto"
                     >
-                        Member Management
+                        Admin Dashboard
                     </Link>
                 ) : null}
                 <div className="rt-surface-card p-5 md:p-6">
