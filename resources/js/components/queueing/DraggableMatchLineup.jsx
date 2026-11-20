@@ -21,6 +21,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { useDragScrollLock } from '../../hooks/useDragScrollLock.js';
 import { maxPlayersPerTeam, moveLineupPlayer } from '../../lib/moveLineupPlayer.js';
+import { sessionFirstName } from '../../lib/queueingPlayerName.js';
 
 /**
  * @typedef {{
@@ -95,7 +96,7 @@ function LineupDragCard({
 }) {
     const skillLabel = showSkillLevel ? lineupSkillLevelLabel(player.skill_level) : null;
     const canDrag = !disabled && Object.keys(dragProps).length > 0;
-    const displayName = player.name?.trim() || 'Player';
+    const displayName = sessionFirstName(player.name?.trim() || 'Player');
 
     return (
         <div

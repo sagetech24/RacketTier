@@ -1,3 +1,5 @@
+import { sessionFirstName } from './queueingPlayerName.js';
+
 /** @param {unknown} lineup */
 export function lineupPlayerIds(lineup) {
     const rows = Array.isArray(lineup) ? lineup : [];
@@ -29,11 +31,16 @@ export function lineupToTeams(lineup) {
     return { team1, team2 };
 }
 
-/** @param {{ user?: { name?: string } | null, guest_name?: string | null } | null | undefined} p */
+/** Full name for search/filters. @param {{ user?: { name?: string } | null, guest_name?: string | null } | null | undefined} p */
 export function rosterPlayerLabel(p) {
     if (!p) return 'Player';
     const n = (p.user?.name ?? p.guest_name ?? '').trim();
     return n || 'Player';
+}
+
+/** First name only for in-session lineup cards. @param {{ user?: { name?: string } | null, guest_name?: string | null } | null | undefined} p */
+export function rosterPlayerSessionLabel(p) {
+    return sessionFirstName(rosterPlayerLabel(p));
 }
 
 /**

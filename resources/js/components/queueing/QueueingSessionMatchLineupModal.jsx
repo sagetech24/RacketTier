@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     reservedQueueingPlayerIds,
     rosterPlayerLabel,
+    rosterPlayerSessionLabel,
 } from '../../lib/queueingMatchLineup.js';
 import { MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../app/ModalPortal.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
@@ -33,7 +34,7 @@ function LineupPlayerCard({ p, trailing = null, showSkillLevel = true }) {
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                     <p className="mb-1 truncate text-sm font-semibold capitalize text-[#e4e1e6] md:text-lg">
-                        {rosterPlayerLabel(p)}
+                        {rosterPlayerSessionLabel(p)}
                     </p>
                     {isGuest ? (
                         <span

@@ -16,13 +16,14 @@ import {
     useInvalidateQueueingSession,
     useQueueingSessionQuery,
 } from '../hooks/queries/useQueueingSessionQuery.js';
+import { sessionFirstName } from '../lib/queueingPlayerName.js';
 import { displaySessionPoints } from '../lib/queueingSessionStats.js';
 /**
  * @param {import('../api/gameSession.js').GameSessionDetail['players'] extends (infer U)[] | undefined ? U : never} row
  */
 function displayName(row) {
-    if (row.is_guest) return row.guest_name || 'Guest';
-    return row.user?.name || 'Player';
+    if (row.is_guest) return sessionFirstName(row.guest_name || 'Guest');
+    return sessionFirstName(row.user?.name || 'Player');
 }
 
 /**

@@ -1,3 +1,4 @@
+import { sessionFirstName } from '../../lib/queueingPlayerName.js';
 import { displaySessionPoints } from '../../lib/queueingSessionStats.js';
 import { playerInitials } from '../ranking/rankingUtils.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
@@ -5,6 +6,8 @@ import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardSta
 import { PlayerSkillLevelBadge } from './PlayerSkillLevelBadge.jsx';
 
 /**
+ * Full roster name (search, sort, confirmations).
+ *
  * @param {string} name
  */
 export function rosterDisplayName(name) {
@@ -17,6 +20,15 @@ export function rosterDisplayName(name) {
 export function rosterPlayerName(p) {
     if (p.is_guest) return rosterDisplayName(p.guest_name || 'Guest');
     return rosterDisplayName(p.user?.name || 'Player');
+}
+
+/**
+ * First name only — used on in-session player cards and compact labels.
+ *
+ * @param {NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number]} p
+ */
+export function rosterPlayerSessionName(p) {
+    return sessionFirstName(rosterPlayerName(p));
 }
 
 /**
@@ -147,7 +159,7 @@ export function QueueingSessionPlayerCard({
     onRemove,
     onRestore,
 }) {
-    const name = rosterPlayerName(p);
+    const name = rosterPlayerSessionName(p);
     const wins = p.wins_count ?? 0;
     const losses = p.losses_count ?? 0;
     const points = displaySessionPoints(p.session_points);
@@ -230,11 +242,6 @@ export function QueueingSessionPlayerCard({
                             <div className="min-w-0 flex-1">
                                 <h3 className="truncate text-base font-bold capitalize leading-tight text-[#e4e1e6] md:text-lg">
                                     {name}
-                                    {p.pronoun ? (
-                                        <span className="ml-1.5 text-xs font-medium normal-case text-[#c2c1ff]/80">
-                                            {p.pronoun}
-                                        </span>
-                                    ) : null}
                                 </h3>
                                 <div className="mt-1.5 flex items-center gap-1.5">
                                     {showSkillLevel ? (

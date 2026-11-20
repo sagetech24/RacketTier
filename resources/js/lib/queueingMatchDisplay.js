@@ -1,3 +1,5 @@
+import { sessionFirstName } from './queueingPlayerName.js';
+
 /** @param {string | null | undefined} iso */
 export function formatTime(iso) {
     if (!iso) return '—';
@@ -60,11 +62,17 @@ export function liveDurationSeconds(startedAt, nowMs = Date.now()) {
     return Math.max(0, Math.floor((nowMs - startMs) / 1000));
 }
 
-/** @param {unknown} player */
-export function lineupPlayerDisplayName(player) {
+/** Full lineup name (search). @param {unknown} player */
+export function lineupPlayerFullName(player) {
     if (!player || typeof player !== 'object') return 'Player';
     const row = /** @type {{ name?: unknown, guest_name?: unknown }} */ (player);
-    return String(row.name || row.guest_name || 'Player');
+    const raw = String(row.name || row.guest_name || 'Player').trim();
+    return raw || 'Player';
+}
+
+/** First name only for in-session match cards. @param {unknown} player */
+export function lineupPlayerDisplayName(player) {
+    return sessionFirstName(lineupPlayerFullName(player));
 }
 
 /** @param {unknown} lineup */
@@ -88,7 +96,7 @@ export function finishedMatchIncludesPlayerQuery(match, query) {
     const q = query.trim().toLowerCase();
     if (!q) return true;
     const lineup = Array.isArray(match?.lineup) ? match.lineup : [];
-    return lineup.some((player) => lineupPlayerDisplayName(player).toLowerCase().includes(q));
+    return lineup.some((player) => lineupPlayerFullName(player).toLowerCase().includes(q));
 }
 
 /** @param {Array<Record<string, unknown>>} rows */
