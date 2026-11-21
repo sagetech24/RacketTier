@@ -51,6 +51,21 @@ describe('applyOfflineMutation', () => {
         assert.equal(next.draft_version, 2);
     });
 
+    it('adds a member with user object for roster matching', () => {
+        const next = applyOfflineMutation(
+            { session: baseSession(), matches: [] },
+            {
+                type: 'add_member',
+                payload: { user_id: 42, name: 'Pat', skill_level: 4 },
+            },
+        );
+        const added = next.session.players.find((p) => Number(p.user_id) === 42);
+        assert.ok(added);
+        assert.equal(added.user.id, 42);
+        assert.equal(added.is_guest, false);
+        assert.equal(added.in_lobby, true);
+    });
+
     it('creates starts and finishes a skip-scores match', () => {
         let state = applyOfflineMutation(
             { session: baseSession(), matches: [] },

@@ -452,7 +452,7 @@ export function AutoMatchProposalsModal({
                 local_match_id: proposal.proposal_id,
             });
             const last = result.matches?.[result.matches.length - 1];
-            return last ?? null;
+            return { ...(last ?? {}), mode: 'offline', session: result.session, matches: result.matches };
         }
         return postCreateQueueingSessionMatch(sessionId, {
             lineup,
@@ -464,12 +464,14 @@ export function AutoMatchProposalsModal({
         setBusy(true);
         setError('');
         try {
-            await createMatchFromProposal(proposal);
+            const created = await createMatchFromProposal(proposal);
             showStatus('Match queued.');
-            if (onApproved) {
-                await onApproved();
+            if (created?.mode === 'offline') {
+                if (onApproved) await onApproved();
+            } else {
+                if (onApproved) await onApproved();
+                await reload();
             }
-            await reload();
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Could not create match.');
         } finally {

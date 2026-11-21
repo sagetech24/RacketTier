@@ -10,6 +10,10 @@ import {
     postStartQueueingSessionMatch,
 } from '../../api/queueingSession.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { isOfflineStatus, markNetworkFailure } from '../../lib/connection.js';
+import { isNetworkError } from '../../lib/networkError.js';
+import { getOfflineSession, seedOfflineSession } from '../../offline/queueingDraftDb.js';
+import { withOfflineFallback } from '../../offline/withOfflineFallback.js';
 import { useProductTour } from '../tour/useProductTour.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { AddQueueingSessionPlayerModal } from './AddQueueingSessionPlayerModal.jsx';
@@ -21,7 +25,6 @@ import { QueueingSessionAddPlayersModal } from './QueueingSessionAddPlayersModal
 import { QueueingSessionSettingsModal } from './QueueingSessionSettingsModal.jsx';
 import { QueueingSessionEndLoadingOverlay } from './QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionMatchLineupModal } from './QueueingSessionMatchLineupModal.jsx';
-import { withOfflineFallback } from '../../offline/withOfflineFallback.js';
 import { sessionRequiresSkillLevel } from './skillLevelUtils.js';
 
 /**
@@ -126,16 +129,69 @@ export function QueueingSessionMatchFabPanel({
         };
     }, [menuOpen, tourRunning, tourKind, tourFabMenuOpen]);
 
+    const applyLocalSnapshot = useCallback(async () => {
+        if (sessionId == null) return null;
+        const local = await getOfflineSession(sessionId);
+        if (!local?.session) return null;
+        setLocalSession(local.session);
+        setMatches(local.matches ?? []);
+        return { sessionData: local.session, matchRows: local.matches ?? [] };
+    }, [sessionId]);
+
     const refreshMatchData = useCallback(async () => {
         if (sessionId == null) return;
-        const [sessionData, matchRows] = await Promise.all([
-            fetchGameSession(String(sessionId)),
-            fetchQueueingSessionMatches(sessionId),
-        ]);
-        setLocalSession(sessionData);
-        setMatches(matchRows);
-        return { sessionData, matchRows };
-    }, [sessionId]);
+        const preferLocal =
+            isOfflineStatus() || (typeof navigator !== 'undefined' && navigator.onLine === false);
+        if (preferLocal) {
+            const local = await applyLocalSnapshot();
+            if (!local) throw new Error('Session unavailable offline.');
+            return local;
+        }
+        try {
+            const [sessionData, matchRows] = await Promise.all([
+                fetchGameSession(String(sessionId)),
+                fetchQueueingSessionMatches(sessionId),
+            ]);
+            setLocalSession(sessionData);
+            setMatches(matchRows);
+            void seedOfflineSession(sessionId, { session: sessionData, matches: matchRows });
+            return { sessionData, matchRows };
+        } catch (err) {
+            const local = await applyLocalSnapshot();
+            if (local) {
+                if (isNetworkError(err)) markNetworkFailure();
+                return local;
+            }
+            throw err;
+        }
+    }, [applyLocalSnapshot, sessionId]);
+
+    /**
+     * After a mutation: if it was applied offline, use that snapshot — never refetch the network.
+     * @param {unknown} result
+     */
+    async function settleAfterMutation(result) {
+        if (result && typeof result === 'object' && result.mode === 'offline') {
+            setLocalSession(result.session);
+            setMatches(result.matches ?? []);
+            return;
+        }
+        if (onReload) {
+            try {
+                await onReload();
+            } catch (err) {
+                if (isNetworkError(err)) {
+                    markNetworkFailure();
+                    await applyLocalSnapshot();
+                    return;
+                }
+                throw err;
+            }
+            await applyLocalSnapshot();
+            return;
+        }
+        await refreshMatchData();
+    }
 
     const reportError = useCallback(
         (message) => {
@@ -161,7 +217,9 @@ export function QueueingSessionMatchFabPanel({
     const rosterUserIds = useMemo(() => {
         const ids = new Set();
         for (const p of localSession?.players ?? []) {
-            if (p.user?.id) ids.add(p.user.id);
+            if (p.is_removed) continue;
+            if (p.user?.id) ids.add(Number(p.user.id));
+            else if (p.user_id) ids.add(Number(p.user_id));
         }
         return ids;
     }, [localSession?.players]);
@@ -281,7 +339,7 @@ export function QueueingSessionMatchFabPanel({
 
         setBusy(true);
         try {
-            await withOfflineFallback(sessionId, {
+            const result = await withOfflineFallback(sessionId, {
                 type: 'add_member',
                 payload: {
                     user_id: member.id,
@@ -295,11 +353,7 @@ export function QueueingSessionMatchFabPanel({
                         skill_level: member.skill_level ?? null,
                     }),
             });
-            if (onReload) {
-                await onReload();
-            } else {
-                await refreshMatchData();
-            }
+            await settleAfterMutation(result);
         } catch (e) {
             reportError(e instanceof Error ? e.message : 'Could not add player.');
             throw e;
@@ -316,8 +370,9 @@ export function QueueingSessionMatchFabPanel({
         setBusy(true);
         try {
             const isGuest = addPlayerModal.mode === 'guest';
+            let result;
             if (isGuest) {
-                await withOfflineFallback(sessionId, {
+                result = await withOfflineFallback(sessionId, {
                     type: 'add_guest',
                     payload: {
                         guest_name: payload.guest_name,
@@ -332,7 +387,7 @@ export function QueueingSessionMatchFabPanel({
                         }),
                 });
             } else {
-                await withOfflineFallback(sessionId, {
+                result = await withOfflineFallback(sessionId, {
                     type: 'add_member',
                     payload: {
                         user_id: addPlayerModal.member?.id,
@@ -347,11 +402,7 @@ export function QueueingSessionMatchFabPanel({
                 });
                 setAddPlayerModal(null);
             }
-            if (onReload) {
-                await onReload();
-            } else {
-                await refreshMatchData();
-            }
+            await settleAfterMutation(result);
         } catch (e) {
             reportError(e instanceof Error ? e.message : 'Could not add player.');
             throw e;
@@ -367,7 +418,7 @@ export function QueueingSessionMatchFabPanel({
         if (sessionId == null) return;
         setBusy(true);
         try {
-            await withOfflineFallback(sessionId, {
+            const result = await withOfflineFallback(sessionId, {
                 type: 'add_guest',
                 payload: {
                     guest_name: payload.guest_name,
@@ -381,11 +432,7 @@ export function QueueingSessionMatchFabPanel({
                         skill_level: payload.skill_level ?? null,
                     }),
             });
-            if (onReload) {
-                await onReload();
-            } else {
-                await refreshMatchData();
-            }
+            await settleAfterMutation(result);
         } catch (e) {
             reportError(e instanceof Error ? e.message : 'Could not add player.');
             throw e;
@@ -402,28 +449,27 @@ export function QueueingSessionMatchFabPanel({
         if (sessionId == null || localSession == null) return;
         setBusy(true);
         try {
-            const created = await withOfflineFallback(sessionId, {
+            let result = await withOfflineFallback(sessionId, {
                 type: 'create_match',
                 payload: { lineup },
                 online: () => postCreateQueueingSessionMatch(sessionId, { lineup }),
             });
             if (options.start) {
-                const matchId = created?.id ?? created?.matches?.[created.matches.length - 1]?.id;
+                const matchId =
+                    result?.mode === 'offline'
+                        ? result.matches?.[result.matches.length - 1]?.id
+                        : result?.id;
                 if (matchId == null) {
                     throw new Error('Could not start match.');
                 }
-                await withOfflineFallback(sessionId, {
+                result = await withOfflineFallback(sessionId, {
                     type: 'start_match',
                     payload: { match_id: matchId },
                     online: () => postStartQueueingSessionMatch(sessionId, matchId),
                 });
             }
             setCreateMatchOpen(false);
-            if (onReload) {
-                await onReload();
-            } else {
-                await refreshMatchData();
-            }
+            await settleAfterMutation(result);
         } catch (e) {
             reportError(e instanceof Error ? e.message : 'Could not create match.');
             throw e;
@@ -447,7 +493,6 @@ export function QueueingSessionMatchFabPanel({
         setEndingSession(true);
         try {
             const { requestEndWhenOnline } = await import('../../offline/queueingMutationRouter.js');
-            const { isOfflineStatus } = await import('../../lib/connection.js');
             if (isOfflineStatus() || navigator.onLine === false) {
                 await requestEndWhenOnline(sessionId);
                 setEndingSession(false);

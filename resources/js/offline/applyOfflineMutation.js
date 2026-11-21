@@ -109,17 +109,25 @@ export function applyOfflineMutation(state, mutation) {
         }
         case 'add_member': {
             const userId = Number(payload.user_id);
-            if (players.some((p) => Number(p.user_id) === userId && !p.is_removed)) {
+            if (
+                players.some(
+                    (p) =>
+                        !p.is_removed &&
+                        (Number(p.user_id) === userId || Number(p.user?.id) === userId),
+                )
+            ) {
                 throw new Error('That player is already on the roster.');
             }
             const nextId =
                 Math.max(0, ...players.map((p) => Number(p.id) || 0), Number(session._next_player_id) || 0) + 1;
             session._next_player_id = nextId + 1;
+            const displayName = String(payload.name ?? `Member ${userId}`);
             players.push({
                 id: nextId,
                 user_id: userId,
                 guest_name: null,
-                name: payload.name ?? `Member ${userId}`,
+                name: displayName,
+                is_guest: false,
                 pronoun: payload.pronoun ?? null,
                 skill_level: payload.skill_level ?? null,
                 queue_position: 0,
@@ -134,6 +142,11 @@ export function applyOfflineMutation(state, mutation) {
                 last_match_id: null,
                 checked_in_at: new Date().toISOString(),
                 in_lobby: true,
+                user: {
+                    id: userId,
+                    name: displayName,
+                    email: payload.email ?? '',
+                },
             });
             break;
         }

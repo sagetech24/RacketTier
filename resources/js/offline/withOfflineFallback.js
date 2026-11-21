@@ -1,28 +1,34 @@
-import { isOfflineStatus } from '../lib/connection.js';
+import { isOfflineStatus, markNetworkFailure } from '../lib/connection.js';
+import { isNetworkError } from '../lib/networkError.js';
+import { withSilentToasts } from '../lib/toast.js';
 import { applyLocalMutation } from './queueingMutationRouter.js';
 
 /**
  * Prefer online API; if offline (or network fails), apply local draft mutation.
+ * Online attempts are silent so a failed fetch does not toast before offline fallback.
  *
  * @param {number|string} sessionId
  * @param {{
  *   type: string,
  *   payload: Record<string, unknown>,
  *   online: () => Promise<unknown>,
+ *   queryClient?: import('@tanstack/react-query').QueryClient,
  * }} opts
  */
 export async function withOfflineFallback(sessionId, opts) {
-    if (isOfflineStatus() || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
-        return applyLocalMutation(sessionId, opts.type, opts.payload);
+    const forceOffline =
+        isOfflineStatus() || (typeof navigator !== 'undefined' && navigator.onLine === false);
+
+    if (forceOffline) {
+        return applyLocalMutation(sessionId, opts.type, opts.payload, opts.queryClient);
     }
+
     try {
-        return await opts.online();
+        const result = await withSilentToasts(() => opts.online());
+        return result;
     } catch (err) {
-        const isNetwork =
-            err instanceof TypeError ||
-            err?.message === 'Failed to fetch' ||
-            /network/i.test(String(err?.message ?? ''));
-        if (!isNetwork) throw err;
-        return applyLocalMutation(sessionId, opts.type, opts.payload);
+        if (!isNetworkError(err)) throw err;
+        markNetworkFailure();
+        return applyLocalMutation(sessionId, opts.type, opts.payload, opts.queryClient);
     }
 }

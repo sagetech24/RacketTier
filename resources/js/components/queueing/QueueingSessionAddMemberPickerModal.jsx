@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchFacilityPlayers } from '../../api/gameSession.js';
-import { isOfflineStatus } from '../../lib/connection.js';
+import { isOfflineStatus, markNetworkFailure } from '../../lib/connection.js';
+import { isNetworkError } from '../../lib/networkError.js';
 import {
     getMemberCache,
     memberCacheKey,
@@ -66,6 +67,16 @@ function PlayerListSkeleton() {
 }
 
 /**
+ * @param {unknown[]} rows
+ * @param {string} needle
+ */
+function filterMembers(rows, needle) {
+    const q = needle.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((row) => String(row?.name ?? '').toLowerCase().includes(q));
+}
+
+/**
  * @param {{
  *   open: boolean,
  *   sportId?: number | null,
@@ -97,12 +108,14 @@ export function QueueingSessionAddMemberPickerModal({
     const [playerSearch, setPlayerSearch] = useState('');
     const [searchRows, setSearchRows] = useState([]);
     const [searchLoading, setSearchLoading] = useState(false);
+    const [fromCache, setFromCache] = useState(false);
 
     useEffect(() => {
         if (!open) return;
         setPlayerSearch('');
         setSearchRows([]);
         setSearchLoading(true);
+        setFromCache(false);
     }, [open]);
 
     useEffect(() => {
@@ -113,32 +126,46 @@ export function QueueingSessionAddMemberPickerModal({
 
         const t = window.setTimeout(() => {
             (async () => {
+                const cacheKey = memberCacheKey(sportId);
+                const preferLocal =
+                    isOfflineStatus() ||
+                    (typeof navigator !== 'undefined' && navigator.onLine === false);
+
                 try {
-                    const cacheKey = memberCacheKey(sportId);
-                    if (isOfflineStatus() || navigator.onLine === false) {
+                    if (preferLocal) {
                         const cached = await getMemberCache(cacheKey);
-                        const needle = playerSearch.trim().toLowerCase();
-                        const filtered = needle
-                            ? cached.filter((row) =>
-                                  String(row.name ?? '')
-                                      .toLowerCase()
-                                      .includes(needle),
-                              )
-                            : cached;
-                        if (!cancelled) setSearchRows(filtered);
-                    } else {
-                        const rows = await fetchFacilityPlayers(playerSearch, {
-                            includeMe: true,
-                            sportId: sportId ?? undefined,
-                        });
-                        if (!playerSearch.trim()) {
-                            void putMemberCache(cacheKey, rows);
+                        if (!cancelled) {
+                            setSearchRows(filterMembers(cached, playerSearch));
+                            setFromCache(true);
                         }
-                        if (!cancelled) setSearchRows(rows);
+                        return;
                     }
-                } catch {
-                    const cached = await getMemberCache(memberCacheKey(sportId));
-                    if (!cancelled) setSearchRows(cached);
+
+                    const rows = await fetchFacilityPlayers(playerSearch, {
+                        includeMe: true,
+                        sportId: sportId ?? undefined,
+                    });
+                    // Keep a full directory snapshot for offline adds (unfiltered list).
+                    if (!playerSearch.trim()) {
+                        void putMemberCache(cacheKey, rows);
+                    } else {
+                        // Merge search hits into existing cache so late lookups still work offline.
+                        const existing = await getMemberCache(cacheKey);
+                        const byId = new Map(existing.map((row) => [Number(row.id), row]));
+                        for (const row of rows) byId.set(Number(row.id), row);
+                        void putMemberCache(cacheKey, [...byId.values()]);
+                    }
+                    if (!cancelled) {
+                        setSearchRows(rows);
+                        setFromCache(false);
+                    }
+                } catch (err) {
+                    const cached = await getMemberCache(cacheKey);
+                    if (isNetworkError(err)) markNetworkFailure();
+                    if (!cancelled) {
+                        setSearchRows(filterMembers(cached, playerSearch));
+                        setFromCache(true);
+                    }
                 } finally {
                     if (!cancelled) setSearchLoading(false);
                 }
@@ -152,11 +179,25 @@ export function QueueingSessionAddMemberPickerModal({
     }, [open, playerSearch, sportId]);
 
     const addablePlayers = useMemo(
-        () => searchRows.filter((row) => !rosterUserIds.has(row.id)),
+        () => searchRows.filter((row) => !rosterUserIds.has(Number(row.id))),
         [searchRows, rosterUserIds],
     );
 
     if (!open) return null;
+
+    const emptyMessage = (() => {
+        if (playerSearch.trim()) {
+            return fromCache
+                ? 'No cached members match your search. Connect once to refresh the member list.'
+                : 'No members match your search.';
+        }
+        if (fromCache && searchRows.length === 0) {
+            return 'No cached members on this device. Open Add Member while online first, then try again offline.';
+        }
+        return fromCache
+            ? 'Showing members saved on this device.'
+            : 'No members available to add.';
+    })();
 
     const listBody = (
         <>
@@ -177,6 +218,11 @@ export function QueueingSessionAddMemberPickerModal({
                             className="w-full rounded-lg border border-[#3c3c3e] bg-[#131316] py-3 pl-11 pr-3 text-md text-[#e4e1e6] outline-none focus:ring-1 focus:ring-[#4ce081] disabled:opacity-60"
                         />
                     </div>
+                    {fromCache ? (
+                        <p className="mt-2 text-[11px] text-[#bab9c0]">
+                            Offline — using members cached on this device.
+                        </p>
+                    ) : null}
                 </div>
             ) : null}
 
@@ -185,12 +231,15 @@ export function QueueingSessionAddMemberPickerModal({
                     <PlayerListSkeleton />
                 ) : addablePlayers.length === 0 ? (
                     <p className="rounded-lg border border-[#3c3c3e] bg-[#131316]/60 px-3 py-8 text-center text-sm text-[#918f9c]">
-                        {playerSearch.trim()
-                            ? 'No members match your search.'
-                            : 'No members available to add.'}
+                        {emptyMessage}
                     </p>
                 ) : (
                     <div className="space-y-2" aria-live="polite">
+                        {fromCache && !embedded ? (
+                            <p className="px-1 text-[11px] text-[#bab9c0]">
+                                Offline — using members cached on this device.
+                            </p>
+                        ) : null}
                         {addablePlayers.map((r) => (
                             <button
                                 key={r.id}
@@ -202,35 +251,22 @@ export function QueueingSessionAddMemberPickerModal({
                                         typeof tierNo === 'number' && tierNo >= 1 && tierNo <= 5
                                             ? tierNo
                                             : null;
-
                                     onSelectMember({
                                         id: r.id,
                                         name: r.name,
                                         pronoun: r.pronoun ?? null,
-                                        skill_level: skillLevel,
+                                        skill_level: showSkillLevel ? skillLevel : null,
                                     });
                                 }}
-                                className="flex w-full min-h-11 cursor-pointer items-center justify-between gap-2 rounded-lg border border-[#514c53] bg-white/10 px-3 py-2.5 text-left text-md transition-colors duration-200 hover:border-[#4ce081]/50 enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex w-full items-center justify-between gap-2 rounded-lg border border-[#3c3c3e]/80 bg-[#131316]/60 px-3 py-3 text-left transition hover:border-[#4ce081]/50 hover:bg-[#1b1b1e] disabled:opacity-60"
                             >
-                                <span className="flex min-w-0 flex-1 flex-col">
-                                    <span className="flex min-w-0 items-center gap-2">
-                                        <span className="truncate">{r.name}</span>
-                                        {showSkillLevel && sportId != null ? (
-                                            <span
-                                                className="shrink-0 rounded-full border border-[#514c53] bg-[#c2c1ff]/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c8c5d2]"
-                                                title="Tier for this session's sport (lifetime session points)"
-                                            >
-                                                {r.tier?.name ?? '—'}
-                                            </span>
-                                        ) : null}
-                                    </span>
-                                    {sportId != null ? (
-                                        <MemberSportStats stats={r.stats} sportName={sportName} />
-                                    ) : null}
-                                </span>
-                                <span className="shrink-0 text-xs text-[#c2c1ff]/70">
-                                    <MaterialIcon name="add" className="text-xs text-[#c2c1ff]/70" />
-                                </span>
+                                <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold text-[#e4e1e6]">
+                                        {r.name}
+                                    </div>
+                                    <MemberSportStats stats={r.stats} sportName={sportName} />
+                                </div>
+                                <MaterialIcon name="chevron_right" className="text-[#918f9c] text-xl!" />
                             </button>
                         ))}
                     </div>
@@ -240,35 +276,26 @@ export function QueueingSessionAddMemberPickerModal({
     );
 
     if (embedded) {
-        return <div className="flex min-h-0 flex-1 flex-col">{listBody}</div>;
+        return listBody;
     }
 
     return (
-        <ModalPortal open={open}>
-            <div className="rt-end-match-modal-overlay fixed inset-0 z-200 flex items-stretch justify-center sm:items-center sm:p-6">
-                <button
-                    type="button"
-                    className="absolute inset-0"
-                    aria-label="Close add players"
-                    onClick={() => {
-                        if (!busy) onClose();
-                    }}
-                />
-                <div
-                    className="rt-end-match-modal-sheet relative flex h-[100dvh] max-h-[100dvh] w-full max-w-md flex-col rounded-none border-0 border-[#2a2a2d] bg-[#1b1b1e] shadow-xl sm:h-[min(92dvh,44rem)] sm:max-h-[min(92dvh,44rem)] sm:rounded-2xl sm:border"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="rt-add-players-title"
-                >
-                    <div className="shrink-0 border-b border-white/5 px-5 pb-4 pt-5">
-                        <h3 id="rt-add-players-title" className="text-lg font-bold text-[#e4e1e6]">
-                            Add players
-                        </h3>
-                        <p className="mt-1 text-sm text-[#918f9c]">
-                            Search members to add to this session.
-                        </p>
-
-                        <div className="relative mt-4">
+        <ModalPortal>
+            <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
+                <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl border border-[#3c3c3e] bg-[#1b1b1e] sm:rounded-2xl">
+                    <div className="flex items-center justify-between gap-3 border-b border-[#3c3c3e] px-5 py-4">
+                        <h2 className="text-lg font-bold text-[#e4e1e6]">Add member</h2>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-lg p-1 text-[#918f9c] hover:bg-white/5 hover:text-[#e4e1e6]"
+                            aria-label="Close"
+                        >
+                            <MaterialIcon name="close" />
+                        </button>
+                    </div>
+                    <div className="shrink-0 px-5 pt-4">
+                        <div className="relative">
                             <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[#918f9c]">
                                 <MaterialIcon name="search" className="text-xl!" />
                             </div>
@@ -283,19 +310,7 @@ export function QueueingSessionAddMemberPickerModal({
                             />
                         </div>
                     </div>
-
                     {listBody}
-
-                    <div className="shrink-0 border-t border-white/5 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4">
-                        <button
-                            type="button"
-                            disabled={busy}
-                            onClick={onClose}
-                            className="w-full min-h-11 cursor-pointer rounded-lg border border-white/50 py-2.5 text-sm font-bold text-white/70 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            Cancel
-                        </button>
-                    </div>
                 </div>
             </div>
         </ModalPortal>

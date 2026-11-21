@@ -1,4 +1,5 @@
 import { isOfflineStatus, markNetworkFailure, setConnectionStatus } from '../lib/connection.js';
+import { isNetworkError } from '../lib/networkError.js';
 import { queryKeys } from '../lib/queryClient.js';
 import { applyOfflineMutation } from './applyOfflineMutation.js';
 import {
@@ -52,11 +53,7 @@ export async function runQueueingMutation(sessionId, opts) {
             }
             return { mode: 'online', result };
         } catch (err) {
-            const isNetwork =
-                err instanceof TypeError ||
-                err?.message === 'Failed to fetch' ||
-                /network/i.test(String(err?.message ?? ''));
-            if (!isNetwork) throw err;
+            if (!isNetworkError(err)) throw err;
             markNetworkFailure();
         }
     }

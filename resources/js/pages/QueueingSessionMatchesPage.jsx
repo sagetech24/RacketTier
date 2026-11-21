@@ -9,7 +9,12 @@ import {
     postStartQueueingSessionMatch,
     postSwitchQueueingSessionMatchResult,
 } from '../api/queueingSession.js';
+import { isOfflineStatus, markNetworkFailure } from '../lib/connection.js';
+import { isNetworkError } from '../lib/networkError.js';
+import { getOfflineSession } from '../offline/queueingDraftDb.js';
 import { withOfflineFallback } from '../offline/withOfflineFallback.js';
+import { queryKeys } from '../lib/queryClient.js';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
 import { MODAL_OVERLAY_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
@@ -159,6 +164,7 @@ export function QueueingSessionMatchesPage() {
     const needsInitialTabSnapRef = useRef(true);
     const sessionId = idParam && /^\d+$/.test(idParam) ? Number.parseInt(idParam, 10) : null;
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const invalidateQueueingSession = useInvalidateQueueingSession();
     const {
         data: session = null,
@@ -202,11 +208,57 @@ export function QueueingSessionMatchesPage() {
     /** @type {Record<string, unknown> | null} */
     const [pairingOverrideMatch, setPairingOverrideMatch] = useState(null);
 
+    const applyLocalQueryData = useCallback(async () => {
+        if (sessionId == null) return false;
+        const local = await getOfflineSession(sessionId);
+        if (!local?.session) return false;
+        queryClient.setQueryData(queryKeys.queueingSession(sessionId), local.session);
+        queryClient.setQueryData(
+            queryKeys.queueingSessionMatches(sessionId, local.session.draft_version ?? null),
+            local.matches ?? [],
+        );
+        return true;
+    }, [queryClient, sessionId]);
+
     const reload = useCallback(async () => {
         if (sessionId == null) return;
-        invalidateQueueingSession(sessionId);
-        await Promise.all([refetchSession(), refetchMatches()]);
-    }, [invalidateQueueingSession, refetchMatches, refetchSession, sessionId]);
+        if (isOfflineStatus() || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+            const ok = await applyLocalQueryData();
+            if (!ok) throw new Error('Session unavailable offline.');
+            return;
+        }
+        try {
+            invalidateQueueingSession(sessionId);
+            await Promise.all([refetchSession(), refetchMatches()]);
+        } catch (err) {
+            if (isNetworkError(err) || (await applyLocalQueryData())) {
+                if (isNetworkError(err)) markNetworkFailure();
+                return;
+            }
+            throw err;
+        }
+    }, [
+        applyLocalQueryData,
+        invalidateQueueingSession,
+        refetchMatches,
+        refetchSession,
+        sessionId,
+    ]);
+
+    /**
+     * @param {unknown} result
+     */
+    async function settleMutation(result) {
+        if (result && typeof result === 'object' && result.mode === 'offline') {
+            queryClient.setQueryData(queryKeys.queueingSession(sessionId), result.session);
+            queryClient.setQueryData(
+                queryKeys.queueingSessionMatches(sessionId, result.session?.draft_version ?? null),
+                result.matches ?? [],
+            );
+            return;
+        }
+        await reload();
+    }
 
     async function onEndMatch() {
         if (sessionId == null) return;
@@ -239,7 +291,7 @@ export function QueueingSessionMatchesPage() {
                       team1_score: Number.parseInt(t1, 10),
                       team2_score: Number.parseInt(t2, 10),
                   };
-            await withOfflineFallback(sessionId, {
+            const result = await withOfflineFallback(sessionId, {
                 type: 'finish_match',
                 payload: finishPayload,
                 online: async () => {
@@ -263,10 +315,7 @@ export function QueueingSessionMatchesPage() {
             setT1('');
             setT2('');
             setSelectedWinningTeam(null);
-            if (session) {
-                invalidateQueueingSession(sessionId);
-            }
-            void reload();
+            await settleMutation(result);
         } catch (e) {
             setActionError(e instanceof Error ? e.message : 'Could not end match.');
         } finally {
@@ -302,12 +351,12 @@ export function QueueingSessionMatchesPage() {
         setActionError('');
         setBusy(true);
         try {
-            await withOfflineFallback(sessionId, {
+            const result = await withOfflineFallback(sessionId, {
                 type: 'update_match_lineup',
                 payload: { match_id: editingMatchId, lineup },
                 online: () => patchUpdateQueueingSessionMatch(sessionId, editingMatchId, { lineup }),
             });
-            await reload();
+            await settleMutation(result);
             closeEditLineupModal();
         } catch (e) {
             setActionError(e instanceof Error ? e.message : 'Could not update match.');
@@ -322,12 +371,12 @@ export function QueueingSessionMatchesPage() {
         setActionError('');
         setBusy(true);
         try {
-            await withOfflineFallback(sessionId, {
+            const result = await withOfflineFallback(sessionId, {
                 type: 'start_match',
                 payload: { match_id: matchId },
                 online: () => postStartQueueingSessionMatch(sessionId, matchId),
             });
-            await reload();
+            await settleMutation(result);
         } catch (e) {
             setActionError(e instanceof Error ? e.message : 'Could not start match.');
         } finally {
