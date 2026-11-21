@@ -153,7 +153,7 @@ export function CreateQueueingSessionPage() {
                             </div>
                             <div data-tour="create-queue-name">
                                 <label htmlFor="queue-name" className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
-                                    Queue Name
+                                    Club or Queue Name
                                 </label>
                                 <input
                                     id="queue-name"
@@ -163,12 +163,12 @@ export function CreateQueueingSessionPage() {
                                     maxLength={120}
                                     placeholder="e.g. Friday night doubles"
                                     autoComplete="off"
-                                    className="w-full rounded-lg border border-[#484848] bg-[#131316] outline-none focus:ring-1 focus:ring-green-400 px-3 py-2.5 text-base placeholder:text-[#918f9c]/60 md:py-3"
+                                    className="w-full rounded-lg border border-[#918f9c] bg-[#131316] outline-none focus:ring-1 focus:ring-green-400 sm:p-3 p-2 sm:text-xl text-base placeholder:text-[#918f9c]/60"
                                 />
                             </div>
                             <div className="space-y-6" data-tour="create-queue-settings">
                                 <div className="grid grid-cols-2 md:grid-cols-4">
-                                    <div className="col-span-2">
+                                    <div className="col-span-full">
                                         <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">Match type</label>
                                         <div className="flex">
                                             {(['singles', 'doubles']).map((t) => (
@@ -184,8 +184,8 @@ export function CreateQueueingSessionPage() {
                                                     }}
                                                     className={
                                                         matchType === t
-                                                            ? 'flex-1 rounded-l-none bg-[#4ce081] py-2.5 text-sm font-bold text-[#003919]'
-                                                            : 'flex-1 rounded-r-none border border-[#484848] bg-[#131316] py-2.5 text-sm font-semibold text-[#e4e1e6]'
+                                                            ? 'uppercase flex-1 rounded-l-none bg-[#4ce081] sm:py-4 py-2 sm:text-lg tracking-widest text-xs font-bold text-[#003919]'
+                                                            : 'uppercase flex-1 rounded-r-none border border-[#484848] bg-[#131316] sm:py-4 py-2 sm:text-lg tracking-widest text-xs font-semibold text-[#e4e1e6]'
                                                     }
                                                     style={{
                                                         borderRadius: t === 'singles' ? '0.5rem 0 0 0.5rem' : '0 0.5rem 0.5rem 0',
@@ -235,7 +235,11 @@ export function CreateQueueingSessionPage() {
                             data-tour="create-queue-submit"
                             className="rt-kinetic-gradient w-full shrink-0 rounded-xl px-12 py-5 text-xl font-black italic tracking-tight text-[#211e6a] shadow-2xl transition-transform enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                            {submitting ? 'Creating…' : 'Create Queue'}
+                            {submitting
+                                ? 'Creating…'
+                                : sportSlug === 'pickleball'
+                                  ? 'CREATE OPEN PLAY'
+                                  : 'CREATE QUEUE'}
                         </button>
                     </form>
                 )}
