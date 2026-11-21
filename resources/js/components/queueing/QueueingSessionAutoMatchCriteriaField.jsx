@@ -12,12 +12,13 @@ export const DEFAULT_AUTO_MATCH_CRITERIA = /** @type {AutoMatchCriteria} */ ({
     include_lobby: true,
 });
 
-/** @type {Array<{ id: string, label: string, hint: string, criteria: AutoMatchCriteria, doublesOnly?: boolean }>} */
+/** @type {Array<{ id: string, label: string, hint: string, criteria: AutoMatchCriteria, doublesOnly?: boolean, recommended?: boolean }>} */
 export const AUTO_MATCH_PRESETS = [
     {
         id: 'balanced',
         label: 'Balanced',
         hint: 'Skill + form + queue',
+        recommended: true,
         criteria: {
             skill_level: true,
             skill_match_mode: 'balanced',
@@ -102,32 +103,33 @@ export function parseSkillMatchMode(mode) {
 /** @type {Array<{ key: keyof AutoMatchCriteria, icon: string, label: string, description: string, priority?: number }>} */
 const CRITERION_CARDS = [
     {
-        key: 'skill_level',
-        icon: 'military_tech',
-        label: 'Skill level',
-        description: 'Use tier / skill to shape fair lineups',
-        priority: 1,
-    },
-    {
         key: 'wl_statistics',
         icon: 'monitoring',
         label: 'Win / loss form',
-        description: 'Balance recent session W/L so streaks don’t dominate',
-        priority: 2,
+        description: 'Balance based on session W/L stats',
+        priority: 1,
     },
     {
         key: 'sequence',
         icon: 'format_list_numbered',
         label: 'Queue sequence',
         description: 'Prefer players waiting longest (FIFO)',
-        priority: 3,
+        priority: 2,
     },
     {
         key: 'genderless_mixed',
         icon: 'groups',
         label: 'Mixed pairing',
-        description: 'Allow mixed gender lineups when needed',
+        description: 'Allow mixed gender lineups',
+        priority: 3,
     },
+    {
+        key: 'skill_level',
+        icon: 'military_tech',
+        label: 'Skill level',
+        description: 'Use tier / skill to shape fair lineups',
+        priority: 4,
+    },    
 ];
 
 /**
@@ -191,27 +193,83 @@ export function normalizeAutoMatchCriteria(criteria, matchType) {
 }
 
 /**
+ * Plain-language auto-match summary for the QM (at most 4 sentences).
+ *
+ * @param {AutoMatchCriteria} criteria
+ * @returns {string[]}
+ */
+export function autoMatchPrioritySummarySentences(criteria) {
+    const includeLobby = criteria.include_lobby !== false;
+    const lobbySentence = includeLobby
+        ? 'Check-in lobby players can be included in matches.'
+        : 'Only rotation players who already played are used—check-in lobby waiters are skipped.';
+
+    const hasCore =
+        Boolean(criteria.skill_level) ||
+        Boolean(criteria.wl_statistics) ||
+        Boolean(criteria.sequence);
+
+    if (!hasCore && !criteria.genderless_mixed) {
+        return [
+            'No matching rules are selected. Turn on at least one option so auto-match knows how to pick players.',
+        ];
+    }
+
+    if (!hasCore && criteria.genderless_mixed) {
+        return [
+            'Skill, form, and queue order are off—matching is lightly guided.',
+            'Mixed gender pairings are allowed.',
+            lobbySentence,
+        ];
+    }
+
+    /** @type {string[]} */
+    const sentences = [];
+
+    if (criteria.skill_level) {
+        if (criteria.skill_match_mode === 'same_level') {
+            sentences.push('Players will be matched with others at a similar skill level.');
+        } else if (criteria.skill_match_mode === 'rotation') {
+            sentences.push(
+                'Partner rotation is on—auto-match prefers new partners and avoids recent doubles pairings.',
+            );
+        } else {
+            sentences.push(
+                'Players of different skill levels will be mixed so games stay competitive.',
+            );
+        }
+    }
+
+    if (criteria.wl_statistics && criteria.sequence) {
+        sentences.push(
+            'Lineups also balance recent win/loss form and favor players who have waited longest.',
+        );
+    } else if (criteria.wl_statistics) {
+        sentences.push(
+            'Session win/loss form is used so strong streaks do not stack on one side.',
+        );
+    } else if (criteria.sequence) {
+        sentences.push('Players waiting longest in the queue get priority.');
+    }
+
+    sentences.push(
+        criteria.genderless_mixed
+            ? 'Mixed gender pairings are allowed.'
+            : 'Mixed gender pairings are turned off.',
+    );
+
+    if (sentences.length < 4) {
+        sentences.push(lobbySentence);
+    }
+
+    return sentences.slice(0, 4);
+}
+
+/**
  * @param {AutoMatchCriteria} criteria
  */
 export function autoMatchPrioritySummary(criteria) {
-    /** @type {string[]} */
-    const parts = [];
-    if (criteria.skill_level) {
-        parts.push(
-            criteria.skill_match_mode === 'same_level'
-                ? 'Skill (same level)'
-                : criteria.skill_match_mode === 'rotation'
-                  ? 'Skill (partner rotation)'
-                  : 'Skill (balanced)',
-        );
-    }
-    if (criteria.wl_statistics) parts.push('W/L');
-    if (criteria.sequence) parts.push('Sequence');
-    if (parts.length === 0) {
-        return criteria.genderless_mixed ? 'Mixed pairing only' : 'None selected';
-    }
-    const base = parts.join(' → ');
-    return criteria.genderless_mixed ? `${base} · Mixed on` : base;
+    return autoMatchPrioritySummarySentences(criteria).join(' ');
 }
 
 /**
@@ -255,6 +313,53 @@ export function QueueingSessionAutoMatchCriteriaField({
 
     return (
         <div className={showHeading ? 'space-y-4 border-t-2 border-[#2a2a2d] pt-4' : 'space-y-4'}>
+
+            <div className="space-y-2" role="group" aria-label="Player pool">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
+                    Player pool
+                </p>
+                <label
+                    htmlFor="rt-auto-match-include-lobby"
+                    className={[
+                        'flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors duration-200',
+                        'focus-within:ring-2 focus-within:ring-[#c2c1ff]/50',
+                        value.include_lobby !== false
+                            ? 'border-[#c2c1ff]/35 bg-[#c2c1ff]/10'
+                            : 'border-[#c2c1ff]/60 bg-[#131316] hover:border-[#c2c1ff]/30',
+                        disabled ? 'cursor-not-allowed opacity-65' : '',
+                    ].join(' ')}
+                >
+                    <span
+                        className={[
+                            'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg',
+                            value.include_lobby !== false
+                                ? 'bg-[#c2c1ff]/20 text-[#c2c1ff]'
+                                : 'bg-[#2a2a2d] text-[#918f9c]',
+                        ].join(' ')}
+                        aria-hidden
+                    >
+                        <MaterialIcon name="login" className="text-xl!" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-[#e4e1e6] md:text-base!">
+                            Include check-in lobby
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-relaxed text-[#918f9c]">
+                            Off = match only rotation players who already played (skip encoded but
+                            not-yet-arrived check-in waiters)
+                        </span>
+                    </span>
+                    <ToggleSwitch
+                        id="rt-auto-match-include-lobby"
+                        checked={value.include_lobby !== false}
+                        disabled={disabled}
+                        size="sm"
+                        onChange={(next) => patch({ include_lobby: next })}
+                        aria-label="Include check-in lobby"
+                    />
+                </label>
+            </div>
+
             {showHeading ? (
                 <div>
                     <p className="text-sm font-bold uppercase tracking-wide text-[#dddddd]">Auto-Match Setup</p>
@@ -306,13 +411,23 @@ export function QueueingSessionAutoMatchCriteriaField({
                                             : 'cursor-pointer active:scale-[0.98]',
                                         selected
                                             ? 'border-[#c2c1ff]/50 bg-[#c2c1ff]/15 text-[#c2c1ff]'
-                                            : 'border-[#2a2a2d] bg-[#131316] text-[#c8c5d2] hover:border-white/15',
+                                            : 'border-[#c2c1ff]/60 bg-[#131316] text-[#c8c5d2] hover:border-[#c2c1ff]/30',
                                         unavailable && !disabled ? 'hover:border-[#2a2a2d]' : '',
                                     ].join(' ')}
                                     aria-pressed={selected}
                                     aria-disabled={presetDisabled}
+                                    aria-label={
+                                        preset.recommended
+                                            ? `${preset.label}, recommended`
+                                            : preset.label
+                                    }
                                 >
                                     <span className="block text-xs font-bold leading-tight">{preset.label}</span>
+                                    {preset.recommended && !unavailable ? (
+                                        <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-wide text-[#4ce081]">
+                                            Recommended
+                                        </span>
+                                    ) : null}
                                     <span className="mt-0.5 block text-[10px] leading-tight opacity-75">
                                         {unavailable ? 'Doubles only' : preset.hint}
                                     </span>
@@ -323,7 +438,7 @@ export function QueueingSessionAutoMatchCriteriaField({
                 </div>
             ) : null}
 
-            <div className="space-y-2" role="group" aria-label="Matching criteria">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 space-y-2" role="group" aria-label="Matching criteria">
                 {CRITERION_CARDS.map((card) => {
                     const checked = Boolean(value[card.key]);
                     const inputId = `rt-auto-match-${card.key}`;
@@ -337,7 +452,7 @@ export function QueueingSessionAutoMatchCriteriaField({
                                     'focus-within:ring-2 focus-within:ring-[#c2c1ff]/50',
                                     checked
                                         ? 'border-[#c2c1ff]/35 bg-[#c2c1ff]/10'
-                                        : 'border-[#2a2a2d] bg-[#131316] hover:border-white/12',
+                                        : 'border-[#c2c1ff]/60 bg-[#131316] hover:border-[#c2c1ff]/30',
                                     disabled ? 'cursor-not-allowed opacity-65' : '',
                                 ].join(' ')}
                             >
@@ -377,7 +492,7 @@ export function QueueingSessionAutoMatchCriteriaField({
 
                             {card.key === 'skill_level' && value.skill_level ? (
                                 <div
-                                    className="ml-1 grid grid-cols-1 gap-2 rounded-xl border border-[#2a2a2d] bg-[#1b1b1e]/80 p-2 sm:grid-cols-3"
+                                    className="grid grid-cols-1 gap-2 rounded-xl border border-[#c2c1ff]/30 bg-[#28282f] p-2 sm:grid-cols-1"
                                     role="radiogroup"
                                     aria-label="Skill matching mode"
                                 >
@@ -434,62 +549,19 @@ export function QueueingSessionAutoMatchCriteriaField({
                 })}
             </div>
 
-            <div className="space-y-2" role="group" aria-label="Player pool">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
-                    Player pool
-                </p>
-                <label
-                    htmlFor="rt-auto-match-include-lobby"
-                    className={[
-                        'flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors duration-200',
-                        'focus-within:ring-2 focus-within:ring-[#c2c1ff]/50',
-                        value.include_lobby !== false
-                            ? 'border-[#c2c1ff]/35 bg-[#c2c1ff]/10'
-                            : 'border-[#2a2a2d] bg-[#131316] hover:border-white/12',
-                        disabled ? 'cursor-not-allowed opacity-65' : '',
-                    ].join(' ')}
-                >
-                    <span
-                        className={[
-                            'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg',
-                            value.include_lobby !== false
-                                ? 'bg-[#c2c1ff]/20 text-[#c2c1ff]'
-                                : 'bg-[#2a2a2d] text-[#918f9c]',
-                        ].join(' ')}
-                        aria-hidden
-                    >
-                        <MaterialIcon name="login" className="text-xl!" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-[#e4e1e6] md:text-base!">
-                            Include check-in lobby
-                        </span>
-                        <span className="mt-0.5 block text-xs leading-relaxed text-[#918f9c]">
-                            Off = match only rotation players who already played (skip encoded but
-                            not-yet-arrived check-in waiters)
-                        </span>
-                    </span>
-                    <ToggleSwitch
-                        id="rt-auto-match-include-lobby"
-                        checked={value.include_lobby !== false}
-                        disabled={disabled}
-                        size="sm"
-                        onChange={(next) => patch({ include_lobby: next })}
-                        aria-label="Include check-in lobby"
-                    />
-                </label>
-            </div>
 
             <div
                 className="rounded-xl border border-[#2a2a2d] bg-[#131316] px-3 py-2.5"
                 aria-live="polite"
             >
                 <p className="text-[11px] font-bold uppercase tracking-wide text-[#918f9c]">
-                    Priority order
+                    Summary of the match set-up
                 </p>
-                <p className="mt-1 text-sm font-semibold text-[#e4e1e6]">
-                    {autoMatchPrioritySummary(value)}
-                </p>
+                <div className="mt-1.5 space-y-1.5 text-sm leading-relaxed text-[#e4e1e6]">
+                    {autoMatchPrioritySummarySentences(value).map((sentence) => (
+                        <p key={sentence}>{sentence}</p>
+                    ))}
+                </div>
             </div>
 
             {!hasAnyCriterion ? (
