@@ -4,13 +4,13 @@
 export const LOSS_POINT_MODE_OPTIONS = [
     {
         value: 'zero',
-        label: 'No points for losers (0)',
+        label: 'Zeropoints for losers',
         description: 'Winners still earn formula points. Losers get 0.',
     },
     {
         value: 'effort',
-        label: 'At least give effort points',
-        description: 'Losers earn +8 for showing up and competing.',
+        label: 'Give effort points',
+        description: 'Losers earn +8 for showing up.',
     },
     {
         value: 'penalty',
@@ -46,7 +46,7 @@ export function QueueingSessionLossPointModeField({ value, onChange, disabled = 
             <legend className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#918f9c]">
                 Point system for losers
             </legend>
-            <div className="space-y-2" role="radiogroup" aria-label="Point system for losers">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 space-y-2" role="radiogroup" aria-label="Point system for losers">
                 {LOSS_POINT_MODE_OPTIONS.map((option) => {
                     const isSelected = selected === option.value;
 
@@ -62,7 +62,7 @@ export function QueueingSessionLossPointModeField({ value, onChange, disabled = 
                                 'flex w-full items-start gap-3 rounded-lg border px-3 py-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out disabled:opacity-60 active:scale-[0.99]',
                                 isSelected
                                     ? 'border-[#4ce081]/70 bg-[#4ce081]/10'
-                                    : 'border-[#2a2a2d] bg-[#131316] hover:border-[#4ce081]/40',
+                                    : 'border-[#c2c1ff]/30 bg-[#131316] hover:border-[#c2c1ff]/60',
                                 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2c1ff]/65',
                             ].join(' ')}
                         >
