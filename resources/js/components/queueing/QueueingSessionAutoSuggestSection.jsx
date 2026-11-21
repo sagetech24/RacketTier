@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     deleteQueueingSessionAutoSuggest,
     postApproveQueueingSessionAutoSuggest,
 } from '../../api/queueingSession.js';
+import { isOfflineStatus } from '../../lib/connection.js';
 import { toast } from '../../lib/toast.js';
+import { generateAutoSuggestMatches } from '../../offline/autoMatchFromDraft.js';
+import { getOfflineSession } from '../../offline/queueingDraftDb.js';
+import { applyLocalMutation } from '../../offline/queueingMutationRouter.js';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { QueueingSessionMatchCard } from './QueueingSessionMatchCard.jsx';
 
@@ -63,13 +67,51 @@ export function QueueingSessionAutoSuggestSection({
     const [approvingId, setApprovingId] = useState(/** @type {string | null} */ (null));
     const [dismissingId, setDismissingId] = useState(/** @type {string | null} */ (null));
 
+    const [offlineSuggestions, setOfflineSuggestions] = useState(/** @type {AutoSuggestMatch[] | null} */ (null));
+
+    useEffect(() => {
+        if (!canManage) return;
+        if (!(isOfflineStatus() || (typeof navigator !== 'undefined' && navigator.onLine === false))) {
+            setOfflineSuggestions(null);
+            return;
+        }
+        let cancelled = false;
+        void (async () => {
+            const local = await getOfflineSession(sessionId);
+            if (cancelled) return;
+            if (!local?.session) {
+                setOfflineSuggestions([]);
+                return;
+            }
+            try {
+                const generated = generateAutoSuggestMatches({
+                    session: local.session,
+                    players: local.session.players ?? [],
+                    matches: local.matches ?? [],
+                });
+                if (!cancelled) {
+                    setOfflineSuggestions(
+                        /** @type {AutoSuggestMatch[]} */ (
+                            generated.suggestions ?? generated.proposals ?? []
+                        ),
+                    );
+                }
+            } catch {
+                if (!cancelled) setOfflineSuggestions([]);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [canManage, sessionId, autoSuggestMatches]);
+
     if (!canManage) {
         return null;
     }
 
-    const suggestions = Array.isArray(autoSuggestMatches?.suggestions)
-        ? autoSuggestMatches.suggestions
-        : [];
+    const suggestions =
+        offlineSuggestions ??
+        (Array.isArray(autoSuggestMatches?.suggestions) ? autoSuggestMatches.suggestions : []);
 
     if (suggestions.length === 0) {
         return null;
@@ -85,7 +127,15 @@ export function QueueingSessionAutoSuggestSection({
         setApprovingId(suggestion.suggestion_id);
         onActionError?.('');
         try {
-            await postApproveQueueingSessionAutoSuggest(sessionId, suggestion.suggestion_id);
+            if (isOfflineStatus() || navigator.onLine === false) {
+                await applyLocalMutation(sessionId, 'approve_auto_suggest', {
+                    suggestion_id: suggestion.suggestion_id,
+                    lineup: suggestion.lineup ?? [],
+                    local_match_id: suggestion.suggestion_id,
+                });
+            } else {
+                await postApproveQueueingSessionAutoSuggest(sessionId, suggestion.suggestion_id);
+            }
             toast.success('Match queued from auto-suggest.');
             await onApproved();
         } catch (err) {
@@ -105,7 +155,13 @@ export function QueueingSessionAutoSuggestSection({
         setDismissingId(suggestion.suggestion_id);
         onActionError?.('');
         try {
-            await deleteQueueingSessionAutoSuggest(sessionId, suggestion.suggestion_id);
+            if (isOfflineStatus() || navigator.onLine === false) {
+                await applyLocalMutation(sessionId, 'dismiss_auto_suggest', {
+                    suggestion_id: suggestion.suggestion_id,
+                });
+            } else {
+                await deleteQueueingSessionAutoSuggest(sessionId, suggestion.suggestion_id);
+            }
             toast.success('Suggestion removed.');
             await (onDismissed ?? onApproved)();
         } catch (err) {

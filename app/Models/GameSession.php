@@ -19,6 +19,8 @@ class GameSession extends Model
         'draft_version',
         'draft_participant_user_ids',
         'draft_snapshot',
+        'offline_device_id',
+        'offline_claimed_at',
         'queue_name',
         'win_points',
         'loss_points',
@@ -67,6 +69,7 @@ class GameSession extends Model
             'draft_participant_user_ids' => 'array',
             'draft_snapshot' => 'array',
             'draft_version' => 'integer',
+            'offline_claimed_at' => 'datetime',
         ];
     }
 

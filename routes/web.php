@@ -43,7 +43,9 @@ use App\Http\Controllers\QueueingGameSessionUpdateController;
 use App\Http\Controllers\QueueingSessionAutoProposalsController;
 use App\Http\Controllers\QueueingSessionAutoSuggestApproveController;
 use App\Http\Controllers\QueueingSessionAutoSuggestDismissController;
+use App\Http\Controllers\QueueingSessionClaimDeviceController;
 use App\Http\Controllers\QueueingSessionCheckInOrderController;
+use App\Http\Controllers\QueueingSessionSyncController;
 use App\Http\Controllers\QueueingSessionMatchDestroyController;
 use App\Http\Controllers\QueueingSessionMatchesIndexController;
 use App\Http\Controllers\QueueingSessionMatchesStoreController;
@@ -213,6 +215,10 @@ Route::middleware('auth')->group(function () {
         ->name('auth.queueing-sessions.players.restore');
     Route::post('/auth/queueing-sessions/{gameSession}/end', QueueingGameSessionEndController::class)
         ->name('auth.queueing-sessions.end');
+    Route::post('/auth/queueing-sessions/{gameSession}/claim-device', QueueingSessionClaimDeviceController::class)
+        ->name('auth.queueing-sessions.claim-device');
+    Route::post('/auth/queueing-sessions/{gameSession}/sync', QueueingSessionSyncController::class)
+        ->name('auth.queueing-sessions.sync');
     Route::get('/auth/queueing-sessions/{gameSession}/summary', QueueingGameSessionSummaryController::class)
         ->name('auth.queueing-sessions.summary');
     Route::get('/auth/queueing-sessions/{gameSession}/matches', QueueingSessionMatchesIndexController::class)

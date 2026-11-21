@@ -1,4 +1,5 @@
 import { fallbackActionMessage, messageFromJson } from './actionToast.js';
+import { markNetworkFailure, markNetworkSuccess } from './connection.js';
 import { isToastSilent, toast } from './toast.js';
 
 /**
@@ -66,14 +67,39 @@ function notifyNetworkFailure(options, err) {
 function wrapMutation(request, method, url, options) {
     return request.then(
         (res) => {
+            markNetworkSuccess();
             notifyMutationResponse(res, method, url, options);
             return res;
         },
         (err) => {
+            markNetworkFailure();
             notifyNetworkFailure(options, err);
             throw err;
         },
     );
+}
+
+/**
+ * @param {Record<string, unknown>} [body]
+ * @param {number|null|undefined} draftVersion
+ * @returns {Record<string, unknown>}
+ */
+export function withDraftVersion(body = {}, draftVersion) {
+    if (draftVersion === null || draftVersion === undefined || Number.isNaN(Number(draftVersion))) {
+        return body;
+    }
+    return { ...body, draft_version: Number(draftVersion) };
+}
+
+/**
+ * @param {number|null|undefined} draftVersion
+ * @returns {Record<string, string>}
+ */
+export function draftVersionHeaders(draftVersion) {
+    if (draftVersion === null || draftVersion === undefined || Number.isNaN(Number(draftVersion))) {
+        return {};
+    }
+    return { 'X-Draft-Version': String(Number(draftVersion)) };
 }
 
 /**
@@ -84,6 +110,7 @@ function wrapMutation(request, method, url, options) {
  */
 export function postJson(url, body, options) {
     try {
+        const draftVersion = options?.draftVersion ?? body?.draft_version;
         return wrapMutation(
             fetch(url, {
                 method: 'POST',
@@ -91,9 +118,10 @@ export function postJson(url, body, options) {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken(),
+                    ...draftVersionHeaders(draftVersion),
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify(body),
+                body: JSON.stringify(withDraftVersion(body ?? {}, draftVersion)),
             }),
             'POST',
             url,
@@ -113,6 +141,7 @@ export function postJson(url, body, options) {
  */
 export function patchJson(url, body, options) {
     try {
+        const draftVersion = options?.draftVersion ?? body?.draft_version;
         return wrapMutation(
             fetch(url, {
                 method: 'PATCH',
@@ -120,9 +149,10 @@ export function patchJson(url, body, options) {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken(),
+                    ...draftVersionHeaders(draftVersion),
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify(body),
+                body: JSON.stringify(withDraftVersion(body ?? {}, draftVersion)),
             }),
             'PATCH',
             url,
@@ -136,19 +166,28 @@ export function patchJson(url, body, options) {
 
 /**
  * @param {string} url
- * @param {HttpNotifyOptions} [options]
+ * @param {HttpNotifyOptions & { draftVersion?: number|null, body?: Record<string, unknown> }} [options]
  * @returns {Promise<Response>}
  */
 export function deleteJson(url, options) {
     try {
+        const headers = {
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+            ...draftVersionHeaders(options?.draftVersion),
+        };
+        const hasBody = options?.body != null;
+        if (hasBody) {
+            headers['Content-Type'] = 'application/json';
+        }
         return wrapMutation(
             fetch(url, {
                 method: 'DELETE',
-                headers: {
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrfToken(),
-                },
+                headers,
                 credentials: 'same-origin',
+                body: hasBody
+                    ? JSON.stringify(withDraftVersion(options.body, options?.draftVersion))
+                    : undefined,
             }),
             'DELETE',
             url,

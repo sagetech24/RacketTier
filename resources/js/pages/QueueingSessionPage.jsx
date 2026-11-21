@@ -8,6 +8,7 @@ import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { QueueingSessionDashboardLoading } from '../components/queueing/QueueingSessionDashboardLoading.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionListRow } from '../components/queueing/QueueingSessionListRow.jsx';
+import { QueueingOfflineBanner } from '../components/queueing/QueueingOfflineBanner.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { QueueingSessionPodiumCard } from '../components/queueing/QueueingSessionPodiumCard.jsx';
 import { sessionRequiresSkillLevel } from '../components/queueing/skillLevelUtils.js';
@@ -166,6 +167,9 @@ export function QueueingSessionPage() {
                         <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
                             {actionError}
                         </p>
+                    ) : null}
+                    {sessionId != null ? (
+                        <QueueingOfflineBanner sessionId={sessionId} session={session} />
                     ) : null}
 
                     {session ? (

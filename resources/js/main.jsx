@@ -9,9 +9,11 @@ import { ToastHost } from './components/app/ToastHost.jsx';
 import { ProductTourProvider } from './components/tour/ProductTourProvider.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { queryClient } from './lib/queryClient.js';
+import { wireConnectionListeners } from './lib/connection.js';
 import { initPwa } from './pwa.js';
 
 initPwa();
+wireConnectionListeners();
 
 const el = document.getElementById('root');
 if (!el) {

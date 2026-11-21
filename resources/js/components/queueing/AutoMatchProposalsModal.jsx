@@ -4,7 +4,11 @@ import {
     postCreateQueueingSessionMatch,
     postStartQueueingSessionMatch,
 } from '../../api/queueingSession.js';
+import { isOfflineStatus } from '../../lib/connection.js';
 import { toast, withSilentToasts } from '../../lib/toast.js';
+import { generateAutoMatchProposals } from '../../offline/autoMatchFromDraft.js';
+import { getOfflineSession } from '../../offline/queueingDraftDb.js';
+import { applyLocalMutation } from '../../offline/queueingMutationRouter.js';
 import { MODAL_OVERLAY_SHEET_CLASS, ModalPortal } from '../app/ModalPortal.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { AutoMatchWizardSteps } from './AutoMatchWizardSteps.jsx';
@@ -351,11 +355,33 @@ export function AutoMatchProposalsModal({
             setLoading(true);
             setError('');
             try {
-                const res = await fetchQueueingSessionAutoProposals(sessionId, {
-                    ...criteria,
-                    refresh_seed:
-                        refreshSeedRef.current > 0 ? refreshSeedRef.current : undefined,
-                });
+                let res;
+                if (isOfflineStatus() || navigator.onLine === false) {
+                    const local = await getOfflineSession(sessionId);
+                    if (!local?.session) {
+                        throw new Error('Session unavailable offline.');
+                    }
+                    res = generateAutoMatchProposals({
+                        session: local.session,
+                        players: local.session.players ?? [],
+                        matches: local.matches ?? [],
+                        criteria: {
+                            ...criteria,
+                            refresh_seed:
+                                refreshSeedRef.current > 0
+                                    ? refreshSeedRef.current
+                                    : undefined,
+                        },
+                    });
+                } else {
+                    res = await fetchQueueingSessionAutoProposals(sessionId, {
+                        ...criteria,
+                        refresh_seed:
+                            refreshSeedRef.current > 0
+                                ? refreshSeedRef.current
+                                : undefined,
+                    });
+                }
                 setData(res);
                 setDraftById(draftsFromProposals(res.proposals ?? []));
                 setFocusIndex(0);
@@ -419,8 +445,17 @@ export function AutoMatchProposalsModal({
     async function createMatchFromProposal(proposal) {
         if (sessionId == null) return null;
         const draft = draftById[proposal.proposal_id];
+        const lineup = lineupFromDraft(proposal, draft);
+        if (isOfflineStatus() || navigator.onLine === false) {
+            const result = await applyLocalMutation(sessionId, 'create_match', {
+                lineup,
+                local_match_id: proposal.proposal_id,
+            });
+            const last = result.matches?.[result.matches.length - 1];
+            return last ?? null;
+        }
         return postCreateQueueingSessionMatch(sessionId, {
-            lineup: lineupFromDraft(proposal, draft),
+            lineup,
         });
     }
 
@@ -453,7 +488,11 @@ export function AutoMatchProposalsModal({
             if (matchId == null) {
                 throw new Error('Could not start match.');
             }
-            await postStartQueueingSessionMatch(sessionId, matchId);
+            if (isOfflineStatus() || navigator.onLine === false) {
+                await applyLocalMutation(sessionId, 'start_match', { match_id: matchId });
+            } else {
+                await postStartQueueingSessionMatch(sessionId, matchId);
+            }
             showStatus('Match started.');
             if (onApproved) {
                 await onApproved();

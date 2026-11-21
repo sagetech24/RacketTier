@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build && node scripts/copy-pwa-sw.mjs",
-        "dev": "vite"
+        "dev": "vite",
+        "test:offline": "node --test resources/js/offline/__tests__/*.test.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

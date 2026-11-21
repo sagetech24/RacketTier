@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Actions\RefreshQueueingSessionAutoSuggestMatches;
 use App\Data\QueueingSessionDraft;
 use App\Models\GameSession;
+use App\Support\ExpectedDraftVersion;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -54,6 +55,8 @@ class QueueingSessionDraftStore
             abort(422, 'This session is not in draft mode.');
         }
 
+        $expectedVersion ??= ExpectedDraftVersion::fromRequest();
+
         return DB::transaction(function () use ($session, $mutator, $expectedVersion): GameSession {
             /** @var GameSession $locked */
             $locked = GameSession::query()
@@ -68,7 +71,10 @@ class QueueingSessionDraftStore
             $draft = $this->load((int) $locked->id);
 
             if ($expectedVersion !== null && $draft->version !== $expectedVersion) {
-                abort(409, 'Session was updated elsewhere. Please refresh and try again.');
+                abort(response()->json([
+                    'message' => 'Session was updated elsewhere. Please refresh and try again.',
+                    'draft_version' => $draft->version,
+                ], 409));
             }
 
             $draft = $mutator($draft);

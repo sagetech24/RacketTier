@@ -9,6 +9,7 @@ import {
     postStartQueueingSessionMatch,
     postSwitchQueueingSessionMatchResult,
 } from '../api/queueingSession.js';
+import { withOfflineFallback } from '../offline/withOfflineFallback.js';
 import { AppShell } from '../components/app/AppShell.jsx';
 import { EmptyState } from '../components/app/EmptyState.jsx';
 import { MODAL_OVERLAY_CLASS, ModalPortal } from '../components/app/ModalPortal.jsx';
@@ -17,6 +18,7 @@ import { ConfirmActionModal } from '../components/queueing/ConfirmActionModal.js
 import { FinishedMatchPairingModal } from '../components/queueing/FinishedMatchPairingModal.jsx';
 import { QueueingSessionAutoSuggestSection } from '../components/queueing/QueueingSessionAutoSuggestSection.jsx';
 import { QueueingSessionFinishedMatches } from '../components/queueing/QueueingSessionFinishedMatches.jsx';
+import { QueueingOfflineBanner } from '../components/queueing/QueueingOfflineBanner.jsx';
 import { QueueingSessionHeader } from '../components/queueing/QueueingSessionHeader.jsx';
 import { QueueingSessionMatchCard } from '../components/queueing/QueueingSessionMatchCard.jsx';
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
@@ -227,18 +229,33 @@ export function QueueingSessionMatchesPage() {
         setActionError('');
         setBusy(true);
         try {
-            if (skipScores) {
-                await postFinishGameSessionMatch(sessionId, {
-                    winning_team: selectedWinningTeam,
-                    queueingSessionMatchId: selectedMatchId ?? undefined,
-                });
-            } else {
-                await postFinishGameSessionMatch(sessionId, {
-                    team1_score: Number.parseInt(t1, 10),
-                    team2_score: Number.parseInt(t2, 10),
-                    queueingSessionMatchId: selectedMatchId ?? undefined,
-                });
-            }
+            const finishPayload = skipScores
+                ? {
+                      match_id: selectedMatchId,
+                      winning_team: selectedWinningTeam,
+                  }
+                : {
+                      match_id: selectedMatchId,
+                      team1_score: Number.parseInt(t1, 10),
+                      team2_score: Number.parseInt(t2, 10),
+                  };
+            await withOfflineFallback(sessionId, {
+                type: 'finish_match',
+                payload: finishPayload,
+                online: async () => {
+                    if (skipScores) {
+                        return postFinishGameSessionMatch(sessionId, {
+                            winning_team: selectedWinningTeam,
+                            queueingSessionMatchId: selectedMatchId ?? undefined,
+                        });
+                    }
+                    return postFinishGameSessionMatch(sessionId, {
+                        team1_score: Number.parseInt(t1, 10),
+                        team2_score: Number.parseInt(t2, 10),
+                        queueingSessionMatchId: selectedMatchId ?? undefined,
+                    });
+                },
+            });
             setFinishOpen(false);
             setSelectedMatchId(null);
             setSelectedMatchNo(null);
@@ -285,7 +302,11 @@ export function QueueingSessionMatchesPage() {
         setActionError('');
         setBusy(true);
         try {
-            await patchUpdateQueueingSessionMatch(sessionId, editingMatchId, { lineup });
+            await withOfflineFallback(sessionId, {
+                type: 'update_match_lineup',
+                payload: { match_id: editingMatchId, lineup },
+                online: () => patchUpdateQueueingSessionMatch(sessionId, editingMatchId, { lineup }),
+            });
             await reload();
             closeEditLineupModal();
         } catch (e) {
@@ -301,7 +322,11 @@ export function QueueingSessionMatchesPage() {
         setActionError('');
         setBusy(true);
         try {
-            await postStartQueueingSessionMatch(sessionId, matchId);
+            await withOfflineFallback(sessionId, {
+                type: 'start_match',
+                payload: { match_id: matchId },
+                online: () => postStartQueueingSessionMatch(sessionId, matchId),
+            });
             await reload();
         } catch (e) {
             setActionError(e instanceof Error ? e.message : 'Could not start match.');
@@ -538,6 +563,9 @@ export function QueueingSessionMatchesPage() {
                     <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm text-red-200">
                         {actionError}
                     </p>
+                ) : null}
+                {sessionId != null ? (
+                    <QueueingOfflineBanner sessionId={sessionId} session={session} />
                 ) : null}
 
                 {!loading && session ? <QueueingSessionHeader session={session} /> : null}

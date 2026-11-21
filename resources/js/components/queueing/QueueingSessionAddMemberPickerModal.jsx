@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchFacilityPlayers } from '../../api/gameSession.js';
+import { isOfflineStatus } from '../../lib/connection.js';
+import {
+    getMemberCache,
+    memberCacheKey,
+    putMemberCache,
+} from '../../offline/queueingDraftDb.js';
 import { ModalPortal } from '../app/ModalPortal.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 
@@ -108,13 +114,31 @@ export function QueueingSessionAddMemberPickerModal({
         const t = window.setTimeout(() => {
             (async () => {
                 try {
-                    const rows = await fetchFacilityPlayers(playerSearch, {
-                        includeMe: true,
-                        sportId: sportId ?? undefined,
-                    });
-                    if (!cancelled) setSearchRows(rows);
+                    const cacheKey = memberCacheKey(sportId);
+                    if (isOfflineStatus() || navigator.onLine === false) {
+                        const cached = await getMemberCache(cacheKey);
+                        const needle = playerSearch.trim().toLowerCase();
+                        const filtered = needle
+                            ? cached.filter((row) =>
+                                  String(row.name ?? '')
+                                      .toLowerCase()
+                                      .includes(needle),
+                              )
+                            : cached;
+                        if (!cancelled) setSearchRows(filtered);
+                    } else {
+                        const rows = await fetchFacilityPlayers(playerSearch, {
+                            includeMe: true,
+                            sportId: sportId ?? undefined,
+                        });
+                        if (!playerSearch.trim()) {
+                            void putMemberCache(cacheKey, rows);
+                        }
+                        if (!cancelled) setSearchRows(rows);
+                    }
                 } catch {
-                    if (!cancelled) setSearchRows([]);
+                    const cached = await getMemberCache(memberCacheKey(sportId));
+                    if (!cancelled) setSearchRows(cached);
                 } finally {
                     if (!cancelled) setSearchLoading(false);
                 }

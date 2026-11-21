@@ -88,6 +88,14 @@ class GameSessionResource extends JsonResource
             ),
             'persistence_state' => $this->persistence_state ?? 'persisted',
             'draft_version' => (int) ($this->draft_version ?? 0),
+            'offline_device_id' => $this->when(
+                $this->isQueueing() && $this->is_active,
+                fn (): ?string => $this->offline_device_id,
+            ),
+            'offline_claimed_at' => $this->when(
+                $this->isQueueing() && $this->is_active && $this->offline_claimed_at !== null,
+                fn (): ?string => $this->offline_claimed_at?->toIso8601String(),
+            ),
             'facility' => $this->when(
                 $this->relationLoaded('facility') && $this->facility_id !== null,
                 fn (): array => [

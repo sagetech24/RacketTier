@@ -21,6 +21,7 @@ import { QueueingSessionAddPlayersModal } from './QueueingSessionAddPlayersModal
 import { QueueingSessionSettingsModal } from './QueueingSessionSettingsModal.jsx';
 import { QueueingSessionEndLoadingOverlay } from './QueueingSessionEndLoadingOverlay.jsx';
 import { QueueingSessionMatchLineupModal } from './QueueingSessionMatchLineupModal.jsx';
+import { withOfflineFallback } from '../../offline/withOfflineFallback.js';
 import { sessionRequiresSkillLevel } from './skillLevelUtils.js';
 
 /**
@@ -280,9 +281,19 @@ export function QueueingSessionMatchFabPanel({
 
         setBusy(true);
         try {
-            await postAddQueueingSessionPlayer(sessionId, {
-                user_id: member.id,
-                skill_level: member.skill_level ?? null,
+            await withOfflineFallback(sessionId, {
+                type: 'add_member',
+                payload: {
+                    user_id: member.id,
+                    name: member.name,
+                    skill_level: member.skill_level ?? null,
+                    pronoun: member.pronoun ?? null,
+                },
+                online: () =>
+                    postAddQueueingSessionPlayer(sessionId, {
+                        user_id: member.id,
+                        skill_level: member.skill_level ?? null,
+                    }),
             });
             if (onReload) {
                 await onReload();
@@ -305,18 +316,35 @@ export function QueueingSessionMatchFabPanel({
         setBusy(true);
         try {
             const isGuest = addPlayerModal.mode === 'guest';
-            const body = isGuest
-                ? {
-                      guest_name: payload.guest_name,
-                      pronoun: payload.pronoun ?? null,
-                      skill_level: payload.skill_level ?? null,
-                  }
-                : {
-                      user_id: addPlayerModal.member?.id,
-                      skill_level: payload.skill_level,
-                  };
-            await postAddQueueingSessionPlayer(sessionId, body);
-            if (addPlayerModal.mode === 'member') {
+            if (isGuest) {
+                await withOfflineFallback(sessionId, {
+                    type: 'add_guest',
+                    payload: {
+                        guest_name: payload.guest_name,
+                        pronoun: payload.pronoun ?? null,
+                        skill_level: payload.skill_level ?? null,
+                    },
+                    online: () =>
+                        postAddQueueingSessionPlayer(sessionId, {
+                            guest_name: payload.guest_name,
+                            pronoun: payload.pronoun ?? null,
+                            skill_level: payload.skill_level ?? null,
+                        }),
+                });
+            } else {
+                await withOfflineFallback(sessionId, {
+                    type: 'add_member',
+                    payload: {
+                        user_id: addPlayerModal.member?.id,
+                        name: addPlayerModal.member?.name,
+                        skill_level: payload.skill_level,
+                    },
+                    online: () =>
+                        postAddQueueingSessionPlayer(sessionId, {
+                            user_id: addPlayerModal.member?.id,
+                            skill_level: payload.skill_level,
+                        }),
+                });
                 setAddPlayerModal(null);
             }
             if (onReload) {
@@ -339,10 +367,19 @@ export function QueueingSessionMatchFabPanel({
         if (sessionId == null) return;
         setBusy(true);
         try {
-            await postAddQueueingSessionPlayer(sessionId, {
-                guest_name: payload.guest_name,
-                pronoun: payload.pronoun ?? null,
-                skill_level: payload.skill_level ?? null,
+            await withOfflineFallback(sessionId, {
+                type: 'add_guest',
+                payload: {
+                    guest_name: payload.guest_name,
+                    pronoun: payload.pronoun ?? null,
+                    skill_level: payload.skill_level ?? null,
+                },
+                online: () =>
+                    postAddQueueingSessionPlayer(sessionId, {
+                        guest_name: payload.guest_name,
+                        pronoun: payload.pronoun ?? null,
+                        skill_level: payload.skill_level ?? null,
+                    }),
             });
             if (onReload) {
                 await onReload();
@@ -365,13 +402,21 @@ export function QueueingSessionMatchFabPanel({
         if (sessionId == null || localSession == null) return;
         setBusy(true);
         try {
-            const created = await postCreateQueueingSessionMatch(sessionId, { lineup });
+            const created = await withOfflineFallback(sessionId, {
+                type: 'create_match',
+                payload: { lineup },
+                online: () => postCreateQueueingSessionMatch(sessionId, { lineup }),
+            });
             if (options.start) {
-                const matchId = created?.id;
+                const matchId = created?.id ?? created?.matches?.[created.matches.length - 1]?.id;
                 if (matchId == null) {
                     throw new Error('Could not start match.');
                 }
-                await postStartQueueingSessionMatch(sessionId, matchId);
+                await withOfflineFallback(sessionId, {
+                    type: 'start_match',
+                    payload: { match_id: matchId },
+                    online: () => postStartQueueingSessionMatch(sessionId, matchId),
+                });
             }
             setCreateMatchOpen(false);
             if (onReload) {
@@ -401,6 +446,15 @@ export function QueueingSessionMatchFabPanel({
         setStopSessionOpen(false);
         setEndingSession(true);
         try {
+            const { requestEndWhenOnline } = await import('../../offline/queueingMutationRouter.js');
+            const { isOfflineStatus } = await import('../../lib/connection.js');
+            if (isOfflineStatus() || navigator.onLine === false) {
+                await requestEndWhenOnline(sessionId);
+                setEndingSession(false);
+                reportError('');
+                // pending end — stay on page with banner
+                return;
+            }
             await postEndQueueingSession(sessionId);
             navigate(`/queueing-session/${sessionId}`);
         } catch (e) {

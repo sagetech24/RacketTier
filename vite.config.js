@@ -57,8 +57,23 @@ export default defineConfig({
             },
             workbox: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,webmanifest}'],
+                // Laravel serves the React shell via Blade (not a static index.html).
+                // Cache visited navigations so /queueing-session/* can reopen offline after install.
+                // Mutating /auth/* APIs are never cached — offline writes use the client outbox.
                 navigateFallback: null,
                 runtimeCaching: [
+                    {
+                        urlPattern: ({ request }) => request.mode === 'navigate',
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'rt-navigations',
+                            networkTimeoutSeconds: 3,
+                            expiration: {
+                                maxEntries: 48,
+                                maxAgeSeconds: 60 * 60 * 24 * 7,
+                            },
+                        },
+                    },
                     {
                         urlPattern: /^https:\/\/fonts\.bunny\.net\/.*/i,
                         handler: 'CacheFirst',
