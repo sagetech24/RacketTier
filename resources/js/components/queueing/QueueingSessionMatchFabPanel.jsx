@@ -14,7 +14,9 @@ import { isOfflineStatus, markNetworkFailure } from '../../lib/connection.js';
 import { isNetworkError } from '../../lib/networkError.js';
 import { getOfflineSession, seedOfflineSession } from '../../offline/queueingDraftDb.js';
 import { withOfflineFallback } from '../../offline/withOfflineFallback.js';
+import { useConnectionStatus } from '../../hooks/useConnectionStatus.js';
 import { useProductTour } from '../tour/useProductTour.js';
+import { MatchIcon } from '../dashboard/MatchIcon.jsx';
 import { MaterialIcon } from '../dashboard/MaterialIcon.jsx';
 import { AddQueueingSessionPlayerModal } from './AddQueueingSessionPlayerModal.jsx';
 import { AutoMatchCriteriaModal } from './AutoMatchCriteriaModal.jsx';
@@ -47,6 +49,7 @@ export function QueueingSessionMatchFabPanel({
 }) {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { isOffline } = useConnectionStatus();
     const { maybeStartRunSessionTour, fabMenuOpen: tourFabMenuOpen, run: tourRunning, tourKind } =
         useProductTour();
     const fabRef = useRef(null);
@@ -563,13 +566,20 @@ export function QueueingSessionMatchFabPanel({
                                               onClick={() => handleOpenCreateMatch()}
                                               className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
                                           >
-                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15">
-                                                  <img
-                                                      src="/images/rt-logo.png"
-                                                      alt=""
-                                                      className="h-6 w-6"
-                                                      aria-hidden
-                                                  />
+                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2c1ff]/15 text-[#c2c1ff]">
+                                                  {isOffline ||
+                                                  isOfflineStatus() ||
+                                                  (typeof navigator !== 'undefined' &&
+                                                      navigator.onLine === false) ? (
+                                                      <MatchIcon className="h-6 w-6" />
+                                                  ) : (
+                                                      <img
+                                                          src="/images/rt-logo.png"
+                                                          alt=""
+                                                          className="h-6 w-6"
+                                                          aria-hidden
+                                                      />
+                                                  )}
                                               </span>
                                               <span className="min-w-0">
                                                   <span className="block text-sm font-bold text-[#e4e1e6]">

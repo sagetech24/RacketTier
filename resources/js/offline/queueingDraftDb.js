@@ -1,9 +1,11 @@
 import { getDeviceId } from '../lib/deviceId.js';
 
 const DB_NAME = 'rackettier-queueing-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_SESSIONS = 'sessions';
 const STORE_MEMBERS = 'memberCache';
+const STORE_LIST = 'sessionList';
+const LIST_CACHE_KEY = 'queueing-session-list';
 
 /** @type {Promise<IDBDatabase> | null} */
 let dbPromise = null;
@@ -27,6 +29,9 @@ function openDb() {
                 }
                 if (!db.objectStoreNames.contains(STORE_MEMBERS)) {
                     db.createObjectStore(STORE_MEMBERS, { keyPath: 'cacheKey' });
+                }
+                if (!db.objectStoreNames.contains(STORE_LIST)) {
+                    db.createObjectStore(STORE_LIST, { keyPath: 'cacheKey' });
                 }
             };
         });
@@ -129,7 +134,13 @@ export async function seedOfflineSession(sessionId, data) {
         conflict: data.replaceOutbox ? false : Boolean(existing?.conflict),
         updatedAt: new Date().toISOString(),
     };
-    return putOfflineSession(record);
+    const saved = await putOfflineSession(record);
+    try {
+        await upsertSessionListCacheEntry(data.session);
+    } catch {
+        /* list cache is best-effort */
+    }
+    return saved;
 }
 
 /**
@@ -236,4 +247,172 @@ export async function getMemberCache(cacheKey) {
 
 export function memberCacheKey(sportId) {
     return `sport:${sportId ?? 'all'}`;
+}
+
+/**
+ * @param {unknown[]} rows
+ */
+export async function putSessionListCache(rows) {
+    await withStore(STORE_LIST, 'readwrite', (store) =>
+        store.put({
+            cacheKey: LIST_CACHE_KEY,
+            rows: Array.isArray(rows) ? rows : [],
+            updatedAt: new Date().toISOString(),
+        }),
+    );
+}
+
+/**
+ * @returns {Promise<unknown[]>}
+ */
+export async function getSessionListCache() {
+    try {
+        const row = await withStore(STORE_LIST, 'readonly', (store) => store.get(LIST_CACHE_KEY));
+        return Array.isArray(row?.rows) ? row.rows : [];
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * Upsert one session summary into the cached list (after opening a session online/offline).
+ *
+ * @param {Record<string, unknown>} session
+ */
+export async function upsertSessionListCacheEntry(session) {
+    if (!session || session.id == null) return;
+    const rows = await getSessionListCache();
+    const id = Number(session.id);
+    const next = rows.filter((row) => Number(row?.id) !== id);
+    next.unshift(session);
+    await putSessionListCache(next);
+}
+
+/**
+ * @returns {Promise<QueueingOfflineRecord[]>}
+ */
+export async function getAllOfflineSessions() {
+    try {
+        const db = await openDb();
+        return await new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_SESSIONS, 'readonly');
+            const store = tx.objectStore(STORE_SESSIONS);
+            const req = store.getAll();
+            req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+            req.onerror = () => reject(req.error ?? new Error('IndexedDB request failed'));
+        });
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * Build a list of queueing sessions available offline:
+ * last fetched list cache, merged with any locally drafted sessions.
+ *
+ * @returns {Promise<{ rows: Record<string, unknown>[], fromCache: boolean }>}
+ */
+export async function getOfflineQueueingSessionList() {
+    const cached = /** @type {Record<string, unknown>[]} */ (await getSessionListCache());
+    const drafts = await getAllOfflineSessions();
+    const byId = new Map();
+
+    for (const row of cached) {
+        if (row?.id != null) byId.set(Number(row.id), row);
+    }
+
+    for (const draft of drafts) {
+        const session = draft?.session;
+        if (!session || session.id == null) continue;
+        const id = Number(session.id);
+        const existing = byId.get(id);
+        // Prefer the richer local draft snapshot when present (includes offline edits).
+        byId.set(id, {
+            ...(existing ?? {}),
+            ...session,
+            id,
+            is_active: session.is_active !== false,
+            _offline_local: true,
+            _outbox_count: Array.isArray(draft.outbox) ? draft.outbox.length : 0,
+        });
+    }
+
+    const rows = [...byId.values()];
+    return { rows, fromCache: rows.length > 0 };
+}
+
+/**
+ * Client-side filters mirroring fetchQueueingSessions when serving cache offline.
+ *
+ * @param {Record<string, unknown>[]} rows
+ * @param {{
+ *   q?: string,
+ *   sort?: string,
+ *   mineOnly?: boolean,
+ *   status?: string,
+ *   currentUserId?: number | null,
+ * }} [opts]
+ */
+export function filterCachedQueueingSessions(rows, opts = {}) {
+    let next = [...rows];
+
+    if (opts.mineOnly) {
+        next = next.filter((row) => {
+            if (row.is_host) return true;
+            const uid = opts.currentUserId != null ? Number(opts.currentUserId) : null;
+            if (uid == null) return false;
+            const createdBy = row.created_by;
+            if (createdBy && typeof createdBy === 'object' && createdBy.id != null) {
+                return Number(createdBy.id) === uid;
+            }
+            return Number(row.created_by) === uid;
+        });
+    }
+
+    if (opts.status === 'active') {
+        next = next.filter((row) => row.is_active);
+    } else if (opts.status === 'finished') {
+        next = next.filter((row) => !row.is_active);
+    }
+
+    if (opts.q && opts.q.trim()) {
+        const needle = opts.q.trim().toLowerCase();
+        next = next.filter((row) => {
+            const sport = String(row.sport?.name ?? '').toLowerCase();
+            const creator =
+                typeof row.created_by === 'object'
+                    ? String(row.created_by?.name ?? '').toLowerCase()
+                    : '';
+            const qName = String(row.queue_name ?? '').toLowerCase();
+            return (
+                qName.includes(needle) ||
+                sport.includes(needle) ||
+                creator.includes(needle) ||
+                String(row.id).includes(needle)
+            );
+        });
+    }
+
+    const byUpdated = (a, b) =>
+        new Date(b.ended_at ?? b.started_at ?? b.updated_at ?? 0).getTime() -
+        new Date(a.ended_at ?? a.started_at ?? a.updated_at ?? 0).getTime();
+    const byCreated = (a, b) => Number(b.id) - Number(a.id);
+
+    switch (opts.sort) {
+        case 'updated_asc':
+            next.sort((a, b) => byUpdated(b, a));
+            break;
+        case 'created_asc':
+            next.sort((a, b) => byCreated(b, a));
+            break;
+        case 'created_desc':
+            next.sort(byCreated);
+            break;
+        case 'updated_desc':
+        default:
+            next.sort(byUpdated);
+            break;
+    }
+
+    return next;
 }

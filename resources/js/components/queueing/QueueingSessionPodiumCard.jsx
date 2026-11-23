@@ -1,4 +1,5 @@
 import { displaySessionPoints } from '../../lib/queueingSessionStats.js';
+import { PodiumMedalIcon } from '../dashboard/PodiumMedalIcon.jsx';
 import { playerInitials } from '../ranking/rankingUtils.js';
 import { PlayerSkillLevelBadge } from './PlayerSkillLevelBadge.jsx';
 import { QueueingSessionLeaderboardStats } from './QueueingSessionLeaderboardStats.jsx';
@@ -10,9 +11,6 @@ const PODIUM_FRAME = [
 ];
 
 const PODIUM_ORDER = [0, 1, 2];
-
-const MEDAL_SRC = ['/images/first-icon.svg', '/images/second-icon.svg', '/images/third-icon.svg'];
-const MEDAL_ALT = ['First place', 'Second place', 'Third place'];
 
 /**
  * @param {{
@@ -50,9 +48,8 @@ export function QueueingSessionPodiumCard({ player, place, isYou = false, showSk
                 .join(' ')}
         >
             <div className="rt-ranking-podium-card-inner relative">
-                <img
-                    src={MEDAL_SRC[place]}
-                    alt={MEDAL_ALT[place]}
+                <PodiumMedalIcon
+                    place={place}
                     className={[
                         'rt-ranking-podium-medal',
                         'pointer-events-none absolute -left-3 -top-2 size-9 sm:size-14',

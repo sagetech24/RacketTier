@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MaterialIcon } from './MaterialIcon.jsx';
-import { publicSportImageSrc } from '../../lib/sportIcon.js';
+import { publicSportImageSrc, sportMaterialIconName } from '../../lib/sportIcon.js';
 
 /**
  * Renders `/public/images/{icon}` when the file exists; otherwise falls back to Material Symbols (legacy `sports_*` names).
@@ -25,6 +25,7 @@ export function SportIcon({
     const src = publicSportImageSrc(icon);
     const [broken, setBroken] = useState(false);
     const showImg = Boolean(src && !broken);
+    const materialName = sportMaterialIconName(icon);
 
     const materialClass = materialClassName
         ? [materialClassName, className].filter(Boolean).join(' ')
@@ -56,5 +57,5 @@ export function SportIcon({
         );
     }
 
-    return <MaterialIcon name={icon} className={materialClass} filled={filled} />;
+    return <MaterialIcon name={materialName} className={materialClass} filled={filled} />;
 }

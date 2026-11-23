@@ -19,11 +19,17 @@ import { MaterialIcon } from '../components/dashboard/MaterialIcon.jsx';
 import { SportIcon } from '../components/dashboard/SportIcon.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
+import { useConnectionStatus } from '../hooks/useConnectionStatus.js';
+import { isOfflineStatus, markNetworkFailure } from '../lib/connection.js';
 import { queryKeys } from '../lib/queryClient.js';
 import { normalizedAppPath, queueingSessionNavPaths, queueSessionCardActionClass } from '../lib/queueingSessionNav.js';
 import { canDeleteQueueingSession } from '../lib/queueingSessionPermissions.js';
 import { formatAverageMatchesPerPlayer } from '../lib/queueingSessionStats.js';
 import { userIsAdmin } from '../lib/userRoles.js';
+import {
+    filterCachedQueueingSessions,
+    getOfflineQueueingSessionList,
+} from '../offline/queueingDraftDb.js';
 
 function formatTime(iso) {
     if (!iso) return '—';
@@ -218,10 +224,12 @@ export function QueueingSessionListPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { isOffline } = useConnectionStatus();
     const navPath = normalizedAppPath(location.pathname);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [rows, setRows] = useState([]);
+    const [fromOfflineCache, setFromOfflineCache] = useState(false);
     const [q, setQ] = useState('');
     const debouncedQ = useDebouncedValue(q, 350);
     const [status, setStatus] = useState('all');
@@ -307,15 +315,62 @@ export function QueueingSessionListPage() {
 
     useEffect(() => {
         let cancelled = false;
+
+        async function loadFromCache() {
+            const { rows: cached } = await getOfflineQueueingSessionList();
+            const filtered = filterCachedQueueingSessions(cached, {
+                q: debouncedQ,
+                status,
+                mineOnly,
+                sort,
+                currentUserId: user?.id ?? null,
+            });
+            if (!cancelled) {
+                setRows(filtered);
+                setFromOfflineCache(true);
+                setError('');
+            }
+            return filtered;
+        }
+
         async function load() {
             setLoading(true);
             setError('');
+
+            const forceOffline =
+                isOffline ||
+                isOfflineStatus() ||
+                (typeof navigator !== 'undefined' && navigator.onLine === false);
+
+            if (forceOffline) {
+                try {
+                    await loadFromCache();
+                } catch (e) {
+                    if (!cancelled) {
+                        setError(e instanceof Error ? e.message : 'Could not load cached queueing sessions.');
+                        setFromOfflineCache(false);
+                    }
+                } finally {
+                    if (!cancelled) setLoading(false);
+                }
+                return;
+            }
+
             try {
                 const data = await fetchQueueingSessions({ q: debouncedQ, status, mineOnly, sort });
-                if (!cancelled) setRows(data);
-            } catch (e) {
                 if (!cancelled) {
-                    setError(e instanceof Error ? e.message : 'Could not load queueing sessions.');
+                    setRows(data);
+                    setFromOfflineCache(false);
+                }
+            } catch (e) {
+                markNetworkFailure();
+                try {
+                    await loadFromCache();
+                } catch {
+                    if (!cancelled) {
+                        setError(e instanceof Error ? e.message : 'Could not load queueing sessions.');
+                        setFromOfflineCache(false);
+                    }
                 }
             } finally {
                 if (!cancelled) setLoading(false);
@@ -325,7 +380,7 @@ export function QueueingSessionListPage() {
         return () => {
             cancelled = true;
         };
-    }, [debouncedQ, status, mineOnly, sort]);
+    }, [debouncedQ, status, mineOnly, sort, isOffline, user?.id]);
 
     const { activeRows, finishedTodayRows } = useMemo(() => {
         const active = rows.filter((row) => row.is_active);
@@ -373,6 +428,17 @@ export function QueueingSessionListPage() {
                             {isAdmin ? 'View all session history' : 'View my session history'}
                         </Link>
                     </p>
+
+                    {isOffline || fromOfflineCache ? (
+                        <div
+                            className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+                            role="status"
+                        >
+                            {rows.length > 0
+                                ? 'Showing cached queueing sessions while offline. Open a session to keep running from this device.'
+                                : 'You are offline. No cached queueing sessions on this device yet — open a session once while online to save it here.'}
+                        </div>
+                    ) : null}
 
                     <section className="rt-queue-toolbar rt-surface-card mb-6 p-4 md:p-5">
                         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -434,15 +500,23 @@ export function QueueingSessionListPage() {
                         {!loading && rows.length === 0 ? (
                             <EmptyState
                                 icon="groups"
-                                title={q.trim() ? 'No matches' : 'No queueing sessions yet'}
+                                title={
+                                    q.trim()
+                                        ? 'No matches'
+                                        : fromOfflineCache || isOffline
+                                          ? 'No cached sessions'
+                                          : 'No queueing sessions yet'
+                                }
                                 description={
                                     q.trim()
                                         ? 'Try a different search or clear your filters.'
-                                        : 'Create a queue to organize players and run matches.'
+                                        : fromOfflineCache || isOffline
+                                          ? 'Visit this page once while online, or open a queueing session, so it can be stored on this device.'
+                                          : 'Create a queue to organize players and run matches.'
                                 }
-                                actionLabel={q.trim() ? undefined : 'New queue'}
-                                actionTo={q.trim() ? undefined : '/queueing-session/new'}
-                                actionDataTour={q.trim() ? undefined : 'new-queue'}
+                                actionLabel={q.trim() || fromOfflineCache || isOffline ? undefined : 'New queue'}
+                                actionTo={q.trim() || fromOfflineCache || isOffline ? undefined : '/queueing-session/new'}
+                                actionDataTour={q.trim() || fromOfflineCache || isOffline ? undefined : 'new-queue'}
                             />
                         ) : null}
 

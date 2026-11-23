@@ -1,3 +1,4 @@
+import { PodiumMedalIcon } from '../dashboard/PodiumMedalIcon.jsx';
 import { formatRating, playerInitials, tierAccentClass } from './rankingUtils.js';
 
 const PODIUM_FRAME = [
@@ -8,9 +9,6 @@ const PODIUM_FRAME = [
 
 /** Desktop grid order: 2nd · 1st · 3rd via order-1 / order-0 / order-2 classes */
 const PODIUM_ORDER = [0, 1, 2];
-
-const MEDAL_SRC = ['/images/first-icon.svg', '/images/second-icon.svg', '/images/third-icon.svg'];
-const MEDAL_ALT = ['First place', 'Second place', 'Third place'];
 
 /**
  * @param {{
@@ -39,9 +37,8 @@ export function RankingPodiumCard({ row, place, isYou = false, style }) {
             style={style}
         >
             <div className="rt-ranking-podium-card-inner relative">
-                <img
-                    src={MEDAL_SRC[place]}
-                    alt={MEDAL_ALT[place]}
+                <PodiumMedalIcon
+                    place={place}
                     className={[
                         'rt-ranking-podium-medal',
                         'pointer-events-none absolute -left-3 -top-2 size-9 sm:size-14',

@@ -1,4 +1,6 @@
 import { deleteJson, patchJson, postJson } from '../lib/http.js';
+import { putSessionListCache } from '../offline/queueingDraftDb.js';
+import { markNetworkSuccess } from '../lib/connection.js';
 
 /**
  * @param {{
@@ -162,6 +164,16 @@ export async function fetchQueueingSessions(opts = {}) {
         ...activeRows,
         ...finishedTodayRows.filter((row) => !activeIds.has(row.id)),
     ];
+
+    // Seed full list cache only when not searching — offline can re-filter locally.
+    try {
+        if (!(opts.q && opts.q.trim())) {
+            await putSessionListCache(rows);
+        }
+        markNetworkSuccess();
+    } catch {
+        /* IndexedDB cache is best-effort */
+    }
 
     if (opts.mineOnly) {
         rows = rows.filter((row) => row.is_host);
