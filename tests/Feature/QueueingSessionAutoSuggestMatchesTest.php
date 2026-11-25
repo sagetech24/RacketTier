@@ -121,7 +121,7 @@ class QueueingSessionAutoSuggestMatchesTest extends TestCase
             $session->fresh(),
             $session->resolveAutoMatchCriteria(),
             [
-                'limit' => 3,
+                'limit' => 2,
                 'lookahead' => true,
                 'proposal_id_prefix' => 'suggest',
             ],
@@ -151,7 +151,7 @@ class QueueingSessionAutoSuggestMatchesTest extends TestCase
             $session->fresh(),
             $session->resolveAutoMatchCriteria(),
             [
-                'limit' => 3,
+                'limit' => 2,
                 'lookahead' => true,
                 'proposal_id_prefix' => 'suggest',
             ],

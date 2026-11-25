@@ -1257,7 +1257,7 @@ export function generateAutoSuggestMatches({ session, players, matches, criteria
         players,
         matches,
         criteria,
-        limit: 3,
+        limit: 2,
         lookahead: true,
         proposal_id_prefix: 'suggest',
     });

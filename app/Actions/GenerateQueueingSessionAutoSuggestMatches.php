@@ -7,7 +7,7 @@ use App\Models\GameSession;
 
 class GenerateQueueingSessionAutoSuggestMatches
 {
-    private const SUGGESTION_LIMIT = 3;
+    private const SUGGESTION_LIMIT = 2;
 
     public function __construct(
         private AutoGenerateQueueingSessionMatches $autoGenerate,
