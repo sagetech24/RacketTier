@@ -53,6 +53,8 @@ use App\Http\Controllers\QueueingSessionMatchFinishedLineupController;
 use App\Http\Controllers\QueueingSessionMatchStartController;
 use App\Http\Controllers\QueueingSessionMatchSwitchResultController;
 use App\Http\Controllers\QueueingSessionMatchUpdateController;
+use App\Http\Controllers\QueueingSessionReserveMatchPromoteController;
+use App\Http\Controllers\QueueingSessionReserveMatchesStoreController;
 use App\Http\Controllers\QueueingSessionPlayersDestroyController;
 use App\Http\Controllers\QueueingSessionPlayersRestoreController;
 use App\Http\Controllers\QueueingSessionPlayersStoreController;
@@ -231,8 +233,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/auth/queueing-sessions/{gameSession}/matches/auto-suggest/{suggestionId}', QueueingSessionAutoSuggestDismissController::class)
         ->name('auth.queueing-sessions.matches.auto-suggest.dismiss')
         ->where('suggestionId', '[A-Za-z0-9\\-]+');
+    Route::post('/auth/queueing-sessions/{gameSession}/matches/reserve', QueueingSessionReserveMatchesStoreController::class)
+        ->name('auth.queueing-sessions.matches.reserve');
     Route::post('/auth/queueing-sessions/{gameSession}/matches', QueueingSessionMatchesStoreController::class)
         ->name('auth.queueing-sessions.matches.store');
+    Route::post('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}/promote', QueueingSessionReserveMatchPromoteController::class)
+        ->name('auth.queueing-sessions.matches.promote');
     Route::post('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}/start', QueueingSessionMatchStartController::class)
         ->name('auth.queueing-sessions.matches.start');
     Route::patch('/auth/queueing-sessions/{gameSession}/matches/{queueingSessionMatch}', QueueingSessionMatchUpdateController::class)

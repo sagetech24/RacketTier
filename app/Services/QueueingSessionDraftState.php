@@ -191,7 +191,7 @@ class QueueingSessionDraftState
         $draft->matches = array_values(array_filter(
             $draft->matches,
             function (array $match) use ($playerId): bool {
-                if (($match['status'] ?? '') !== 'queueing') {
+                if (! in_array($match['status'] ?? '', ['queueing', 'reserved'], true)) {
                     return true;
                 }
                 $lineup = is_array($match['lineup'] ?? null) ? $match['lineup'] : [];

@@ -38,7 +38,7 @@ class DeleteQueueingSessionMatch
                     abort(404, 'Match not found.');
                 }
 
-                if (($matchRow['status'] ?? '') === 'queueing') {
+                if (in_array($matchRow['status'] ?? '', ['queueing', 'reserved'], true)) {
                     $this->draftState->removeMatch($draft, (int) $match->id);
 
                     return $draft;
@@ -86,7 +86,7 @@ class DeleteQueueingSessionMatch
                 abort(404, 'Match not found.');
             }
 
-            if ($lockedMatch->status === 'queueing') {
+            if (in_array($lockedMatch->status, ['queueing', 'reserved'], true)) {
                 $lockedMatch->delete();
 
                 return;

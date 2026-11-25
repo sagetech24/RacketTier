@@ -118,9 +118,10 @@ export function sortFinishedMatchesRecentFirst(rows) {
     });
 }
 
-/** @param {'finished' | 'ongoing' | 'queueing' | string | undefined} status */
+/** @param {'finished' | 'ongoing' | 'queueing' | 'reserved' | string | undefined} status */
 export function matchStatusLabel(status) {
     if (status === 'queueing') return 'Queued';
+    if (status === 'reserved') return 'Reserved';
     if (status === 'ongoing') return 'Live';
     if (status === 'finished') return 'Finished';
     return status ?? 'Match';

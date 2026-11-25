@@ -518,6 +518,57 @@ export async function postCreateQueueingSessionMatch(sessionId, body) {
 
 /**
  * @param {number|string} sessionId
+ * @param {{ lineup: Array<{ id: number, team?: number }> }} body
+ */
+export async function postCreateQueueingSessionReserveMatch(sessionId, body) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/reserve`,
+        body,
+    );
+    if (!res.ok) {
+        let msg = 'Could not create reserve match.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+            else if (j.errors && typeof j.errors === 'object') {
+                const first = Object.values(j.errors)[0];
+                if (Array.isArray(first) && first[0]) msg = String(first[0]);
+            }
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
+ * Promote a reserved match into the queueing list.
+ * @param {number|string} sessionId
+ * @param {number|string} matchId
+ */
+export async function postPromoteQueueingSessionReserveMatch(sessionId, matchId) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/${encodeURIComponent(String(matchId))}/promote`,
+        {},
+    );
+    if (!res.ok) {
+        let msg = 'Could not add reserve match to the queue.';
+        try {
+            const j = await res.json();
+            if (typeof j.message === 'string') msg = j.message;
+        } catch {
+            /* ignore */
+        }
+        throw new Error(msg);
+    }
+    const json = await res.json();
+    return json.data;
+}
+
+/**
+ * @param {number|string} sessionId
  * @param {number|string} matchId
  */
 export async function postStartQueueingSessionMatch(sessionId, matchId) {

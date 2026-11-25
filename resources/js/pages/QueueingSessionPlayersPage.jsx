@@ -33,6 +33,10 @@ import {
     useQueueingSessionMatchesQuery,
     useQueueingSessionQuery,
 } from '../hooks/queries/useQueueingSessionQuery.js';
+import {
+    reservedOnlyPlayerIds,
+    reservedQueueingPlayerIds,
+} from '../lib/queueingMatchLineup.js';
 
 const ROSTER_PAGE_SIZE = 10;
 
@@ -53,18 +57,12 @@ const STATUS_FILTERS = [
     { value: 'check_in', label: 'Check-in' },
     { value: 'playing', label: 'Playing' },
     { value: 'queueing', label: 'Queueing' },
+    { value: 'reserved', label: 'Reserved' },
     { value: 'waiting', label: 'Waiting' },
     { value: 'removed', label: 'Removed' },
 ];
 
 /** @param {unknown} lineup */
-function lineupPlayerIds(lineup) {
-    const rows = Array.isArray(lineup) ? lineup : [];
-    return rows
-        .map((p) => Number(p.game_session_player_id ?? p.id ?? 0))
-        .filter((id) => id > 0);
-}
-
 /**
  * @param {NonNullable<import('../api/gameSession.js').GameSessionDetail['players']>[number]} p
  * @param {Set<number>} reservedPlayerIds
@@ -138,16 +136,8 @@ export function QueueingSessionPlayersPage() {
         await Promise.all([refetchSession(), refetchMatches()]);
     }, [invalidateQueueingSession, refetchMatches, refetchSession, sessionId]);
 
-    const reservedPlayerIds = useMemo(() => {
-        const ids = new Set();
-        for (const row of matches) {
-            if (row.status !== 'queueing') continue;
-            for (const pid of lineupPlayerIds(row.lineup)) {
-                ids.add(pid);
-            }
-        }
-        return ids;
-    }, [matches]);
+    const reservedPlayerIds = useMemo(() => reservedQueueingPlayerIds(matches), [matches]);
+    const heldForReserveOnlyIds = useMemo(() => reservedOnlyPlayerIds(matches), [matches]);
 
     const rosterPlayers = useMemo(
         () => (session?.players ?? []).filter((p) => !p.is_removed),
@@ -165,7 +155,7 @@ export function QueueingSessionPlayersPage() {
 
         return source.filter((p) => {
             if (statusFilter !== 'all' && statusFilter !== 'removed') {
-                const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
+                const status = playerRosterStatus(p, reservedPlayerIds, sessionActive, heldForReserveOnlyIds);
                 if (status?.key !== statusFilter) {
                     return false;
                 }
@@ -181,6 +171,7 @@ export function QueueingSessionPlayersPage() {
             return haystack.includes(query);
         });
     }, [
+        heldForReserveOnlyIds,
         playerSearch,
         removedPlayers,
         reservedPlayerIds,
@@ -272,6 +263,7 @@ export function QueueingSessionPlayersPage() {
         filteredRosterPlayers,
         rosterSortField,
         rosterSortDirection,
+        heldForReserveOnlyIds,
         reservedPlayerIds,
         sessionActive,
     ]);
@@ -282,31 +274,34 @@ export function QueueingSessionPlayersPage() {
             check_in: 0,
             playing: 0,
             queueing: 0,
+            reserved: 0,
             waiting: 0,
             removed: removedPlayers.length,
         };
         for (const p of rosterPlayers) {
-            const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
+            const status = playerRosterStatus(p, reservedPlayerIds, sessionActive, heldForReserveOnlyIds);
             if (status?.key === 'playing') counts.playing += 1;
             else if (status?.key === 'queueing') counts.queueing += 1;
+            else if (status?.key === 'reserved') counts.reserved += 1;
             else if (status?.key === 'check_in') counts.check_in += 1;
             else if (status?.key === 'waiting') counts.waiting += 1;
         }
         return counts;
-    }, [removedPlayers.length, reservedPlayerIds, rosterPlayers, sessionActive]);
+    }, [heldForReserveOnlyIds, removedPlayers.length, reservedPlayerIds, rosterPlayers, sessionActive]);
 
     const checkInRosterPlayers = useMemo(() => {
         if (
             !sessionActive ||
             statusFilter === 'playing' ||
             statusFilter === 'queueing' ||
+            statusFilter === 'reserved' ||
             statusFilter === 'waiting' ||
             statusFilter === 'removed'
         ) {
             return [];
         }
         const rows = sortedRosterPlayers.filter((p) => {
-            const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
+            const status = playerRosterStatus(p, reservedPlayerIds, sessionActive, heldForReserveOnlyIds);
             return status?.key === 'check_in';
         });
         return [...rows].sort((a, b) => {
@@ -315,7 +310,7 @@ export function QueueingSessionPlayersPage() {
             if (aTime !== bTime) return aTime - bTime;
             return a.id - b.id;
         });
-    }, [reservedPlayerIds, sessionActive, sortedRosterPlayers, statusFilter]);
+    }, [heldForReserveOnlyIds, reservedPlayerIds, sessionActive, sortedRosterPlayers, statusFilter]);
 
     const rotationRosterPlayers = useMemo(() => {
         if (statusFilter === 'check_in') {
@@ -326,12 +321,12 @@ export function QueueingSessionPlayersPage() {
         }
         if (statusFilter === 'all' && sessionActive) {
             return sortedRosterPlayers.filter((p) => {
-                const status = playerRosterStatus(p, reservedPlayerIds, sessionActive);
+                const status = playerRosterStatus(p, reservedPlayerIds, sessionActive, heldForReserveOnlyIds);
                 return status?.key !== 'check_in';
             });
         }
         return sortedRosterPlayers;
-    }, [reservedPlayerIds, sessionActive, sortedRosterPlayers, statusFilter]);
+    }, [heldForReserveOnlyIds, reservedPlayerIds, sessionActive, sortedRosterPlayers, statusFilter]);
 
     // Check-in is always fully listed (needed for FIFO reorder). Paginate rotation only.
     const visibleRotationPlayers = useMemo(
@@ -710,7 +705,7 @@ export function QueueingSessionPlayersPage() {
                                                 busy={busy}
                                                 showSkillLevel={showSkillLevel}
                                                 playerStatus={(p) =>
-                                                    playerRosterStatus(p, reservedPlayerIds, sessionActive)
+                                                    playerRosterStatus(p, reservedPlayerIds, sessionActive, heldForReserveOnlyIds)
                                                 }
                                                 canEditPlayer={(p) =>
                                                     playerCanBeEditedOnRoster(
@@ -785,6 +780,7 @@ export function QueueingSessionPlayersPage() {
                                                             p,
                                                             reservedPlayerIds,
                                                             sessionActive,
+                                                            heldForReserveOnlyIds,
                                                         );
                                                         const canEditPlayer = playerCanBeEditedOnRoster(
                                                             p,

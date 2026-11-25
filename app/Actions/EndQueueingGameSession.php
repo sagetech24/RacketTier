@@ -48,7 +48,7 @@ class EndQueueingGameSession
 
                 QueueingSessionMatch::query()
                     ->where('game_session_id', $locked->id)
-                    ->whereIn('status', ['ongoing', 'queueing'])
+                    ->whereIn('status', ['ongoing', 'queueing', 'reserved'])
                     ->delete();
             } elseif ($staleOngoingStatus) {
                 $this->state->clearOrphanPlayingPlayers((int) $locked->id);
@@ -86,7 +86,7 @@ class EndQueueingGameSession
             $this->draftStore->mutate($session, function ($draft) {
                 $draft->matches = array_values(array_filter(
                     $draft->matches,
-                    fn (array $m): bool => ! in_array($m['status'] ?? '', ['ongoing', 'queueing'], true),
+                    fn (array $m): bool => ! in_array($m['status'] ?? '', ['ongoing', 'queueing', 'reserved'], true),
                 ));
                 $this->draftState->clearOrphanPlayingPlayers($draft);
                 $this->draftState->syncSessionMetaStatus($draft);

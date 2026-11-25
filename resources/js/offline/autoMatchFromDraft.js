@@ -319,7 +319,7 @@ function buildReleaseQueueFromMatches(matches) {
             player_ids: playerIds,
         };
         if (status === 'ongoing') ongoing.push({ sort: sortKey, entry });
-        else if (status === 'queueing') queueing.push({ sort: sortKey, entry });
+        else if (status === 'queueing' || status === 'reserved') queueing.push({ sort: sortKey, entry });
     }
     const bySort = (a, b) => (a.sort[0] !== b.sort[0] ? a.sort[0] - b.sort[0] : a.sort[1] - b.sort[1]);
     ongoing.sort(bySort);

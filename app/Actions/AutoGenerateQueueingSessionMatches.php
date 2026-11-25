@@ -1968,7 +1968,7 @@ class AutoGenerateQueueingSessionMatches
             ];
             if ($status === 'ongoing') {
                 $ongoing[] = ['sort' => $sortKey, 'entry' => ['availability' => 'playing', 'player_ids' => $playerIds]];
-            } elseif ($status === 'queueing') {
+            } elseif ($status === 'queueing' || $status === 'reserved') {
                 $queueing[] = ['sort' => $sortKey, 'entry' => ['availability' => 'queued', 'player_ids' => $playerIds]];
             }
         }
@@ -1989,13 +1989,15 @@ class AutoGenerateQueueingSessionMatches
     {
         $matches = QueueingSessionMatch::query()
             ->where('game_session_id', $sessionId)
-            ->whereIn('status', ['ongoing', 'queueing'])
+            ->whereIn('status', ['ongoing', 'queueing', 'reserved'])
+            ->orderByRaw("CASE status WHEN 'ongoing' THEN 0 WHEN 'queueing' THEN 1 ELSE 2 END")
             ->orderBy('match_no')
             ->orderBy('id')
             ->get(['id', 'match_no', 'status', 'lineup', 'started_at']);
 
         $ongoing = [];
         $queueing = [];
+        $reserved = [];
 
         foreach ($matches as $match) {
             $playerIds = $this->playerIdsFromMatchLineup(
@@ -2010,12 +2012,14 @@ class AutoGenerateQueueingSessionMatches
             ];
             if ($match->status === 'ongoing') {
                 $ongoing[] = $entry;
-            } else {
+            } elseif ($match->status === 'queueing') {
                 $queueing[] = $entry;
+            } else {
+                $reserved[] = $entry;
             }
         }
 
-        return array_values(array_merge($ongoing, $queueing));
+        return array_values(array_merge($ongoing, $queueing, $reserved));
     }
 
     /**

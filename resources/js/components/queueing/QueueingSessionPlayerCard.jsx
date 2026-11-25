@@ -48,8 +48,9 @@ export function playerIsInLobby(p) {
  * @param {NonNullable<import('../../api/gameSession.js').GameSessionDetail['players']>[number]} p
  * @param {Set<number>} reservedPlayerIds
  * @param {boolean} sessionActive
+ * @param {Set<number>} [heldForReserveOnlyIds]
  */
-export function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
+export function playerRosterStatus(p, reservedPlayerIds, sessionActive, heldForReserveOnlyIds = null) {
     if (!sessionActive) {
         return null;
     }
@@ -60,6 +61,9 @@ export function playerRosterStatus(p, reservedPlayerIds, sessionActive) {
         return { key: 'playing', label: 'Playing', className: 'rt-roster-status--playing' };
     }
     if (reservedPlayerIds.has(p.id)) {
+        if (heldForReserveOnlyIds?.has(p.id)) {
+            return { key: 'reserved', label: 'Reserved', className: 'rt-roster-status--queueing' };
+        }
         return { key: 'queueing', label: 'Queueing', className: 'rt-roster-status--queueing' };
     }
     if (playerIsInLobby(p)) {

@@ -105,7 +105,9 @@ export async function applyLocalMutation(sessionId, type, payload, queryClient) 
         type,
         payload: {
             ...payload,
-            ...(type === 'create_match' || type === 'approve_auto_suggest'
+            ...(type === 'create_match' ||
+            type === 'create_reserve_match' ||
+            type === 'approve_auto_suggest'
                 ? { _local_match_numeric_id: next.matches[next.matches.length - 1]?.id }
                 : {}),
         },

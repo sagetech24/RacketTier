@@ -57,6 +57,24 @@ export async function postCreateQueueingSessionMatch(sessionId, lineup, draftVer
     return parseMutationResponse(res);
 }
 
+export async function postCreateQueueingSessionReserveMatch(sessionId, lineup, draftVersion) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/reserve`,
+        withDraftVersion({ lineup }, draftVersion),
+        { silent: true, draftVersion },
+    );
+    return parseMutationResponse(res);
+}
+
+export async function postPromoteQueueingSessionReserveMatch(sessionId, matchId, draftVersion) {
+    const res = await postJson(
+        `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/${encodeURIComponent(String(matchId))}/promote`,
+        withDraftVersion({}, draftVersion),
+        { silent: true, draftVersion },
+    );
+    return parseMutationResponse(res);
+}
+
 export async function postStartQueueingSessionMatch(sessionId, matchId, draftVersion) {
     const res = await postJson(
         `/auth/queueing-sessions/${encodeURIComponent(String(sessionId))}/matches/${encodeURIComponent(String(matchId))}/start`,

@@ -29,6 +29,7 @@ import { QueueingSessionMatchCard } from '../components/queueing/QueueingSession
 import { QueueingSessionMatchFabPanel } from '../components/queueing/QueueingSessionMatchFabPanel.jsx';
 import { QueueingSessionMatchLineupModal } from '../components/queueing/QueueingSessionMatchLineupModal.jsx';
 import { QueueingSessionMatchesLoading } from '../components/queueing/QueueingSessionMatchesLoading.jsx';
+import { QueueingSessionReserveMatchesSection } from '../components/queueing/QueueingSessionReserveMatchesSection.jsx';
 import { lineupToTeams } from '../lib/queueingMatchLineup.js';
 import { lineupDisplayNamesByTeam, sortFinishedMatchesRecentFirst } from '../lib/queueingMatchDisplay.js';
 import {
@@ -422,9 +423,14 @@ export function QueueingSessionMatchesPage() {
     }
 
     const grouped = useMemo(() => {
-        const base = { queueing: [], ongoing: [], finished: [] };
+        const base = { queueing: [], ongoing: [], finished: [], reserved: [] };
         for (const row of matches) {
-            if (row.status === 'queueing' || row.status === 'ongoing' || row.status === 'finished') {
+            if (
+                row.status === 'queueing' ||
+                row.status === 'ongoing' ||
+                row.status === 'finished' ||
+                row.status === 'reserved'
+            ) {
                 base[row.status].push(row);
             } else {
                 base.queueing.push(row);
@@ -736,18 +742,31 @@ export function QueueingSessionMatchesPage() {
                                                     onEndMatch={openFinishMatchModal}
                                                 />
                                                 {status === 'queueing' && sessionId != null ? (
-                                                    <QueueingSessionAutoSuggestSection
-                                                        sessionId={sessionId}
-                                                        autoSuggestMatches={
-                                                            /** @type {import('../api/queueingSession.js').AutoSuggestMatchesPayload | null | undefined} */
-                                                            (session?.auto_suggest_matches)
-                                                        }
-                                                        canManage={canManageMatches}
-                                                        busy={busy}
-                                                        onApproved={reload}
-                                                        onDismissed={reload}
-                                                        onActionError={setActionError}
-                                                    />
+                                                    <>
+                                                        <QueueingSessionAutoSuggestSection
+                                                            sessionId={sessionId}
+                                                            autoSuggestMatches={
+                                                                /** @type {import('../api/queueingSession.js').AutoSuggestMatchesPayload | null | undefined} */
+                                                                (session?.auto_suggest_matches)
+                                                            }
+                                                            canManage={canManageMatches}
+                                                            busy={busy}
+                                                            onApproved={reload}
+                                                            onDismissed={reload}
+                                                            onActionError={setActionError}
+                                                        />
+                                                        <QueueingSessionReserveMatchesSection
+                                                            sessionId={sessionId}
+                                                            rows={grouped.reserved}
+                                                            players={session?.players ?? []}
+                                                            canManage={canManageMatches}
+                                                            busy={busy}
+                                                            onPromoted={reload}
+                                                            onEditMatch={openEditMatchModal}
+                                                            onRemoveMatch={openRemoveMatchConfirm}
+                                                            onActionError={setActionError}
+                                                        />
+                                                    </>
                                                 ) : null}
                                             </>
                                         )}

@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 class QueueingSessionMatchLineup
 {
     /**
-     * Player ids reserved in other queueing (not yet started) matches.
+     * Player ids soft-held in other queueing or reserved (not yet started) matches.
      *
      * @return list<int>
      */
@@ -19,7 +19,7 @@ class QueueingSessionMatchLineup
     {
         $matches = QueueingSessionMatch::query()
             ->where('game_session_id', $gameSessionId)
-            ->where('status', 'queueing')
+            ->whereIn('status', ['queueing', 'reserved'])
             ->when($excludeMatchId !== null, fn ($q) => $q->where('id', '!=', $excludeMatchId))
             ->get(['lineup']);
 
@@ -118,6 +118,73 @@ class QueueingSessionMatchLineup
             $g = $picked->groupBy(fn (GameSessionPlayer $p): int => (int) $p->team);
             if ($g->count() !== 2 || $g->get(1)?->count() !== 2 || $g->get(2)?->count() !== 2) {
                 abort(422, 'Doubles manual lineup requires two players on team 1 and two on team 2.');
+            }
+        }
+
+        return $picked;
+    }
+
+    /**
+     * Resolve a reserve-match lineup: any non-removed roster player not already soft-held.
+     * Does not require is_waiting / !is_playing.
+     *
+     * @param  Collection<int, GameSessionPlayer>  $players
+     * @param  list<array{id: int, team?: int|null}>  $manualLineup
+     * @return Collection<int, GameSessionPlayer>
+     */
+    public function resolveReserveLineup(
+        GameSession $session,
+        Collection $players,
+        array $manualLineup,
+        int $required,
+        ?int $excludeReservedMatchId = null,
+    ): Collection {
+        if (count($manualLineup) !== $required) {
+            abort(422, "Reserve lineup must include exactly {$required} players.");
+        }
+
+        $ids = collect($manualLineup)->pluck('id')->map(fn ($id): int => (int) $id);
+        if ($ids->unique()->count() !== $ids->count()) {
+            abort(422, 'Reserve lineup contains duplicate players.');
+        }
+
+        $reserved = $this->reservedPlayerIds((int) $session->id, $excludeReservedMatchId);
+        $reservedHit = $ids->first(fn (int $id): bool => in_array($id, $reserved, true));
+        if ($reservedHit !== null) {
+            abort(422, 'One or more players are already assigned to a queued or reserved match.');
+        }
+
+        $picked = collect();
+        foreach ($manualLineup as $i => $spec) {
+            $id = (int) ($spec['id'] ?? 0);
+            $row = $players->firstWhere('id', $id);
+            if (! $row instanceof GameSessionPlayer) {
+                abort(422, 'Invalid player id in reserve lineup.');
+            }
+            if ((int) $row->game_session_id !== (int) $session->id) {
+                abort(422, 'Invalid player id in reserve lineup.');
+            }
+            if ((bool) $row->getAttribute('is_removed')) {
+                abort(422, 'Removed players cannot be added to a match.');
+            }
+
+            $team = $spec['team'] ?? null;
+            if ($session->match_type === 'singles') {
+                $team = $i === 0 ? 1 : 2;
+            }
+            if ($team !== 1 && $team !== 2) {
+                abort(422, 'Each doubles player must include team 1 or 2 in the reserve lineup.');
+            }
+
+            $clone = clone $row;
+            $clone->team = $team;
+            $picked->push($clone);
+        }
+
+        if ($session->match_type === 'doubles') {
+            $g = $picked->groupBy(fn (GameSessionPlayer $p): int => (int) $p->team);
+            if ($g->count() !== 2 || $g->get(1)?->count() !== 2 || $g->get(2)?->count() !== 2) {
+                abort(422, 'Doubles reserve lineup requires two players on team 1 and two on team 2.');
             }
         }
 

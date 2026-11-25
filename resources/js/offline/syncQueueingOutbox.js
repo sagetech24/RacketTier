@@ -14,6 +14,8 @@ import {
     postRestoreQueueingSessionPlayer,
     postStartQueueingSessionMatch,
     postCreateQueueingSessionMatch,
+    postCreateQueueingSessionReserveMatch,
+    postPromoteQueueingSessionReserveMatch,
     deleteQueueingSessionPlayer,
 } from '../api/queueingOfflineApi.js';
 import { setConnectionStatus } from '../lib/connection.js';
@@ -261,6 +263,26 @@ async function replayEntry(sessionId, entry, draftVersion, matchIdMap) {
             }
             return created;
         }
+        case 'create_reserve_match': {
+            const created = await postCreateQueueingSessionReserveMatch(
+                sessionId,
+                p.lineup,
+                draftVersion,
+            );
+            if (p.local_match_id != null && created?.id != null) {
+                matchIdMap.set(p.local_match_id, Number(created.id));
+            }
+            if (p._local_match_numeric_id != null && created?.id != null) {
+                matchIdMap.set(p._local_match_numeric_id, Number(created.id));
+            }
+            return created;
+        }
+        case 'promote_reserve_match':
+            return postPromoteQueueingSessionReserveMatch(
+                sessionId,
+                resolveMatchId(p.match_id),
+                draftVersion,
+            );
         case 'start_match':
             return postStartQueueingSessionMatch(sessionId, resolveMatchId(p.match_id), draftVersion);
         case 'delete_match':

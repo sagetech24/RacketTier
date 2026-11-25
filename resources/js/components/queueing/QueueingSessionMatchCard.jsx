@@ -99,11 +99,13 @@ function MatchTeamBlock({ names, teamNo, status, winningTeam }) {
  *   canEndMatch?: boolean;
  *   busy?: boolean;
  *   canOverrideFinished?: boolean;
- *   variant?: 'default' | 'suggest';
+ *   variant?: 'default' | 'suggest' | 'reserve';
  *   suggestReady?: boolean;
  *   suggestBracketLabel?: string | null;
+ *   reserveReady?: boolean;
  *   onApproveSuggest?: () => void;
  *   onDismissSuggest?: () => void;
+ *   onPromoteReserve?: () => void;
  *   onStartQueuedMatch?: (matchId: number) => void;
  *   onEditMatch?: (row: Record<string, unknown>) => void;
  *   onRemoveMatch?: (row: Record<string, unknown>) => void;
@@ -122,8 +124,10 @@ export function QueueingSessionMatchCard({
     variant = 'default',
     suggestReady = false,
     suggestBracketLabel = null,
+    reserveReady = false,
     onApproveSuggest,
     onDismissSuggest,
+    onPromoteReserve,
     onStartQueuedMatch,
     onEditMatch,
     onRemoveMatch,
@@ -132,6 +136,7 @@ export function QueueingSessionMatchCard({
     onUpdateFinishedPairing,
 }) {
     const isSuggest = variant === 'suggest';
+    const isReserve = variant === 'reserve' || (typeof row.status === 'string' && row.status === 'reserved');
     const status = typeof row.status === 'string' ? row.status : 'queueing';
     const { team1, team2 } = lineupDisplayNamesByTeam(row.lineup);
     const winningTeam = row.winning_team === 1 || row.winning_team === 2 ? row.winning_team : null;
@@ -147,6 +152,7 @@ export function QueueingSessionMatchCard({
         status === 'ongoing' ? 'rt-match-card--ongoing' : '',
         status === 'finished' ? 'rt-match-card--finished' : '',
         status === 'queueing' ? 'rt-match-card--queueing' : '',
+        status === 'reserved' || isReserve ? 'rt-match-card--queueing' : '',
         isSuggest ? 'rt-match-card--suggest' : '',
     ]
         .filter(Boolean)
@@ -159,14 +165,12 @@ export function QueueingSessionMatchCard({
             <div className="rt-match-card-inner">
                 <header className="rt-match-card-head">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        {!isSuggest && matchNo != null && status === 'queueing' ? (
-                            status === 'queueing' ? (
-                                <span className="relative w-[50px] h-[25px] flex items-center justify-center" title={`Match #${matchNo}`}>
-                                    <span className="absolute -top-3 left-0 text-xl font-extrabold italic tabular-nums [text-shadow:0_2px_8px_rgb(0_0_0_/_0.55),0_0_1px_rgb(0_0_0_/_0.8)] sm:text-md">
-                                        #{matchNo}
-                                    </span>
+                        {!isSuggest && matchNo != null && (status === 'queueing' || status === 'reserved') ? (
+                            <span className="relative w-[50px] h-[25px] flex items-center justify-center" title={`Match #${matchNo}`}>
+                                <span className="absolute -top-3 left-0 text-xl font-extrabold italic tabular-nums [text-shadow:0_2px_8px_rgb(0_0_0_/_0.55),0_0_1px_rgb(0_0_0_/_0.8)] sm:text-md">
+                                    #{matchNo}
                                 </span>
-                            ) : null
+                            </span>
                         ) : null}
                         {!isSuggest && matchNo != null && status === 'finished' ? (
                             <span className="rt-match-no" title={`Match #${matchNo}`}>
@@ -193,6 +197,12 @@ export function QueueingSessionMatchCard({
                             <span className="rt-match-head-badge rt-match-head-badge--queueing">
                                 <MaterialIcon name="hourglass_top" className="text-[14px]!" />
                                 Waiting to start
+                            </span>
+                        ) : null}
+                        {!isSuggest && status === 'reserved' ? (
+                            <span className="rt-match-head-badge rt-match-head-badge--queueing">
+                                <MaterialIcon name="event_available" className="text-[14px]!" />
+                                {reserveReady ? 'Ready to queue' : 'Waiting for players'}
                             </span>
                         ) : null}
                         {status === 'ongoing' && row.started_at ? (
@@ -320,6 +330,45 @@ export function QueueingSessionMatchCard({
                         >
                             <MaterialIcon name="close" className="text-[16px]!" />
                             Close
+                        </button>
+                    </div>
+                ) : null}
+
+                {!isSuggest && canManageMatches && status === 'reserved' ? (
+                    <div className="rt-match-actions">
+                        <button
+                            type="button"
+                            disabled={busy || !reserveReady}
+                            onClick={() => onPromoteReserve?.()}
+                            title={
+                                reserveReady
+                                    ? 'Add this reserve match to the queue'
+                                    : 'Players are still on court or not waiting'
+                            }
+                            className="rt-match-action rt-match-action--primary"
+                        >
+                            <MaterialIcon name="playlist_add" className="text-[16px]!" />
+                            Add to queue
+                        </button>
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onEditMatch?.(row)}
+                            className="rt-match-action rt-match-action--secondary"
+                            aria-label="Edit reserve lineup"
+                        >
+                            <MaterialIcon name="edit" className="text-[16px]!" />
+                            Edit
+                        </button>
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onRemoveMatch?.(row)}
+                            className="rt-match-action rt-match-action--danger"
+                            aria-label="Remove reserve match"
+                        >
+                            <MaterialIcon name="delete" className="text-[16px]!" />
+                            Remove
                         </button>
                     </div>
                 ) : null}

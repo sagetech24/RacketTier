@@ -1,4 +1,5 @@
 import { MATCH_POINT_FORMULA, lossPointsForMode } from '../lib/matchPointFormula.js';
+import { lineupPlayerIds, reservedQueueingPlayerIds } from '../lib/queueingMatchLineup.js';
 
 /**
  * @param {Record<string, unknown>} player
@@ -171,7 +172,7 @@ export function applyOfflineMutation(state, mutation) {
             player.queue_position = 0;
             for (let i = matches.length - 1; i >= 0; i--) {
                 const m = matches[i];
-                if (m.status === 'queueing' || m.status === 'pending') {
+                if (m.status === 'queueing' || m.status === 'pending' || m.status === 'reserved') {
                     const lineup = m.lineup ?? m.players ?? [];
                     const ids = lineup.map((row) => Number(row.game_session_player_id ?? row.id));
                     if (ids.includes(Number(payload.player_id))) {
@@ -203,8 +204,33 @@ export function applyOfflineMutation(state, mutation) {
             });
             break;
         }
-        case 'create_match': {
+        case 'create_match':
+        case 'create_reserve_match': {
+            const asReserve = type === 'create_reserve_match';
             const lineup = payload.lineup ?? [];
+            if (asReserve) {
+                const reservedCount = matches.filter((m) => m.status === 'reserved').length;
+                if (reservedCount >= 4) {
+                    throw new Error('You can reserve at most 4 matches at a time.');
+                }
+            }
+            const held = reservedQueueingPlayerIds(matches);
+            const ids = lineup.map((row) => Number(row.id));
+            if (new Set(ids).size !== ids.length) {
+                throw new Error('Lineup contains duplicate players.');
+            }
+            for (const id of ids) {
+                const player = players.find((p) => Number(p.id) === id);
+                if (!player || player.is_removed) {
+                    throw new Error('Invalid player in lineup.');
+                }
+                if (held.has(id)) {
+                    throw new Error('One or more players are already assigned to a queued or reserved match.');
+                }
+                if (!asReserve && (!player.is_waiting || player.is_playing)) {
+                    throw new Error('Manual lineup players must be waiting and not already on court.');
+                }
+            }
             const nextMatchId =
                 Math.max(0, ...matches.map((m) => Number(m.id) || 0), Number(session._next_match_id) || 0) + 1;
             session._next_match_id = nextMatchId + 1;
@@ -223,7 +249,7 @@ export function applyOfflineMutation(state, mutation) {
             matches.push({
                 id: nextMatchId,
                 match_no: matchNo,
-                status: 'queueing',
+                status: asReserve ? 'reserved' : 'queueing',
                 lineup: snapshot,
                 players: snapshot,
                 team1_score: null,
@@ -234,6 +260,26 @@ export function applyOfflineMutation(state, mutation) {
                 result_breakdown: null,
                 _local_id: payload.local_match_id ?? `local-${nextMatchId}`,
             });
+            break;
+        }
+        case 'promote_reserve_match': {
+            const match = matches.find((m) => Number(m.id) === Number(payload.match_id));
+            if (!match) throw new Error('Match not found.');
+            if (match.status !== 'reserved') {
+                throw new Error('Only reserved matches can be added to the queue.');
+            }
+            const lineup = match.lineup ?? match.players ?? [];
+            const ids = lineupPlayerIds(lineup);
+            for (const id of ids) {
+                const player = players.find((p) => Number(p.id) === id);
+                if (!player || player.is_removed) {
+                    throw new Error('Some players in this match are no longer on the roster.');
+                }
+                if (!player.is_waiting || player.is_playing) {
+                    throw new Error('Reserved match players are not all available yet.');
+                }
+            }
+            match.status = 'queueing';
             break;
         }
         case 'start_match': {

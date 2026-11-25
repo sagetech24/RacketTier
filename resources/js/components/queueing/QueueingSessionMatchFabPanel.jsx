@@ -6,6 +6,7 @@ import {
     fetchQueueingSessionMatches,
     postAddQueueingSessionPlayer,
     postCreateQueueingSessionMatch,
+    postCreateQueueingSessionReserveMatch,
     postEndQueueingSession,
     postStartQueueingSessionMatch,
 } from '../../api/queueingSession.js';
@@ -58,6 +59,7 @@ export function QueueingSessionMatchFabPanel({
     const [matches, setMatches] = useState(matchesProp ?? []);
     const [localSession, setLocalSession] = useState(session);
     const [createMatchOpen, setCreateMatchOpen] = useState(false);
+    const [reserveMatchOpen, setReserveMatchOpen] = useState(false);
     const [autoMatchCriteriaOpen, setAutoMatchCriteriaOpen] = useState(false);
     const [autoMatchProposalsOpen, setAutoMatchProposalsOpen] = useState(false);
     const [criteriaReturnToProposals, setCriteriaReturnToProposals] = useState(false);
@@ -83,6 +85,12 @@ export function QueueingSessionMatchFabPanel({
             return ((p.wins_count ?? 0) + (p.losses_count ?? 0)) === 0;
         }).length;
     }, [localSession?.players]);
+
+    const reservedMatchCount = useMemo(
+        () => matches.filter((m) => m.status === 'reserved').length,
+        [matches],
+    );
+    const reserveMatchLimitReached = reservedMatchCount >= 4;
 
     useEffect(() => {
         setLocalSession(session);
@@ -446,6 +454,27 @@ export function QueueingSessionMatchFabPanel({
 
     /**
      * @param {{ id: number, team?: number }[]} lineup
+     */
+    async function handleCreateReserveMatch(lineup) {
+        if (sessionId == null || localSession == null) return;
+        setBusy(true);
+        try {
+            const result = await withOfflineFallback(sessionId, {
+                type: 'create_reserve_match',
+                payload: { lineup },
+                online: () => postCreateQueueingSessionReserveMatch(sessionId, { lineup }),
+            });
+            await settleAfterMutation(result);
+            setReserveMatchOpen(false);
+        } catch (e) {
+            reportError(e instanceof Error ? e.message : 'Could not create reserve match.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * @param {{ id: number, team?: number }[]} lineup
      * @param {{ start?: boolean }} [options]
      */
     async function handleCreateMatch(lineup, options = {}) {
@@ -590,6 +619,35 @@ export function QueueingSessionMatchFabPanel({
                                                   </span>
                                               </span>
                                           </button>
+                                          <button
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={busy || endingSession || reserveMatchLimitReached}
+                                              title={
+                                                  reserveMatchLimitReached
+                                                      ? 'Maximum of 4 reserve matches reached'
+                                                      : undefined
+                                              }
+                                              onClick={() => {
+                                                  setMenuOpen(false);
+                                                  setReserveMatchOpen(true);
+                                              }}
+                                              className="rt-match-fab-callout-item mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#2a2a2d] disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-400/15 text-sky-300">
+                                                  <MaterialIcon name="event_available" className="text-xl!" />
+                                              </span>
+                                              <span className="min-w-0">
+                                                  <span className="block text-sm font-bold text-[#e4e1e6]">
+                                                      Reserve match
+                                                  </span>
+                                                  <span className="block text-[10px] leading-snug text-[#918f9c]">
+                                                      {reserveMatchLimitReached
+                                                          ? 'Limit reached (4 reserved)'
+                                                          : 'Pre-book players even if they are still playing'}
+                                                  </span>
+                                              </span>
+                                          </button>
                                       </div>
 
                                       <div className="rt-match-fab-callout__players">
@@ -707,6 +765,16 @@ export function QueueingSessionMatchFabPanel({
                 busy={busy}
                 onClose={() => setCreateMatchOpen(false)}
                 onSave={handleCreateMatch}
+            />
+
+            <QueueingSessionMatchLineupModal
+                open={reserveMatchOpen}
+                mode="reserve"
+                session={localSession}
+                matches={matches}
+                busy={busy}
+                onClose={() => setReserveMatchOpen(false)}
+                onSave={handleCreateReserveMatch}
             />
 
             <ConfirmActionModal

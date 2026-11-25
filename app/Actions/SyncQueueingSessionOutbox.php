@@ -24,6 +24,8 @@ class SyncQueueingSessionOutbox
         private RestoreQueueingSessionPlayer $restorePlayer,
         private ReorderQueueingSessionCheckIn $reorderCheckIn,
         private CreateQueueingSessionMatch $createMatch,
+        private CreateQueueingSessionReserveMatch $createReserveMatch,
+        private PromoteQueueingSessionReserveMatch $promoteReserveMatch,
         private StartQueueingSessionMatch $startMatch,
         private DeleteQueueingSessionMatch $deleteMatch,
         private UpdateQueueingSessionMatch $updateMatch,
@@ -134,6 +136,20 @@ class SyncQueueingSessionOutbox
                     $matchIdMap[$payload['_local_match_numeric_id']] = (int) $match->id;
                 }
             })(),
+            'create_reserve_match' => (function () use ($session, $payload, &$matchIdMap): void {
+                $lineup = is_array($payload['lineup'] ?? null) ? $payload['lineup'] : [];
+                $match = $this->createReserveMatch->execute($session, $lineup);
+                if (isset($payload['local_match_id'])) {
+                    $matchIdMap[$payload['local_match_id']] = (int) $match->id;
+                }
+                if (isset($payload['_local_match_numeric_id'])) {
+                    $matchIdMap[$payload['_local_match_numeric_id']] = (int) $match->id;
+                }
+            })(),
+            'promote_reserve_match' => $this->promoteReserveMatch->execute(
+                $session,
+                $this->hydrator->hydrateMatch($session, $resolveMatchId($payload['match_id'] ?? 0)),
+            ),
             'start_match' => $this->startMatch->execute(
                 $session,
                 $this->hydrator->hydrateMatch($session, $resolveMatchId($payload['match_id'] ?? 0)),
